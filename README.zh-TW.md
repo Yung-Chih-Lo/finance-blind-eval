@@ -55,11 +55,9 @@ npm run invites:create -- --count 40 --base-url http://localhost:5174
 
 ```
 eval-ui/
-├── web/                 # 目前使用的 Next.js app（用這個）
-├── vite/                # 舊版 Vite 原型（保留作 migration reference）
+├── web/                 # 目前使用的 Next.js app
 ├── openspec/            # Spec-driven workflow：specs + 變更歷史
-├── docs/                # 使用 / API 文件（EN + ZH-TW）
-└── plan.md              # 多階段平台化計畫
+└── docs/                # 使用 / API 文件（EN + ZH-TW）
 ```
 
 ## 驗證

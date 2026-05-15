@@ -36,3 +36,6 @@ yarn-debug.log*
 
 # Coverage
 coverage/
+
+# Private planning notes (not part of public deliverable)
+plan.md

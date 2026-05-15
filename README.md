@@ -54,11 +54,9 @@ The browser **never** sees the gateway API key or the hidden A/B/C → real-mode
 
 ```
 eval-ui/
-├── web/                 # Active Next.js app (use this)
-├── vite/                # Legacy Vite prototype (kept for migration reference)
+├── web/                 # Active Next.js app
 ├── openspec/            # Spec-driven workflow: specs + change history
-├── docs/                # Usage / API docs (EN + ZH-TW)
-└── plan.md              # Multi-phase platformization plan
+└── docs/                # Usage / API docs (EN + ZH-TW)
 ```
 
 ## Verification
