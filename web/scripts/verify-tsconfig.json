@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": false,
+    "noEmit": false,
+    "outDir": ".verify-out",
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "verify-study-copy.ts",
+    "../lib/evaluation/types.ts",
+    "../lib/evaluation/config.ts",
+    "../lib/evaluation/study-copy-form.ts",
+    "../lib/server/provider-settings.ts",
+    "../lib/server/platform-settings.ts",
+    "../config/evaluation.config.json"
+  ]
+}

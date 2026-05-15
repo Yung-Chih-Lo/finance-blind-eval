@@ -1,0 +1,38 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Per-user agent settings (only the local overrides — keep shared rules/hooks/skills committed)
+.claude/settings.local.json
+.codex/settings.local.json
+
+# Node / Next.js
+node_modules/
+**/node_modules/
+.next/
+out/
+build/
+dist/
+
+# TypeScript build artifacts
+*.tsbuildinfo
+
+# Env files — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# Evaluation storage (participant PII, invite codes, QR SVGs)
+**/.data/
+
+# Logs / debug
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Verification harness scratch
+**/scripts/.verify-out/
+
+# Coverage
+coverage/
