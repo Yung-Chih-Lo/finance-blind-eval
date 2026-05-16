@@ -130,5 +130,5 @@
 
 ## 15. OpenSpec verify
 
-- [ ] 15.1 Run `openspec validate shared-invite-code --strict` — must report valid
-- [ ] 15.2 Run `openspec status --change shared-invite-code` — all artifacts done
+- [x] 15.1 Run `openspec validate shared-invite-code --strict` — must report valid
+- [x] 15.2 Run `openspec status --change shared-invite-code` — all artifacts done
