@@ -1,5 +1,4 @@
-import { EvaluationApp } from "@/components/evaluation/evaluation-app"
-import { getActivePlatformSettings } from "@/lib/server/platform-settings"
+import { redirect } from "next/navigation"
 
 interface EvalPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -8,9 +7,10 @@ interface EvalPageProps {
 export const dynamic = "force-dynamic"
 
 export default async function EvalPage({ searchParams }: EvalPageProps) {
-  const settings = await getActivePlatformSettings()
   const params = await searchParams
-  const invite = Array.isArray(params?.invite) ? params.invite[0] : params?.invite
+  const legacyInvite = Array.isArray(params?.invite) ? params.invite[0] : params?.invite
+  const newInvite = Array.isArray(params?.invite_code) ? params.invite_code[0] : params?.invite_code
+  const inviteCode = newInvite || legacyInvite
 
-  return <EvaluationApp config={settings.config} initialInviteCode={invite || ""} />
+  redirect(inviteCode ? `/?invite_code=${encodeURIComponent(inviteCode)}` : "/")
 }

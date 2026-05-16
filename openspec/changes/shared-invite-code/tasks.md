@@ -51,24 +51,24 @@
 
 ## 4. Route consolidation (`/eval` → `/`)
 
-- [ ] 4.1 Rewrite `web/app/page.tsx` to a server component: load `getActivePlatformSettings()`, read `eval_completed` cookie from `cookies()`, read `invite_code` from `searchParams`
-- [ ] 4.2 If cookie present, render a minimal terminal component (reuse `CompletionPage` or a new `CompletedTerminalView`) — no EvaluationApp, no invite input
-- [ ] 4.3 If cookie absent, render `<EvaluationApp config={...} initialInviteCode={invite_code ?? ""} />` (same as today)
-- [ ] 4.4 Replace `web/app/eval/page.tsx` with a redirect: `redirect("/")` (or remove the file entirely if Next routing tolerates it)
+- [x] 4.1 Rewrite `web/app/page.tsx` to a server component: load `getActivePlatformSettings()`, read `eval_completed` cookie from `cookies()`, read `invite_code` from `searchParams`
+- [x] 4.2 If cookie present, render a minimal terminal component (reuse `CompletionPage` or a new `CompletedTerminalView`) — no EvaluationApp, no invite input
+- [x] 4.3 If cookie absent, render `<EvaluationApp config={...} initialInviteCode={invite_code ?? ""} />` (same as today)
+- [x] 4.4 Replace `web/app/eval/page.tsx` with a redirect: `redirect("/")` (or remove the file entirely if Next routing tolerates it)
 - [ ] 4.5 Verify: open `/` → invite entry; open `/?invite_code=ailab502` → field pre-filled; open `/eval` → redirects to `/`
 
 ## 5. URL param rename `invite` → `invite_code`
 
-- [ ] 5.1 In page server component (`app/page.tsx`), read `searchParams.invite_code` (NOT `invite`)
-- [ ] 5.2 In `evaluation-app.tsx`, ensure the URL cleanup `router.replace(...)` after redeem also strips `invite_code` (currently it just calls `router.replace("/eval")`)
-- [ ] 5.3 Search for any string literal `invite=` in remaining code; replace with `invite_code=` where referring to the public URL param
+- [x] 5.1 In page server component (`app/page.tsx`), read `searchParams.invite_code` (NOT `invite`)
+- [x] 5.2 In `evaluation-app.tsx`, ensure the URL cleanup `router.replace(...)` after redeem also strips `invite_code` (currently it just calls `router.replace("/eval")`)
+- [x] 5.3 Search for any string literal `invite=` in remaining code; replace with `invite_code=` where referring to the public URL param
 - [ ] 5.4 Verify: `grep -rn "invite=" web/ --include='*.ts' --include='*.tsx'` returns no participant-facing matches
 
 ## 6. Server-rendered completion terminal view
 
-- [ ] 6.1 Decide: reuse existing `CompletionPage` (which expects to be inside `evaluation-app`) or extract a new `<CompletedTerminalView config={...} />` server component
-- [ ] 6.2 If extracting, place at `web/components/evaluation/completed-terminal-view.tsx`; render `config.study.title`, a "已完成測驗" headline, and a thank-you message — NO start button, NO invite input
-- [ ] 6.3 Wire it into `app/page.tsx` branch
+- [x] 6.1 Decide: reuse existing `CompletionPage` (which expects to be inside `evaluation-app`) or extract a new `<CompletedTerminalView config={...} />` server component → reused `CompletionPage` (pure presentational, no client hooks)
+- [x] 6.2 If extracting, place at `web/components/evaluation/completed-terminal-view.tsx`; render `config.study.title`, a "已完成測驗" headline, and a thank-you message — NO start button, NO invite input → reused existing CompletionPage instead
+- [x] 6.3 Wire it into `app/page.tsx` branch
 - [ ] 6.4 Verify: set `eval_completed=1` cookie in DevTools manually; reload `/` → terminal view shows, no invite field
 
 ## 7. Admin invite panel (read-only QR)

@@ -70,7 +70,7 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
         } else {
           setStep(data.participant.profile ? "question" : "profile")
         }
-        router.replace("/eval")
+        router.replace("/")
       } catch {
         // A missing, expired, or temporarily unreachable session should not
         // block first-time participants from entering an invite code.
@@ -95,7 +95,7 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
           setProfile(participant.profile ?? null)
           setAnsweredCount(nextAnsweredCount)
           setPendingQuestion(null)
-          router.replace("/eval")
+          router.replace("/")
           setStep(participant.profile ? "question" : "profile")
         }}
       />
