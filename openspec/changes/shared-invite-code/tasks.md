@@ -36,11 +36,11 @@
 
 ## 2. Redeem-invite API rewrite
 
-- [ ] 2.1 In `web/app/api/session/redeem-invite/route.ts`, replace `redeemInviteCode` call with: read `SHARED_INVITE_CODE`, return 503 if null
-- [ ] 2.2 In the same route, before validating code, read `eval_completed` cookie via `cookies()`; return 403 `{ error: "本裝置已完成測驗。" }` when present
-- [ ] 2.3 Compare submitted `inviteCode.trim()` (case-insensitive) against `SHARED_INVITE_CODE`; on mismatch return 403 `{ error: "邀請碼不正確。" }`
-- [ ] 2.4 On match, generate `P-XXXXXXXX` token + session as before (extract participant/session creation into a small helper inside `evaluation-storage.ts` or keep inline)
-- [ ] 2.5 Keep existing IP rate-limit `checkRateLimit("invite:ip:<ip>")` ahead of cookie check
+- [x] 2.1 In `web/app/api/session/redeem-invite/route.ts`, replace `redeemInviteCode` call with: read `SHARED_INVITE_CODE`, return 503 if null
+- [x] 2.2 In the same route, before validating code, read `eval_completed` cookie via `cookies()`; return 403 `{ error: "本裝置已完成測驗。" }` when present
+- [x] 2.3 Compare submitted `inviteCode.trim()` (case-insensitive) against `SHARED_INVITE_CODE`; on mismatch return 403 `{ error: "邀請碼不正確。" }`
+- [x] 2.4 On match, generate `P-XXXXXXXX` token + session as before (extract participant/session creation into a small helper inside `evaluation-storage.ts` or keep inline)
+- [x] 2.5 Keep existing IP rate-limit `checkRateLimit("invite:ip:<ip>")` ahead of cookie check
 - [ ] 2.6 Verify manually: `curl -X POST localhost:3000/api/session/redeem-invite -H 'Content-Type: application/json' -d '{"inviteCode":"ailab502"}'` returns 200 with participant; same call with bad code returns 403; same call with `eval_completed=1` cookie returns 403
 
 ## 3. Completion cookie issuance
@@ -88,7 +88,7 @@
 ## 9. Storage layer cleanup
 
 - [ ] 9.1 In `web/lib/server/evaluation-storage.ts`, remove: `createInviteCodes`, `getInviteCodes`, `redeemInviteCode`, `hashInviteCode`, `normalizeInviteCode` (keep `normalizeToken`, `hashSecret`)
-- [ ] 9.2 Extract participant + session creation (formerly inside `redeemInviteCode`) into a new exported `createAnonymousParticipantSession(options): { participant, sessionToken, session }`; called by the redeem-invite route in §2
+- [x] 9.2 Extract participant + session creation (formerly inside `redeemInviteCode`) into a new exported `createAnonymousParticipantSession(options): { participant, sessionToken, session }`; called by the redeem-invite route in §2
 - [ ] 9.3 Remove `invites` from `EMPTY_STORE`, `cloneStore`, `readStore` (still tolerate old JSON: just skip the key)
 - [ ] 9.4 Remove `invites` from `EvaluationStore.invites`, `AdminSnapshot.invites`, `buildExportJson` (drop the `invites` field in JSON output)
 - [ ] 9.5 In `computeFunnelStages`, drop the `invited` calculation and the `invites` parameter; return type now omits `invited`
