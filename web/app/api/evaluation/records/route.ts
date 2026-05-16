@@ -11,6 +11,19 @@ import {
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
 import { requireEvaluationSession } from "@/lib/server/session"
 
+const EVAL_COMPLETED_COOKIE = "eval_completed"
+const COMPLETED_COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
+
+function setCompletedCookie(response: NextResponse) {
+  response.cookies.set(EVAL_COMPLETED_COOKIE, "1", {
+    httpOnly: true,
+    maxAge: COMPLETED_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  })
+}
+
 interface RecordRequest {
   questionId?: string
   selectedBest?: AnswerLabel
@@ -120,9 +133,13 @@ export async function POST(request: Request) {
     completedAt: isCompleted ? now : existingParticipant?.completedAt,
   })
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     answeredCount,
     completionStatus: isCompleted ? "completed" : "in_progress",
   })
+  if (isCompleted) {
+    setCompletedCookie(response)
+  }
+  return response
 }

@@ -45,8 +45,8 @@
 
 ## 3. Completion cookie issuance
 
-- [ ] 3.1 Locate the response path where `completionStatus` becomes `"completed"` (likely `web/app/api/evaluation/answers/route.ts` or `records/route.ts` after final answer saved)
-- [ ] 3.2 When the response transitions a participant to `completed`, attach `Set-Cookie: eval_completed=1; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure` (Secure only in production — mirror `setSessionCookie` style in `lib/server/session.ts`)
+- [x] 3.1 Locate the response path where `completionStatus` becomes `"completed"` (likely `web/app/api/evaluation/answers/route.ts` or `records/route.ts` after final answer saved)
+- [x] 3.2 When the response transitions a participant to `completed`, attach `Set-Cookie: eval_completed=1; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax; Secure` (Secure only in production — mirror `setSessionCookie` style in `lib/server/session.ts`)
 - [ ] 3.3 Verify: complete a full 5-question run in browser; DevTools Application → Cookies shows `eval_completed=1`
 
 ## 4. Route consolidation (`/eval` → `/`)
