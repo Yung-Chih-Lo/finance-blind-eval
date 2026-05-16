@@ -1,96 +1,96 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
 
-interface GeneratedInvite {
+interface InviteQrData {
   code: string
   link: string
   qrSvg: string
-  invite: {
-    id: string
-    label?: string
-  }
 }
 
 export function AdminInviteActions() {
   const toast = useToast()
-  const [count, setCount] = useState(20)
-  const [baseUrl, setBaseUrl] = useState("")
-  const [invites, setInvites] = useState<GeneratedInvite[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [data, setData] = useState<InviteQrData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  async function generateInvites() {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/admin/invites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count, baseUrl: baseUrl.trim() || undefined }),
-      })
-      const data = (await response.json()) as {
-        invites?: GeneratedInvite[]
-        error?: string
+  useEffect(() => {
+    let isMounted = true
+    async function load() {
+      setIsLoading(true)
+      try {
+        const response = await fetch("/api/admin/invite-qr", { cache: "no-store" })
+        const payload = (await response.json().catch(() => null)) as
+          | (Partial<InviteQrData> & { error?: string })
+          | null
+        if (!isMounted) {
+          return
+        }
+        if (!response.ok || !payload?.code || !payload.qrSvg || !payload.link) {
+          setData(null)
+          setError(payload?.error || "無法載入邀請碼。")
+          return
+        }
+        setData({ code: payload.code, link: payload.link, qrSvg: payload.qrSvg })
+        setError(null)
+      } catch {
+        if (isMounted) {
+          setData(null)
+          setError("無法載入邀請碼，請確認網路後重試。")
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
-      if (!response.ok || !data.invites) {
-        throw new Error(data.error || "邀請碼產生失敗。")
-      }
-      setInvites(data.invites)
-      toast.success(`已產生 ${data.invites.length} 組邀請碼。`)
-    } catch (generateError) {
-      toast.error(
-        generateError instanceof Error
-          ? generateError.message
-          : "邀請碼產生失敗。"
-      )
-    } finally {
-      setIsLoading(false)
     }
+    void load()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  function downloadSvg() {
+    if (!data) {
+      return
+    }
+    const blob = new Blob([data.qrSvg], { type: "image/svg+xml" })
+    const downloadUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = downloadUrl
+    anchor.download = `invite-${data.code}.svg`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(downloadUrl)
+    toast.success("QR Code SVG 已下載。")
   }
 
   return (
     <section className="table-section invite-admin-panel">
       <div className="section-heading">
         <div>
-          <p className="panel-kicker">Invites</p>
-          <h2>邀請碼與 QR Code</h2>
+          <p className="panel-kicker">Invite</p>
+          <h2>共用邀請碼與 QR Code</h2>
         </div>
       </div>
-      <div className="invite-form">
-        <label>
-          產生數量
-          <input
-            min={1}
-            max={200}
-            type="number"
-            value={count}
-            onChange={(event) => setCount(Number(event.target.value))}
-          />
-        </label>
-        <label>
-          公開網址
-          <input
-            value={baseUrl}
-            placeholder="例如：https://your-domain.com"
-            onChange={(event) => setBaseUrl(event.target.value)}
-          />
-        </label>
-        <Button disabled={isLoading} type="button" onClick={generateInvites}>
-          {isLoading ? "產生中..." : "產生邀請碼"}
-        </Button>
-      </div>
-      {invites.length ? (
+      {isLoading ? (
+        <p>載入中…</p>
+      ) : error ? (
+        <p style={{ color: "var(--admin-warning, #c43)" }}>{error}</p>
+      ) : data ? (
         <div className="invite-grid">
-          {invites.map((invite) => (
-            <article className="invite-card" key={invite.invite.id}>
-              <div dangerouslySetInnerHTML={{ __html: invite.qrSvg }} />
-              <p>{invite.invite.label}</p>
-              <strong>{invite.code}</strong>
-              <a href={invite.link}>{invite.link}</a>
-            </article>
-          ))}
+          <article className="invite-card">
+            <div dangerouslySetInnerHTML={{ __html: data.qrSvg }} />
+            <strong>{data.code}</strong>
+            <a href={data.link}>{data.link}</a>
+            <Button type="button" onClick={downloadSvg}>
+              下載 SVG
+            </Button>
+          </article>
         </div>
       ) : null}
     </section>

@@ -73,9 +73,9 @@
 
 ## 7. Admin invite panel (read-only QR)
 
-- [ ] 7.1 Create `web/app/api/admin/invite-qr/route.ts` GET handler: read `SHARED_INVITE_CODE`; if null return 503 `{ error: "未設定共用邀請碼" }`; else build `${url.origin}/?invite_code=<code>`, render QR SVG via `QRCode.toString({type: "svg"})`, return `{ code, link, qrSvg }`
-- [ ] 7.2 Rewrite `web/components/evaluation/admin-invite-actions.tsx` to fetch `/api/admin/invite-qr` on mount and render: panel title, plaintext code, QR SVG (via `dangerouslySetInnerHTML`), one "下載 SVG" button (Blob download), error state when 503
-- [ ] 7.3 Drop the count input, baseUrl input, and "產生邀請碼" button entirely
+- [x] 7.1 Create `web/app/api/admin/invite-qr/route.ts` GET handler: read `SHARED_INVITE_CODE`; if null return 503 `{ error: "未設定共用邀請碼" }`; else build `${url.origin}/?invite_code=<code>`, render QR SVG via `QRCode.toString({type: "svg"})`, return `{ code, link, qrSvg }`
+- [x] 7.2 Rewrite `web/components/evaluation/admin-invite-actions.tsx` to fetch `/api/admin/invite-qr` on mount and render: panel title, plaintext code, QR SVG (via `dangerouslySetInnerHTML`), one "下載 SVG" button (Blob download), error state when 503
+- [x] 7.3 Drop the count input, baseUrl input, and "產生邀請碼" button entirely
 - [ ] 7.4 Verify: `/admin?tab=invites` shows the code `ailab502`, the QR image, and a working download button; unsetting `SHARED_INVITE_CODE` locally shows the warning state
 
 ## 8. Remove `/api/admin/invites` route and CLI script
