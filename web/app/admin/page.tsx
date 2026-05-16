@@ -59,8 +59,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const recordCount = snapshot.records.length
   const totalParticipants = snapshot.participants.length
   const completionRate = formatPercent(snapshot.completedCount, totalParticipants)
-  const inviteUsesTotal = snapshot.invites.reduce((sum, invite) => sum + invite.uses, 0)
-  const inviteCapacityTotal = snapshot.funnelStages.invited
 
   const answeredByToken = new Map<string, number>()
   for (const record of snapshot.records) {
@@ -234,18 +232,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   const invitesTab = (
     <div className="space-y-6">
-      <Card className="border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-none">
-        <CardHeader className="px-5 pt-4 pb-2">
-          <CardTitle className="text-base">邀請碼用量</CardTitle>
-        </CardHeader>
-        <CardContent className="px-5 pb-4 text-sm text-[var(--admin-fg)]">
-          <p>
-            共 <strong className="tabular-nums">{snapshot.invites.length}</strong> 組邀請碼，
-            已用 <strong className="tabular-nums">{inviteUsesTotal}</strong> /{" "}
-            <strong className="tabular-nums">{inviteCapacityTotal}</strong> 名額。
-          </p>
-        </CardContent>
-      </Card>
       <AdminInviteActions />
     </div>
   )
@@ -314,14 +300,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         label="金融 / 非金融"
         value={`${snapshot.financeBackgroundCount} / ${snapshot.nonFinanceBackgroundCount}`}
       />
-      <SidebarMetric label="邀請碼" value={snapshot.invites.length} />
     </div>
   )
 
   const sidebarFooter = (
     <Link
       className="block rounded-md border border-[var(--admin-border)] bg-white px-3 py-2 text-center text-sm text-[var(--admin-fg)] transition-colors hover:bg-[var(--admin-accent-soft)] hover:text-[var(--admin-accent)]"
-      href="/eval"
+      href="/"
     >
       開啟受測者入口
     </Link>

@@ -125,7 +125,6 @@ export async function POST(request: Request) {
   const isCompleted = pending.questionIndex >= config.promptCategories.length
   await upsertParticipantStatus({
     token: pending.participantToken,
-    inviteId: existingParticipant?.inviteId || activeSession.session.inviteId,
     profile: pending.participantProfile,
     completionStatus: isCompleted ? "completed" : "in_progress",
     startedAt: existingParticipant?.startedAt || pending.timestamp,

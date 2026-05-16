@@ -87,38 +87,38 @@
 
 ## 9. Storage layer cleanup
 
-- [ ] 9.1 In `web/lib/server/evaluation-storage.ts`, remove: `createInviteCodes`, `getInviteCodes`, `redeemInviteCode`, `hashInviteCode`, `normalizeInviteCode` (keep `normalizeToken`, `hashSecret`)
+- [x] 9.1 In `web/lib/server/evaluation-storage.ts`, remove: `createInviteCodes`, `getInviteCodes`, `redeemInviteCode`, `hashInviteCode`, `normalizeInviteCode` (keep `normalizeToken`, `hashSecret`)
 - [x] 9.2 Extract participant + session creation (formerly inside `redeemInviteCode`) into a new exported `createAnonymousParticipantSession(options): { participant, sessionToken, session }`; called by the redeem-invite route in §2
-- [ ] 9.3 Remove `invites` from `EMPTY_STORE`, `cloneStore`, `readStore` (still tolerate old JSON: just skip the key)
-- [ ] 9.4 Remove `invites` from `EvaluationStore.invites`, `AdminSnapshot.invites`, `buildExportJson` (drop the `invites` field in JSON output)
-- [ ] 9.5 In `computeFunnelStages`, drop the `invited` calculation and the `invites` parameter; return type now omits `invited`
-- [ ] 9.6 Update `getAdminSnapshot` accordingly
-- [ ] 9.7 Verify: `cd web && npm run typecheck` passes
+- [x] 9.3 Remove `invites` from `EMPTY_STORE`, `cloneStore`, `readStore` (still tolerate old JSON: just skip the key)
+- [x] 9.4 Remove `invites` from `EvaluationStore.invites`, `AdminSnapshot.invites`, `buildExportJson` (drop the `invites` field in JSON output)
+- [x] 9.5 In `computeFunnelStages`, drop the `invited` calculation and the `invites` parameter; return type now omits `invited`
+- [x] 9.6 Update `getAdminSnapshot` accordingly
+- [x] 9.7 Verify: `cd web && npm run typecheck` passes
 
 ## 10. Type cleanup
 
-- [ ] 10.1 In `web/lib/evaluation/types.ts`, remove `InviteCodeRecord` interface
-- [ ] 10.2 Remove `inviteId` from `ParticipantStatus`
-- [ ] 10.3 Remove `inviteId` from `EvaluationSession`
-- [ ] 10.4 Remove `invites: InviteCodeRecord[]` from `EvaluationStore` and `AdminSnapshot`
-- [ ] 10.5 Remove `invited` from `AdminFunnelStages`
-- [ ] 10.6 Verify: `cd web && npm run typecheck` passes (will catch any forgotten reader)
+- [x] 10.1 In `web/lib/evaluation/types.ts`, remove `InviteCodeRecord` interface
+- [x] 10.2 Remove `inviteId` from `ParticipantStatus`
+- [x] 10.3 Remove `inviteId` from `EvaluationSession`
+- [x] 10.4 Remove `invites: InviteCodeRecord[]` from `EvaluationStore` and `AdminSnapshot`
+- [x] 10.5 Remove `invited` from `AdminFunnelStages`
+- [x] 10.6 Verify: `cd web && npm run typecheck` passes (will catch any forgotten reader)
 
 ## 11. Drop inviteId propagation
 
-- [ ] 11.1 In `web/app/api/session/route.ts`, drop the `inviteId: existing?.inviteId || activeSession.session.inviteId` line — `ParticipantStatus` no longer has the field
-- [ ] 11.2 In `web/app/api/evaluation/records/route.ts`, same cleanup at line referencing `inviteId`
-- [ ] 11.3 Verify: `grep -rn "inviteId" web/ --include='*.ts' --include='*.tsx'` returns no hits
+- [x] 11.1 In `web/app/api/session/route.ts`, drop the `inviteId: existing?.inviteId || activeSession.session.inviteId` line — `ParticipantStatus` no longer has the field
+- [x] 11.2 In `web/app/api/evaluation/records/route.ts`, same cleanup at line referencing `inviteId`
+- [x] 11.3 Verify: `grep -rn "inviteId" web/ --include='*.ts' --include='*.tsx'` returns no hits
 
 ## 12. Funnel UI update (5 → 4 stages)
 
-- [ ] 12.1 In `web/components/admin/funnel.tsx`, remove the `{ id: "invited", label: "Invited" }` entry from `STAGE_ORDER`
-- [ ] 12.2 In `web/app/admin/page.tsx`, remove `inviteCapacityTotal` (and any KPI tile referencing invite count)
+- [x] 12.1 In `web/components/admin/funnel.tsx`, remove the `{ id: "invited", label: "Invited" }` entry from `STAGE_ORDER`
+- [x] 12.2 In `web/app/admin/page.tsx`, remove `inviteCapacityTotal` (and any KPI tile referencing invite count)
 - [ ] 12.3 Verify: admin dashboard `總覽` tab renders 4 funnel rows; no broken KPI tile
 
 ## 13. JSON export field cleanup
 
-- [ ] 13.1 In `web/lib/server/evaluation-storage.ts` `buildExportJson`, drop the `invites: store.invites` line from the export object
+- [x] 13.1 In `web/lib/server/evaluation-storage.ts` `buildExportJson`, drop the `invites: store.invites` line from the export object
 - [ ] 13.2 Verify: `/api/admin/export?format=json` returns no `invites` key
 
 ## 14. Lint, typecheck, manual smoke
