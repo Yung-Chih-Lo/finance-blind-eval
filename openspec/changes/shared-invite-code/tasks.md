@@ -80,10 +80,10 @@
 
 ## 8. Remove `/api/admin/invites` route and CLI script
 
-- [ ] 8.1 Delete `web/app/api/admin/invites/route.ts`
-- [ ] 8.2 Delete `web/scripts/create-invites.mjs`
-- [ ] 8.3 Remove `"invites:create"` from `web/package.json` scripts
-- [ ] 8.4 Verify: `grep -rn "/api/admin/invites\|create-invites\|invites:create" web/ --include='*.ts' --include='*.tsx' --include='*.json' --include='*.mjs'` returns no hits
+- [x] 8.1 Delete `web/app/api/admin/invites/route.ts`
+- [x] 8.2 Delete `web/scripts/create-invites.mjs`
+- [x] 8.3 Remove `"invites:create"` from `web/package.json` scripts
+- [x] 8.4 Verify: `grep -rn "/api/admin/invites\|create-invites\|invites:create" web/ --include='*.ts' --include='*.tsx' --include='*.json' --include='*.mjs'` returns no hits
 
 ## 9. Storage layer cleanup
 
