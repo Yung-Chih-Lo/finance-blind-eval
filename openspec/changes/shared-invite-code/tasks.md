@@ -123,9 +123,9 @@
 
 ## 14. Lint, typecheck, manual smoke
 
-- [ ] 14.1 `cd web && npm run lint` — fix any warnings introduced
-- [ ] 14.2 `cd web && npm run typecheck` — must pass
-- [ ] 14.3 `cd web && npm run build` — must pass (Next dynamic page constraints)
+- [x] 14.1 `cd web && npm run lint` — fix any warnings introduced
+- [x] 14.2 `cd web && npm run typecheck` — must pass
+- [x] 14.3 `cd web && npm run build` — must pass (Next dynamic page constraints)
 - [ ] 14.4 Manual: start dev server (`npm run dev`), set `SHARED_INVITE_CODE=ailab502` in `.env.local`; walk through: `/` → input wrong code → 403 toast; correct code → profile form; complete 5 questions → completion page; reload `/` → terminal view; clear cookie → can re-enter
 
 ## 15. OpenSpec verify
