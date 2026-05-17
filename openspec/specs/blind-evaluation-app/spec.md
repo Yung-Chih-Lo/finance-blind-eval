@@ -4,47 +4,26 @@
 TBD - created by archiving change migrate-vite-to-nextjs. Update Purpose after archive.
 ## Requirements
 ### Requirement: Participant token entry
-The system SHALL provide a participant evaluation entry route at `/` (root) that requires a researcher-distributed shared invite code before creating an anonymous participant session. The shared invite code SHALL be sourced from the `SHARED_INVITE_CODE` server environment variable. The route SHALL hard-block re-entry when a completion cookie (`eval_completed=1`) is present on the request.
+The system SHALL provide a participant evaluation entry route at `/` (root) that requires a researcher-distributed shared invite code before creating an anonymous participant session. The shared invite code SHALL be sourced from the `SHARED_INVITE_CODE` server environment variable. The route SHALL hard-block re-entry when a completion cookie (`eval_completed=1`) is present on the request. The entry page SHALL present a structured study briefing before the invite-code submit action, including study purpose, time/question scope, blind comparison tasks, privacy/sensitive-data guidance, and a non-investment-advice boundary.
 
-#### Scenario: Invite code entered
-- **WHEN** a participant opens `/` without an `eval_completed` cookie and enters a value matching `SHARED_INVITE_CODE`
-- **THEN** the system creates an anonymous participant token (`P-XXXXXXXX`) and an httpOnly session cookie
-- **AND** advances to the background form
-
-#### Scenario: Invite query provided
-- **WHEN** a participant opens `/?invite_code=ailab502` without an `eval_completed` cookie
-- **THEN** the system pre-fills the invite-code field with the URL value without treating that string as a participant identity
-
-#### Scenario: Invite code mismatch
-- **WHEN** a participant submits an invite code value that does not match `SHARED_INVITE_CODE`
-- **THEN** the system rejects the redeem request with a 403 response and SHALL NOT create a participant or session
-
-#### Scenario: Shared invite code not configured
-- **WHEN** the server receives a redeem request while `SHARED_INVITE_CODE` is unset or empty
-- **THEN** the system returns 503 with a service-configuration error message and SHALL NOT create a participant or session
-
-#### Scenario: Re-entry blocked by completion cookie
-- **WHEN** a participant opens `/` with an `eval_completed=1` cookie present
-- **THEN** the page server-side renders a "已完成測驗" terminal view that does NOT show the invite-code input or the start button
-
-#### Scenario: Server-side re-entry guard
-- **WHEN** a `POST /api/session/redeem-invite` request arrives carrying an `eval_completed=1` cookie
-- **THEN** the API rejects the request with 403 before evaluating the invite code
-
-#### Scenario: Arbitrary participant token in URL
-- **WHEN** a participant opens `/?token=123456`
-- **THEN** the system SHALL NOT use that token as authorization or create a participant from it
+#### Scenario: Study briefing shown before start
+- **WHEN** a participant opens `/` without an `eval_completed` cookie
+- **THEN** the entry page shows the study title, expected duration, question count, blind model-comparison task, privacy/sensitive-data warning, and non-investment-advice boundary before or alongside the invite-code form
 
 ### Requirement: Participant background form
-The system SHALL require participants to submit background data before answering guided evaluation questions.
+The system SHALL require participants to submit non-identifying background data before answering guided evaluation questions, including broad demographic, education/work, finance experience, investment experience, LLM usage, and finance subdomain familiarity fields.
 
 #### Scenario: Required background data missing
-- **WHEN** a participant submits the background form without grade or occupation
+- **WHEN** a participant submits the background form without a required expanded profile field
 - **THEN** the system prevents progression and displays a validation message
 
 #### Scenario: Background data completed
-- **WHEN** a participant submits business or finance background, grade or occupation, finance course history, finance familiarity, and LLM usage experience
+- **WHEN** a participant submits business or finance background, age range, grade or occupation, field or work domain, finance course history, finance work experience, investment experience, finance familiarity, general LLM usage, finance-task LLM usage, and finance subdomain familiarity
 - **THEN** the system stores the profile through a server API boundary and advances to question 1
+
+#### Scenario: Existing session has legacy profile shape
+- **WHEN** a participant has a saved profile that lacks the expanded analysis fields
+- **THEN** the participant returns to the profile form with existing fields prefilled instead of advancing directly to the question flow
 
 ### Requirement: Guided flexible prompt flow
 The system SHALL present exactly five guided prompt categories for participant-authored finance questions.
@@ -62,8 +41,20 @@ The system SHALL present exactly five guided prompt categories for participant-a
 - **WHEN** the participant submits a question that fails the minimum completeness validation
 - **THEN** the system rejects the submission and keeps the participant on the current question
 
+#### Scenario: Participant resets the current question after answers were generated
+- **WHEN** the participant clicks 「重新輸入本題」 while the A/B/C comparison view is showing
+- **THEN** the system discards the server-side pending question for the current question index
+- **AND** clears the local comparison state and returns the participant to an empty question input
+- **AND** a subsequent submission of the same question index succeeds without a 409 conflict
+- **AND** a page refresh does NOT rehydrate the prior A/B/C comparison view
+
+#### Scenario: Participant resets but the server delete call fails
+- **WHEN** the participant clicks 「重新輸入本題」 and the DELETE call to the answers endpoint fails
+- **THEN** the system shows an error toast
+- **AND** keeps the A/B/C comparison view intact so the participant can retry the reset or continue judging
+
 ### Requirement: Server-mediated model answer generation
-The system SHALL generate answer A, answer B, and answer C through a Next.js server route only after validating the active participant session and active provider settings.
+The system SHALL generate answer A, answer B, and answer C through a Next.js server route only after validating the active participant session and active provider settings, and SHALL allow the owning participant to discard a pending question through the same route.
 
 #### Scenario: Answers requested without invite session
 - **WHEN** a browser calls `/api/evaluation/answers` without a valid evaluation session cookie
@@ -80,6 +71,23 @@ The system SHALL generate answer A, answer B, and answer C through a Next.js ser
 #### Scenario: Provider settings invalid
 - **WHEN** active provider settings are missing endpoint, API key, model mapping, prompt template, temperature, or max token configuration
 - **THEN** the API rejects the request before calling the model gateway
+
+#### Scenario: Owning participant deletes a pending question
+- **WHEN** the owning participant calls `DELETE /api/evaluation/answers` with the `questionId` of a pending question whose `participantToken` matches their active session
+- **THEN** the API removes that pending question from storage
+- **AND** responds with HTTP 204
+
+#### Scenario: Delete called without invite session
+- **WHEN** a browser calls `DELETE /api/evaluation/answers` without a valid evaluation session cookie
+- **THEN** the API rejects the request with HTTP 401 and does not modify storage
+
+#### Scenario: Delete called for another participant's pending question
+- **WHEN** a participant calls `DELETE /api/evaluation/answers` with a `questionId` whose `participantToken` does not match their active session
+- **THEN** the API rejects the request with HTTP 403 and does not modify storage
+
+#### Scenario: Delete called for an unknown or already-removed pending question
+- **WHEN** a participant calls `DELETE /api/evaluation/answers` with a `questionId` that no longer exists in pending storage
+- **THEN** the API responds with HTTP 204 and does not modify storage
 
 ### Requirement: Gateway model discovery
 The system SHALL discover available models from the configured OpenAI-compatible models endpoint before admins assign model mappings, and SHALL use admin-configured model mapping for formal blind comparison.
@@ -127,87 +135,29 @@ The system SHALL require participants to submit explicit comparative judgments w
 - **THEN** the system rejects the save and displays a validation message
 
 ### Requirement: Evaluation record storage
-The system SHALL store each answered question with participant token, participant profile, question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, financial reasoning, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status.
+The system SHALL store each answered question with participant token, participant profile including expanded non-identifying background fields, question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, financial reasoning, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status.
 
 #### Scenario: Question judgment saved
-- **WHEN** the participant saves a valid comparative judgment
-- **THEN** the system persists a complete evaluation record through a server API route
-
-#### Scenario: Fifth question saved
-- **WHEN** the participant saves the fifth question judgment
-- **THEN** the system marks the participant as completed and shows a thank-you page without model results
+- **WHEN** the participant saves a valid comparative judgment after completing the expanded profile
+- **THEN** the system persists a complete evaluation record through a server API route including the participant profile snapshot
 
 ### Requirement: Admin evaluation dashboard
 The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, and finance-vs-non-finance breakdown. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.
 
-#### Scenario: Admin opens dashboard
-- **WHEN** an admin opens `/admin` without a `tab` query parameter
-- **THEN** the system renders the KPI bar with the participant/record metrics and selects the `總覽` tab by default
-
-#### Scenario: Admin opens a specific tab via URL
-- **WHEN** an admin opens `/admin?tab=models`
-- **THEN** the system renders the same KPI bar and activates the `模型結果` tab
-
-#### Scenario: Admin reviews participant funnel
-- **WHEN** the `總覽` tab is active
-- **THEN** the page displays a participant funnel visualizing four stages — Redeemed, Profile completed, Answered any question, Completed — each with absolute count and the percentage retained from the previous stage
-
-#### Scenario: Admin reviews attention items
-- **WHEN** the `總覽` tab is active and evaluation records exist
-- **THEN** the page lists (a) the top three worst-answer flags by model, (b) records whose response latency exceeds the dataset p95, and (c) up to five stalled participants who started but have not completed
-
-#### Scenario: Admin reviews model leaderboard
-- **WHEN** the `總覽` tab or `模型結果` tab is active and evaluation records exist
-- **THEN** the page renders a model leaderboard sorted by net (best − worst), with each row showing a proportional horizontal bar, best count, worst count, and net value rendered with a positive/negative badge
-
-#### Scenario: Admin reviews model comparison table
-- **WHEN** the `模型結果` tab is active and evaluation records exist
-- **THEN** the page displays each model's overall best count, overall worst count, best-worst net score, and selections for correctness, financial reasoning, completeness, and readability, with numeric columns right-aligned
-
-#### Scenario: Admin reviews question records list
-- **WHEN** the `原始資料` tab is active and question records exist
-- **THEN** the page lists each record as a row of participant token, question index, prompt category, selected overall best, selected overall worst, and response latency only — long-form fields are NOT rendered in the table
+#### Scenario: Admin reviews participant status table
+- **WHEN** the `受測者` tab is active
+- **THEN** the page lists each participant with token, finance background, age range, field/work domain, finance familiarity, finance-task LLM usage, completion status, and answered-count over question limit
 
 #### Scenario: Admin inspects a record detail
 - **WHEN** the admin clicks a row in the question records list
-- **THEN** the page opens a side drawer showing the full user question text, all facet selections, worst-answer flags, hidden model mapping, and any reason text for that record
-- **AND** closing the drawer returns focus to the originating row
-
-#### Scenario: Admin reviews participant status table
-- **WHEN** the `受測者` tab is active
-- **THEN** the page lists each participant with token, business-or-finance background, finance familiarity, LLM experience, completion status, and answered-count over question limit
-
-#### Scenario: Admin views the shared invite code
-- **WHEN** the `邀請碼` tab is active and `SHARED_INVITE_CODE` is configured
-- **THEN** the page renders the configured invite code as read-only text alongside a QR-code image whose payload is `${origin}/?invite_code=<code>` and a download action for the QR image
-- **AND** the page SHALL NOT render any invite-generation form or batch-creation action
-
-#### Scenario: Admin views the invite tab without configuration
-- **WHEN** the `邀請碼` tab is active and `SHARED_INVITE_CODE` is unset or empty
-- **THEN** the page renders a warning that the shared invite code is not configured and SHALL NOT render a QR image
-
-#### Scenario: Admin edits provider settings
-- **WHEN** the `Provider 設定` tab is active
-- **THEN** the page renders the provider settings form unchanged from its previous behavior, wrapped in the admin Card surface
-
-#### Scenario: Admin edits study copy
-- **WHEN** the `問卷文案` tab is active
-- **THEN** the page renders the study copy editor unchanged from its previous behavior, wrapped in the admin Card surface
-
-#### Scenario: Admin views settings version
-- **WHEN** any tab is active
-- **THEN** the page surfaces the active settings version and source (`vN / source`) in the header region, not as a KPI tile
+- **THEN** the page opens a side drawer showing the full user question text, participant profile snapshot, all facet selections, worst-answer flags, hidden model mapping, and any reason text for that record
 
 ### Requirement: Data export
-The system SHALL allow admin users to export evaluation data as JSON and CSV, including comparative facet selections and resolved model IDs.
-
-#### Scenario: JSON export requested
-- **WHEN** an admin requests JSON export
-- **THEN** the system returns participant statuses and evaluation records in JSON format with comparative judgment fields
+The system SHALL allow admin users to export evaluation data as JSON and CSV, including comparative facet selections, resolved model IDs, and expanded participant profile fields.
 
 #### Scenario: CSV export requested
 - **WHEN** an admin requests CSV export
-- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, and worst-answer flags
+- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and expanded non-identifying participant profile columns
 
 ### Requirement: Configurable study content
 The system SHALL load study copy, signature metadata, prompt categories, examples, evaluation facets, flags, and question limits from runtime platform settings when available, with the repository configuration file used as the default template and fallback.
