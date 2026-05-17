@@ -208,22 +208,25 @@ export function AdminProviderSettings({
 
       <div className="provider-grid">
         <label>
-          Chat completions endpoint
+          API base URL
           <input
-            value={provider.chatCompletionsEndpoint}
-            placeholder="https://gateway.example.com/v1/chat/completions"
+            value={provider.apiBaseUrl}
+            placeholder="https://gateway.example.com/v1"
             onChange={(event) =>
-              updateProviderField("chatCompletionsEndpoint", event.target.value)
+              updateProviderField("apiBaseUrl", event.target.value)
             }
           />
+          <small className="provider-helper">
+            請貼 base URL（例：https://gateway.example.com/v1），不要包含 /chat/completions。
+          </small>
         </label>
         <label>
-          Models endpoint
+          Models endpoint override (optional)
           <input
-            value={provider.modelsEndpoint}
-            placeholder="留空時由 chat endpoint 推導 /v1/models"
+            value={provider.modelsEndpointOverride}
+            placeholder="留空時由 API base URL 推導 /models"
             onChange={(event) =>
-              updateProviderField("modelsEndpoint", event.target.value)
+              updateProviderField("modelsEndpointOverride", event.target.value)
             }
           />
         </label>

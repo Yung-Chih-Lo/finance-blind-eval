@@ -70,22 +70,22 @@
 
 ## 7. Admin UI: field, helper text, legacy banner
 
-- [ ] 7.1 In `web/components/evaluation/admin-provider-settings.tsx`, find the `Chat completions endpoint` label (line 211) and rename to `API base URL`
-- [ ] 7.2 Change the input `value` and `onChange` to reference `apiBaseUrl` instead of `chatCompletionsEndpoint`
-- [ ] 7.3 Replace placeholder `https://gateway.example.com/v1/chat/completions` (line 214) with `https://gateway.example.com/v1`
-- [ ] 7.4 Add a `<small className="provider-helper">` (or equivalent existing helper-class — inspect file to reuse pattern) under the input: `請貼 base URL（例：https://gateway.example.com/v1），不要包含 /chat/completions。`
-- [ ] 7.5 Find the `Models endpoint` label (line 221) and rename to `Models endpoint override (optional)`; update placeholder to `留空時由 API base URL 推導 /models`
-- [ ] 7.6 Switch the input binding from `modelsEndpoint` to `modelsEndpointOverride`
-- [ ] 7.7 At the top of the provider panel (or wherever `PlatformSettingsError` is surfaced), add a banner that activates when the parent settings fetch returns the legacy-schema error: text `偵測到舊版 provider 設定格式，請重新儲存設定或按下方「Reset to defaults」。` Reuse existing error-styling class.
-- [ ] 7.8 Verify the existing reset-to-defaults button (find via grep on `settings/reset` in the file) is reachable from the banner state (visible even when load failed)
-- [ ] 7.9 Run `npm run typecheck` and `npm run lint`
+- [x] 7.1 In `web/components/evaluation/admin-provider-settings.tsx`, find the `Chat completions endpoint` label (line 211) and rename to `API base URL`
+- [x] 7.2 Change the input `value` and `onChange` to reference `apiBaseUrl` instead of `chatCompletionsEndpoint`
+- [x] 7.3 Replace placeholder `https://gateway.example.com/v1/chat/completions` (line 214) with `https://gateway.example.com/v1`
+- [x] 7.4 Added `<small className="provider-helper">` helper text under the API base URL input
+- [x] 7.5 Find the `Models endpoint` label (line 221) and rename to `Models endpoint override (optional)`; update placeholder to `留空時由 API base URL 推導 /models`
+- [x] 7.6 Switch the input binding from `modelsEndpoint` to `modelsEndpointOverride`
+- [x] 7.7 Created `components/evaluation/admin-legacy-settings-banner.tsx` (client component). Caught `PlatformSettingsError` with `"Legacy provider schema"` prefix in `app/admin/page.tsx` and render the banner instead of the rest of the dashboard.
+- [x] 7.8 Banner has built-in "重置為環境變數預設值" button that POSTs to `/api/admin/settings/reset` and refreshes the page on success
+- [x] 7.9 Ran `npm run typecheck` and `npm run lint` — both clean
 
 ## 8. Test verification (GREEN)
 
-- [ ] 8.1 Run `npm run typecheck` in `web/` → must pass with the updated fixture from task 2.1–2.2
-- [ ] 8.2 Run `npm run verify:provider-url` → must pass all 6 assertions from task 2.4
-- [ ] 8.3 Run `npm run lint` → must pass
-- [ ] 8.4 Run `npm run build` → must succeed (Next.js build)
+- [x] 8.1 Run `npm run typecheck` in `web/` → passes
+- [x] 8.2 Run `npm run verify:provider-url` → all 6 assertions PASS
+- [x] 8.3 Run `npm run lint` → clean
+- [x] 8.4 Run `npm run build` → succeeds (17 routes generated)
 
 ## 9. Manual smoke (local dev)
 
