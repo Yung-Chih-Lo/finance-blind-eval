@@ -62,7 +62,7 @@
 - [x] 5.1 In page server component (`app/page.tsx`), read `searchParams.invite_code` (NOT `invite`)
 - [x] 5.2 In `evaluation-app.tsx`, ensure the URL cleanup `router.replace(...)` after redeem also strips `invite_code` (currently it just calls `router.replace("/eval")`)
 - [x] 5.3 Search for any string literal `invite=` in remaining code; replace with `invite_code=` where referring to the public URL param
-- [ ] 5.4 Verify: `grep -rn "invite=" web/ --include='*.ts' --include='*.tsx'` returns no participant-facing matches
+- [x] 5.4 Verify: `grep -rn "invite=" web/ --include='*.ts' --include='*.tsx'` returns no participant-facing matches
 
 ## 6. Server-rendered completion terminal view
 

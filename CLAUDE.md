@@ -35,6 +35,12 @@ Pending (set when LLM gateway is ready):
 - `OPENAI_COMPAT_API_KEY`
 - (optional) `OPENAI_COMPAT_MODEL_H1` / `H2` / `TAIDE`
 
+Cookie note: both `eval_session` and `eval_completed` set the `Secure` flag
+only when `NODE_ENV=production`. Zeabur's zbpack runs `next start` which sets
+this automatically, so this is fine in the default deploy. If anyone ever
+overrides `NODE_ENV` to debug in production, expect cleartext cookies on any
+non-HTTPS hop.
+
 ### Volume Mount
 
 Mount a persistent volume at `/src/.data`. Verified container cwd is `/src`
