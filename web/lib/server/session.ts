@@ -7,8 +7,10 @@ import type { EvaluationSession, ParticipantStatus } from "@/lib/evaluation/type
 import { getParticipantStatus, getSessionByToken, touchSession } from "@/lib/server/evaluation-storage"
 
 export const EVAL_SESSION_COOKIE = "eval_session"
+export const EVAL_COMPLETED_COOKIE = "eval_completed"
 
 const SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60
+const COMPLETED_COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
 
 function parseCookie(header: string | null, name: string) {
   if (!header) {
@@ -27,6 +29,16 @@ export function setSessionCookie(response: NextResponse, sessionToken: string) {
   response.cookies.set(EVAL_SESSION_COOKIE, sessionToken, {
     httpOnly: true,
     maxAge: SESSION_MAX_AGE_SECONDS,
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  })
+}
+
+export function setCompletedCookie(response: NextResponse) {
+  response.cookies.set(EVAL_COMPLETED_COOKIE, "1", {
+    httpOnly: true,
+    maxAge: COMPLETED_COOKIE_MAX_AGE_SECONDS,
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

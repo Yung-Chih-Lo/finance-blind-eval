@@ -35,6 +35,25 @@ const EMPTY_STORE: EvaluationStore = {
 
 let memoryStore: EvaluationStore = structuredClone(EMPTY_STORE)
 
+// Serializes read-modify-write store mutations so concurrent requests (e.g.
+// a participant double-clicking 完成 on the final question) don't both read
+// the same snapshot and overwrite each other.
+let mutateQueue: Promise<unknown> = Promise.resolve()
+
+async function withStoreMutex<T>(work: () => Promise<T>): Promise<T> {
+  const previous = mutateQueue.catch(() => undefined)
+  let release!: () => void
+  mutateQueue = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  try {
+    await previous
+    return await work()
+  } finally {
+    release()
+  }
+}
+
 function cloneStore(store: EvaluationStore): EvaluationStore {
   return {
     participants: [...store.participants],
@@ -104,7 +123,7 @@ function createAnonymousParticipantToken() {
 }
 
 export async function resetEvaluationData() {
-  await writeStore(structuredClone(EMPTY_STORE))
+  await withStoreMutex(() => writeStore(structuredClone(EMPTY_STORE)))
 }
 
 async function getUsedParticipantTokens(store: EvaluationStore) {
@@ -118,47 +137,49 @@ async function getUsedParticipantTokens(store: EvaluationStore) {
 export async function createAnonymousParticipantSession(
   options: { sessionTtlDays?: number } = {},
 ): Promise<{ participant: ParticipantStatus; sessionToken: string; session: EvaluationSession }> {
-  const store = await readStore()
-  const now = new Date()
+  return withStoreMutex(async () => {
+    const store = await readStore()
+    const now = new Date()
 
-  const usedTokens = await getUsedParticipantTokens(store)
-  let token = ""
-  for (let attempts = 0; attempts < 200; attempts += 1) {
-    const candidate = createAnonymousParticipantToken()
-    if (!usedTokens.has(candidate)) {
-      token = candidate
-      break
+    const usedTokens = await getUsedParticipantTokens(store)
+    let token = ""
+    for (let attempts = 0; attempts < 200; attempts += 1) {
+      const candidate = createAnonymousParticipantToken()
+      if (!usedTokens.has(candidate)) {
+        token = candidate
+        break
+      }
     }
-  }
-  if (!token) {
-    throw new Error("Unable to allocate participant token.")
-  }
+    if (!token) {
+      throw new Error("Unable to allocate participant token.")
+    }
 
-  const createdAt = now.toISOString()
-  const participant: ParticipantStatus = {
-    token,
-    completionStatus: "profile_started",
-    startedAt: createdAt,
-    updatedAt: createdAt,
-  }
-  const sessionToken = randomBytes(32).toString("base64url")
-  const expiresAt = new Date(now.getTime() + (options.sessionTtlDays ?? 14) * 24 * 60 * 60 * 1000).toISOString()
-  const session: EvaluationSession = {
-    id: randomBytes(12).toString("base64url"),
-    sessionHash: hashSecret(sessionToken),
-    participantToken: token,
-    createdAt,
-    lastSeenAt: createdAt,
-    expiresAt,
-  }
+    const createdAt = now.toISOString()
+    const participant: ParticipantStatus = {
+      token,
+      completionStatus: "profile_started",
+      startedAt: createdAt,
+      updatedAt: createdAt,
+    }
+    const sessionToken = randomBytes(32).toString("base64url")
+    const expiresAt = new Date(now.getTime() + (options.sessionTtlDays ?? 14) * 24 * 60 * 60 * 1000).toISOString()
+    const session: EvaluationSession = {
+      id: randomBytes(12).toString("base64url"),
+      sessionHash: hashSecret(sessionToken),
+      participantToken: token,
+      createdAt,
+      lastSeenAt: createdAt,
+      expiresAt,
+    }
 
-  await writeStore({
-    ...store,
-    sessions: [...store.sessions, session],
-    participants: [...store.participants, participant],
+    await writeStore({
+      ...store,
+      sessions: [...store.sessions, session],
+      participants: [...store.participants, participant],
+    })
+
+    return { participant, sessionToken, session }
   })
-
-  return { participant, sessionToken, session }
 }
 
 export async function getSessionByToken(sessionToken: string): Promise<EvaluationSession | undefined> {
@@ -175,11 +196,13 @@ export async function getSessionByToken(sessionToken: string): Promise<Evaluatio
 }
 
 export async function touchSession(sessionId: string): Promise<void> {
-  const store = await readStore()
-  const now = new Date().toISOString()
-  await writeStore({
-    ...store,
-    sessions: store.sessions.map((session) => (session.id === sessionId ? { ...session, lastSeenAt: now } : session)),
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const now = new Date().toISOString()
+    await writeStore({
+      ...store,
+      sessions: store.sessions.map((session) => (session.id === sessionId ? { ...session, lastSeenAt: now } : session)),
+    })
   })
 }
 
@@ -198,22 +221,25 @@ export async function upsertParticipantStatus(status: ParticipantStatus): Promis
     token: normalizeToken(status.token),
     profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
   }
-  const store = await readStore()
-  const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
-  const nextStore = {
-    ...store,
-    participants: [...existing, normalizedStatus],
-  }
-  await writeStore(nextStore)
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+    })
+  })
   return normalizedStatus
 }
 
 export async function savePendingQuestion(question: PendingQuestion): Promise<PendingQuestion> {
-  const store = await readStore()
-  const existing = store.pendingQuestions.filter((item) => item.id !== question.id)
-  await writeStore({
-    ...store,
-    pendingQuestions: [...existing, question],
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.pendingQuestions.filter((item) => item.id !== question.id)
+    await writeStore({
+      ...store,
+      pendingQuestions: [...existing, question],
+    })
   })
   return question
 }
@@ -223,13 +249,15 @@ export async function getPendingQuestion(questionId: string): Promise<PendingQue
 }
 
 export async function saveEvaluationRecord(record: EvaluationRecord): Promise<EvaluationRecord> {
-  const store = await readStore()
-  const existingRecords = store.records.filter((item) => item.id !== record.id)
-  const pendingQuestions = store.pendingQuestions.filter((item) => item.id !== record.id)
-  await writeStore({
-    ...store,
-    pendingQuestions,
-    records: [...existingRecords, record],
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existingRecords = store.records.filter((item) => item.id !== record.id)
+    const pendingQuestions = store.pendingQuestions.filter((item) => item.id !== record.id)
+    await writeStore({
+      ...store,
+      pendingQuestions,
+      records: [...existingRecords, record],
+    })
   })
   return record
 }

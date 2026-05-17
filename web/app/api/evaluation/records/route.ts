@@ -9,20 +9,7 @@ import {
   upsertParticipantStatus,
 } from "@/lib/server/evaluation-storage"
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
-import { requireEvaluationSession } from "@/lib/server/session"
-
-const EVAL_COMPLETED_COOKIE = "eval_completed"
-const COMPLETED_COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60
-
-function setCompletedCookie(response: NextResponse) {
-  response.cookies.set(EVAL_COMPLETED_COOKIE, "1", {
-    httpOnly: true,
-    maxAge: COMPLETED_COOKIE_MAX_AGE_SECONDS,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  })
-}
+import { requireEvaluationSession, setCompletedCookie } from "@/lib/server/session"
 
 interface RecordRequest {
   questionId?: string

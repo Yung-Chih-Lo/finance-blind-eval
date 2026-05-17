@@ -3,12 +3,11 @@ import { cookies } from "next/headers"
 import { CompletionPage } from "@/components/evaluation/completion-page"
 import { EvaluationApp } from "@/components/evaluation/evaluation-app"
 import { getActivePlatformSettings } from "@/lib/server/platform-settings"
+import { EVAL_COMPLETED_COOKIE } from "@/lib/server/session"
 
 interface HomePageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
-
-const EVAL_COMPLETED_COOKIE = "eval_completed"
 
 export const dynamic = "force-dynamic"
 

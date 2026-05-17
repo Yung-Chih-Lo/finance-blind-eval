@@ -4,14 +4,12 @@ import { NextResponse } from "next/server"
 import { checkRateLimit, getClientIp } from "@/lib/server/rate-limit"
 import { createAnonymousParticipantSession } from "@/lib/server/evaluation-storage"
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
-import { setSessionCookie } from "@/lib/server/session"
-import { compareInviteCode, getSharedInviteCode } from "@/lib/server/shared-invite"
+import { EVAL_COMPLETED_COOKIE, setSessionCookie } from "@/lib/server/session"
+import { getSharedInviteCode, matchesSharedInviteCode } from "@/lib/server/shared-invite"
 
 interface RedeemInviteRequest {
-  inviteCode?: string
+  inviteCode?: unknown
 }
-
-export const EVAL_COMPLETED_COOKIE = "eval_completed"
 
 export async function POST(request: Request) {
   const settingsResult = await getActivePlatformSettings().catch((error) => error)
@@ -29,6 +27,14 @@ export async function POST(request: Request) {
     )
   }
 
+  // Check the completion cookie BEFORE consuming the IP rate-limit bucket — a
+  // completed user spamming the endpoint must not eat the quota of innocent
+  // participants on the same NAT (lab, dorm, coffee shop).
+  const completedCookie = (await cookies()).get(EVAL_COMPLETED_COOKIE)?.value
+  if (completedCookie === "1") {
+    return NextResponse.json({ error: "本裝置已完成測驗。" }, { status: 403 })
+  }
+
   const clientIp = getClientIp(request)
   const ipLimit = checkRateLimit(
     `invite:ip:${clientIp}`,
@@ -39,15 +45,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "邀請碼嘗試次數過多，請稍後再試。" }, { status: 429 })
   }
 
-  const completedCookie = (await cookies()).get(EVAL_COMPLETED_COOKIE)?.value
-  if (completedCookie === "1") {
-    return NextResponse.json({ error: "本裝置已完成測驗。" }, { status: 403 })
-  }
-
   const body = (await request.json().catch(() => null)) as RedeemInviteRequest | null
-  const inviteCode = body?.inviteCode || ""
+  // Guard against malformed bodies (e.g. inviteCode is an object/number)
+  // which would otherwise crash matchesSharedInviteCode → 500 instead of 400.
+  if (body !== null && body.inviteCode !== undefined && typeof body.inviteCode !== "string") {
+    return NextResponse.json({ error: "邀請碼格式不正確。" }, { status: 400 })
+  }
+  const inviteCode = typeof body?.inviteCode === "string" ? body.inviteCode : ""
 
-  if (!compareInviteCode(inviteCode)) {
+  if (!matchesSharedInviteCode(inviteCode)) {
     return NextResponse.json({ error: "邀請碼不正確。" }, { status: 403 })
   }
 
