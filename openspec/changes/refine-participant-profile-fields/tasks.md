@@ -60,7 +60,7 @@
 - [x] 5.1 Covered in `verify-profile-validation.ts` `testStorageBackwardCompatRead`.
 - [x] 5.2 Verify RED: prior run failed without migrate-on-read.
 - [x] 5.3 GREEN: `getParticipantStatus` / `getParticipantStatuses` / `getAdminSnapshot` now call `migrateParticipantStatus` which routes through `migrateLegacyProfile`. The underlying JSON file is not mutated — only the in-memory view is migrated.
-- [ ] 5.4 Pending (Round 5b): `web/app/api/session/route.ts` rewrite to use `validateParticipantProfile` + strip legacy keys before persist + trigger pending-clear when legacy→new transition detected.
+- [x] 5.4 GREEN: `session/route.ts` validates via `validateParticipantProfile`, projects to new shape via `buildPersistedProfile` (silently drops any legacy keys client might send), and calls `clearPendingQuestionsForParticipant` only when `isLegacyShape(existing.profile)` is true (legacy → new transition).
 - [x] 5.5 Verify GREEN: `npm run verify:profile` PASS (storage read test green).
 - [ ] 5.6 Pending: typecheck snapshot taken — remaining errors at session/route, profile-form, admin/page, record-drawer (each handled in its dedicated round).
 - [x] 5.7 Covered in `testClearPendingOnLegacyResubmit`.
