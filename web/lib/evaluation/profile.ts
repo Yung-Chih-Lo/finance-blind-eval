@@ -183,10 +183,17 @@ export function formatProfileChoice<T extends string>(
 
 const LEGACY_FIELDS = ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"] as const
 
-// Reads a persisted profile (which may use the legacy schema) and returns a
-// Partial<ParticipantProfile> with (a) legacy keys dropped, (b) under_20 ageRange
-// remapped to prefer_not_to_say, (c) no new-required-field defaults — those MUST
-// be supplied by the participant via the form.
+// Canonical read-side normalizer for ANY persisted profile. Despite the name, this
+// handles both schemas:
+//   - Legacy input (has fieldOrWorkDomain / isBusinessOrFinance / etc., lacks new
+//     required fields): legacy keys are dropped; new required fields stay absent so
+//     the partial result is recognized by `isLegacyShape` (app/api/session/route.ts)
+//     and triggers the legacy → new-shape form re-prompt.
+//   - New-shape input (already has gender / educationLevel / financeBackgroundType /
+//     hasUsedAiForFinance): those fields are preserved verbatim so a returning
+//     participant who already submitted reads back an identical profile.
+// In both cases: under_20 ageRange is remapped to prefer_not_to_say, and any field
+// that fails its option-set check is silently dropped.
 export function migrateLegacyProfile(raw: unknown): Partial<ParticipantProfile> {
   if (!raw || typeof raw !== "object") return {}
   const obj = raw as Record<string, unknown>

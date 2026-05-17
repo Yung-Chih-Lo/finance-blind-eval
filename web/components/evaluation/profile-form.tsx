@@ -105,7 +105,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <h2>正式作答前，先補齊非識別性背景資料</h2>
           <p>
             本研究不收集姓名、公司、帳號或精確年齡；若不方便回答，可選擇不願透露或不確定。
-            每個欄位都需明確選擇 — 若略過不選，系統會擋下送出以避免靜默預設汙染分析。
+            為了讓資料分析準確，請務必每一題都明確選擇後再送出。
           </p>
         </section>
 
@@ -237,7 +237,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
                 </option>
               ))}
             </select>
-            <span className="field-hint">本欄位是論文預先指定的主要分層變項，請依實際經驗誠實作答。</span>
+            <span className="field-hint">請依實際經驗誠實作答；此題對研究分析較關鍵。</span>
           </label>
           <label>
             投資 / 理財經驗 *
@@ -327,7 +327,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
                 否
               </label>
             </div>
-            <span className="field-hint">兩個選項預設皆未選，請依實際情況勾選一項。</span>
+            <span className="field-hint">請依實際情況選擇一項。</span>
           </div>
           <label>
             其他背景備註

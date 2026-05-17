@@ -20,6 +20,7 @@ import {
   validateParticipantProfile,
 } from "@/lib/evaluation/profile"
 import {
+  buildExportCsv,
   buildExportJson,
   clearPendingQuestionsForParticipant,
   getParticipantStatus,
@@ -392,6 +393,73 @@ async function testCombinedUpsertClearsPending() {
   console.log("PASS: combined helper writes profile and clears pending in one mutex window")
 }
 
+async function testCsvLegacyRowEmitsEmptyForUndefined() {
+  console.log("\n=== buildExportCsv legacy-row CSV cells stay empty (not literal 'undefined') ===")
+  await resetEvaluationData()
+
+  const token = "P-CSV-LEGACY"
+  // Construct a record whose participantProfile has the legacy shape AND is missing
+  // a couple of fields that the new schema expects (gender, hasUsedAiForFinance) —
+  // simulating an older record where those fields never existed.
+  const legacyRecord: EvaluationRecord = {
+    id: "q-csv-legacy",
+    participantToken: token,
+    participantProfile: {
+      token,
+      ageRange: "25_29",
+      fieldOrWorkDomain: "資管系",
+      isBusinessOrFinance: "yes",
+      gradeOrOccupation: "碩二",
+      hasTakenFinanceCourse: "yes",
+      financeWorkExperience: "internship",
+      investmentExperience: "basic",
+      financeFamiliarity: 4,
+      llmExperience: "weekly",
+      financeLlmUsage: "weekly",
+      financeSubdomains: ["stocks"],
+      notes: "",
+    } as unknown as ParticipantProfile,
+    questionIndex: 1,
+    promptCategory: "finance-concept",
+    promptCategoryId: "finance-concept",
+    userQuestion: "Q?",
+    answers: { A: "a", B: "b", C: "c" },
+    hiddenModelMapping: { A: "H1-best", B: "H2-best", C: "TAIDE-baseline" },
+    gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
+    timestamp: new Date().toISOString(),
+    responseLatencyMs: 100,
+    selectedBest: "A",
+    selectedWorst: "C",
+    bestReason: "best",
+    worstReason: "worst",
+    completionStatus: "answered",
+  }
+  await saveEvaluationRecord(legacyRecord)
+
+  const csv = await buildExportCsv()
+  const lines = csv.split("\n")
+  assert.ok(lines.length >= 2, "CSV must have header + at least one row")
+  const header = lines[0].split(",")
+  const row = lines[1].split(",")
+  const cells = new Map<string, string>()
+  header.forEach((name, idx) => cells.set(name, row[idx] ?? ""))
+
+  // Active-profile columns missing on legacy snapshot must emit empty string, not
+  // the literal word "undefined". This is the defense-in-depth check that pins down
+  // `csvEscape`'s `String(value ?? "")` coercion behavior.
+  for (const col of ["gender", "education_level", "finance_background_type", "has_used_ai_for_finance"]) {
+    const value = cells.get(col)
+    assert.equal(value, "", `column '${col}' must be empty string for legacy row, got ${JSON.stringify(value)}`)
+  }
+  // Columns the legacy snapshot DID populate must surface their values.
+  assert.equal(cells.get("finance_familiarity"), "4", "legacy financeFamiliarity preserved")
+  assert.equal(cells.get("llm_experience"), "weekly", "legacy llmExperience preserved")
+  // Legacy_* trailing columns hold the original answers.
+  assert.equal(cells.get("legacy_field_or_work_domain"), "資管系", "legacy_field_or_work_domain populated")
+  assert.equal(cells.get("legacy_is_business_or_finance"), "yes", "legacy_is_business_or_finance populated")
+  console.log("PASS: legacy CSV row has empty active cells (not 'undefined') + populated legacy_* columns")
+}
+
 async function main() {
   testMigrateLegacyProfile()
   testValidate()
@@ -401,6 +469,7 @@ async function main() {
   await testClearPendingOnLegacyResubmit()
   await testJsonExportMigratesAndAttachesLegacy()
   await testCombinedUpsertClearsPending()
+  await testCsvLegacyRowEmitsEmptyForUndefined()
   console.log("\nOK")
 }
 
