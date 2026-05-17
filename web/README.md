@@ -49,7 +49,10 @@ OPENAI_COMPAT_MODEL_H2=
 OPENAI_COMPAT_MODEL_TAIDE=
 OPENAI_COMPAT_SYSTEM_PROMPT=
 OPENAI_COMPAT_USER_PROMPT_TEMPLATE=
+PUBLIC_BASE_URL=https://finance-blind-eval.zeabur.app
 ```
+
+Set `PUBLIC_BASE_URL` whenever the admin host differs from the participant-facing host (proxies, internal DNS, custom domains). It overrides the `request.url` origin used to build the QR link. Falls back to `request.url` when unset, so local dev keeps working.
 
 The admin page can save provider runtime settings for endpoint, models endpoint, A/B/C model mapping, system prompt, user prompt template, temperature, and max tokens. The raw API key is never stored in runtime settings; the admin UI only stores the env var name, and the server reads the secret from that variable.
 

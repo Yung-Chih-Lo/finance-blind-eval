@@ -101,7 +101,7 @@ export function TokenEntry({
         >
           <label>
             邀請碼
-            <small className="invite-hint">不分大小寫，例如 AILAB502</small>
+            <small className="invite-hint">不分大小寫</small>
             <input
               autoComplete="one-time-code"
               value={inviteCode}

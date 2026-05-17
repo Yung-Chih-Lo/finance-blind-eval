@@ -29,6 +29,7 @@ Configured (values held in Zeabur, not committed):
 - `OPENAI_COMPAT_API_KEY_ENV=OPENAI_COMPAT_API_KEY`
 - `PORT=${WEB_PORT}` (auto, listens on 8080)
 - `SHARED_INVITE_CODE=ailab502` — single shared invite code for all participants. Without it, the redeem API returns 503 and the admin QR panel shows a "not configured" warning.
+- `PUBLIC_BASE_URL=https://finance-blind-eval.zeabur.app` — origin used to build the invite QR link in `/api/admin/invite-qr`. Set this in Zeabur so the QR points at the participant-facing host even when admin opens the panel via internal DNS or another proxy. Falls back to `request.url` origin when unset.
 
 Pending (set when LLM gateway is ready):
 - `OPENAI_COMPAT_API_ENDPOINT`
