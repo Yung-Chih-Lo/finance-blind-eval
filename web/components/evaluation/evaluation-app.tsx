@@ -72,8 +72,9 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
         }
         router.replace("/")
       } catch {
-        // A missing, expired, or temporarily unreachable session should not
-        // block first-time participants from entering an invite code.
+        // A missing, expired, or temporarily unreachable session is expected
+        // for first-time participants — fall through to the invite-code entry
+        // step rather than blocking on the GET /api/session round-trip.
       }
     }
 

@@ -61,7 +61,7 @@ export function AdminInviteActions() {
     const downloadUrl = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = downloadUrl
-    anchor.download = `invite-${data.code}.svg`
+    anchor.download = "invite-qr.svg"
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)
