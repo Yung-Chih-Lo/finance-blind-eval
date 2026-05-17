@@ -70,20 +70,20 @@
 
 ## 6. Profile form UI
 
-- [ ] 6.1 In `web/components/evaluation/profile-form.tsx`, remove the field/work-domain text input, business-or-finance radio group, finance-course radio group, and finance-LLM-usage 5-level select.
-- [ ] 6.2 In `web/components/evaluation/profile-form.tsx`, mark the `gradeOrOccupation` input as optional (remove required attribute, soften the label, allow empty string).
-- [ ] 6.3 In `web/components/evaluation/profile-form.tsx`, add the `gender` select rendered from `GENDER_OPTIONS` with a small helper note `(僅供樣本描述)`.
-- [ ] 6.4 In `web/components/evaluation/profile-form.tsx`, add the `educationLevel` select rendered from `EDUCATION_LEVEL_OPTIONS`.
-- [ ] 6.5 In `web/components/evaluation/profile-form.tsx`, add the `financeBackgroundType` select rendered from `FINANCE_BACKGROUND_TYPE_OPTIONS`.
-- [ ] 6.6 In `web/components/evaluation/profile-form.tsx`, replace the 5-level finance-LLM-usage UI with a two-radio group bound to `hasUsedAiForFinance` (values `true` / `false`), labelled `「您是否曾用 AI / ChatGPT 處理金融、投資、財報、課業或工作相關問題？」`. **Neither radio may be pre-selected** — when the local draft has `hasUsedAiForFinance = null`, both radios render unchecked. Surface a "請選擇" validation message when submit is attempted with `null`. Do NOT use an HTML `checkbox` (a checkbox cannot represent the tri-state and a single checkbox defaults to unchecked-as-false which we explicitly forbid).
-- [ ] 6.7 In `web/components/evaluation/profile-form.tsx`, update the local form-state shape and the submit payload to match the new `ParticipantProfile`.
-- [ ] 6.8 Verify: `cd web && npm run typecheck && npm run lint` → ALL PASS.
-- [ ] 6.9 Manual smoke (RED first then GREEN): `cd web && npm run dev`, open `http://localhost:3000/`, redeem an invite, confirm profile form renders all new fields, that empty `gradeOrOccupation` is accepted, that all required fields block submit until set, and that selecting `不願透露` for `gender` does not block submit. Document outcome in the commit message.
+- [x] 6.1 Removed legacy field inputs (fieldOrWorkDomain text, isBusinessOrFinance select, hasTakenFinanceCourse select, financeLlmUsage 5-level select).
+- [x] 6.2 `gradeOrOccupation` label became `年級或職稱（選填）`, no required attribute, blank submit allowed.
+- [x] 6.3 Added gender select with helper text `僅供樣本描述，不會作為個別偏好推論依據。`
+- [x] 6.4 Added `最高學歷` select.
+- [x] 6.5 Added `金融背景類型` select.
+- [x] 6.6 Two-radio group for `hasUsedAiForFinance` — neither preselected, validation via `validateParticipantProfile` returns "請選擇是否曾用 AI 處理金融問題" when value is null.
+- [x] 6.7 Local state is `ParticipantProfileDraft`; submit projects `hasUsedAiForFinance: draft.hasUsedAiForFinance === true` after validation.
+- [ ] 6.8 Verify deferred to Round 11 final sweep (typecheck still cascade-fails at admin/page + record-drawer).
+- [ ] 6.9 Manual smoke deferred to Round 11 final sweep.
 
 ## 7. Study briefing copy
 
-- [ ] 7.1 In `web/config/evaluation.config.json`, append one paragraph to `study.intro.paragraphs` reading verbatim: `「背景資料主要用於樣本描述與金融相關性檢核；主要分層變項預先指定為金融工作或實習經驗，金融熟悉度作為次要連續變項；其他人口統計與使用經驗欄位僅作探索性分析，不作為主要推論依據。」`. Place it after the existing privacy paragraph, before the investment-advice disclaimer paragraph.
-- [ ] 7.2 Verify: `cd web && npm run dev`, open `/`, confirm the new paragraph renders in the briefing block before invite-code submit. Document outcome.
+- [x] 7.1 GREEN: Appended analysis-framing paragraph to `study.intro.paragraphs` between the privacy paragraph and the investment-advice disclaimer.
+- [ ] 7.2 Manual smoke deferred to Round 11 final sweep.
 
 ## 8. Admin participant table
 

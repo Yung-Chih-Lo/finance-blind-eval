@@ -7,14 +7,20 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
 import {
   AGE_RANGE_OPTIONS,
-  FINANCE_LLM_USAGE_OPTIONS,
+  EDUCATION_LEVEL_OPTIONS,
+  FINANCE_BACKGROUND_TYPE_OPTIONS,
   FINANCE_SUBDOMAIN_OPTIONS,
   FINANCE_WORK_EXPERIENCE_OPTIONS,
+  GENDER_OPTIONS,
   INVESTMENT_EXPERIENCE_OPTIONS,
   createParticipantProfileDraft,
   validateParticipantProfile,
 } from "@/lib/evaluation/profile"
-import type { FinanceSubdomain, ParticipantProfile } from "@/lib/evaluation/types"
+import type {
+  FinanceSubdomain,
+  ParticipantProfile,
+  ParticipantProfileDraft,
+} from "@/lib/evaluation/types"
 
 interface ProfileFormProps {
   token: string
@@ -24,7 +30,7 @@ interface ProfileFormProps {
 
 export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProps) {
   const toast = useToast()
-  const [profile, setProfile] = useState<ParticipantProfile>(() =>
+  const [profile, setProfile] = useState<ParticipantProfileDraft>(() =>
     createParticipantProfileDraft(token, initialProfile),
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,16 +53,21 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
   async function submitProfile(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const nextProfile: ParticipantProfile = {
+    const draft: ParticipantProfileDraft = {
       ...profile,
-      gradeOrOccupation: profile.gradeOrOccupation.trim(),
-      fieldOrWorkDomain: profile.fieldOrWorkDomain.trim(),
+      gradeOrOccupation: profile.gradeOrOccupation?.trim() || undefined,
       notes: profile.notes.trim(),
     }
-    const issues = validateParticipantProfile(nextProfile)
+    const issues = validateParticipantProfile(draft)
     if (issues.length > 0) {
       toast.info(issues[0])
       return
+    }
+
+    // After successful validation hasUsedAiForFinance is guaranteed boolean.
+    const nextProfile: ParticipantProfile = {
+      ...draft,
+      hasUsedAiForFinance: draft.hasUsedAiForFinance === true,
     }
 
     setIsSubmitting(true)
@@ -76,7 +87,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
       toast.error(
         submitError instanceof Error
           ? submitError.message
-          : "背景資料儲存失敗。"
+          : "背景資料儲存失敗。",
       )
     } finally {
       setIsSubmitting(false)
@@ -97,7 +108,8 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
         <section className="form-intro" aria-label="背景資料用途">
           <h2>正式作答前，先補齊非識別性背景資料</h2>
           <p>
-            這些欄位會用來分析不同金融背景、投資經驗與 AI 使用經驗下的模型偏好差異。
+            背景資料主要用於樣本描述與金融相關性檢核；主要分層變項預先指定為金融工作或實習經驗，金融熟悉度作為次要連續變項；
+            其他人口統計與使用經驗欄位僅作探索性分析，不作為主要推論依據。
             本研究不收集姓名、公司、帳號或精確年齡；若不方便回答，可選擇不願透露或不確定。
           </p>
         </section>
@@ -105,13 +117,32 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
         <fieldset>
           <legend>基本分層</legend>
           <label>
+            性別 *
+            <select
+              value={profile.gender}
+              onChange={(event) =>
+                setProfile({
+                  ...profile,
+                  gender: event.target.value as ParticipantProfileDraft["gender"],
+                })
+              }
+            >
+              {GENDER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <span className="field-hint">僅供樣本描述，不會作為個別偏好推論依據。</span>
+          </label>
+          <label>
             年齡區間 *
             <select
               value={profile.ageRange}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  ageRange: event.target.value as ParticipantProfile["ageRange"],
+                  ageRange: event.target.value as ParticipantProfileDraft["ageRange"],
                 })
               }
             >
@@ -123,14 +154,32 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
             </select>
           </label>
           <label>
-            年級或職業 *
+            最高學歷 *
+            <select
+              value={profile.educationLevel}
+              onChange={(event) =>
+                setProfile({
+                  ...profile,
+                  educationLevel: event.target.value as ParticipantProfileDraft["educationLevel"],
+                })
+              }
+            >
+              {EDUCATION_LEVEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            年級或職稱（選填）
             <input
-              value={profile.gradeOrOccupation}
-              placeholder="例如：大三、研究生、金融業、工程師"
+              value={profile.gradeOrOccupation ?? ""}
+              placeholder="例如：大三、碩二、銀行業務、會計師事務所助理"
               onBlur={() =>
                 setProfile({
                   ...profile,
-                  gradeOrOccupation: profile.gradeOrOccupation.trim(),
+                  gradeOrOccupation: profile.gradeOrOccupation?.trim() ?? "",
                 })
               }
               onChange={(event) =>
@@ -140,65 +189,30 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
                 })
               }
             />
+            <span className="field-hint">可留空。請避免填寫學校、公司名稱或可識別身分的資訊。</span>
           </label>
           <label>
-            主修、科系或工作領域 *
-            <input
-              value={profile.fieldOrWorkDomain}
-              placeholder="例如：財務金融、會計、資訊管理、軟體工程、行銷"
-              onBlur={() =>
-                setProfile({
-                  ...profile,
-                  fieldOrWorkDomain: profile.fieldOrWorkDomain.trim(),
-                })
-              }
+            金融背景類型 *
+            <select
+              value={profile.financeBackgroundType}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  fieldOrWorkDomain: event.target.value,
+                  financeBackgroundType: event.target.value as ParticipantProfileDraft["financeBackgroundType"],
                 })
               }
-            />
-            <span className="field-hint">
-              請填大方向即可，不需要填學校、公司或可識別身分的資訊。
-            </span>
+            >
+              {FINANCE_BACKGROUND_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
         </fieldset>
 
         <fieldset>
-          <legend>金融背景</legend>
-          <label>
-            是否商學院 / 金融相關背景 *
-            <select
-              value={profile.isBusinessOrFinance}
-              onChange={(event) =>
-                setProfile({
-                  ...profile,
-                  isBusinessOrFinance: event.target.value as ParticipantProfile["isBusinessOrFinance"],
-                })
-              }
-            >
-              <option value="unsure">不確定 / 跨領域</option>
-              <option value="yes">是</option>
-              <option value="no">否</option>
-            </select>
-          </label>
-          <label>
-            金融課程或自學經驗 *
-            <select
-              value={profile.hasTakenFinanceCourse}
-              onChange={(event) =>
-                setProfile({
-                  ...profile,
-                  hasTakenFinanceCourse: event.target.value as ParticipantProfile["hasTakenFinanceCourse"],
-                })
-              }
-            >
-              <option value="no">否</option>
-              <option value="in_progress">正在修 / 自學中</option>
-              <option value="yes">是</option>
-            </select>
-          </label>
+          <legend>金融背景與經驗</legend>
           <label>
             金融工作、實習或專題經驗 *
             <select
@@ -206,7 +220,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  financeWorkExperience: event.target.value as ParticipantProfile["financeWorkExperience"],
+                  financeWorkExperience: event.target.value as ParticipantProfileDraft["financeWorkExperience"],
                 })
               }
             >
@@ -224,7 +238,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  investmentExperience: event.target.value as ParticipantProfile["investmentExperience"],
+                  investmentExperience: event.target.value as ParticipantProfileDraft["investmentExperience"],
                 })
               }
             >
@@ -268,7 +282,7 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  llmExperience: event.target.value as ParticipantProfile["llmExperience"],
+                  llmExperience: event.target.value as ParticipantProfileDraft["llmExperience"],
                 })
               }
             >
@@ -278,31 +292,32 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
               <option value="weekly">經常使用（每週 3-6 次）</option>
               <option value="daily">幾乎每天使用（每天 1 次以上）</option>
             </select>
-            <span className="field-hint">
-              請用最近一個月的平均使用頻率作答。
-            </span>
+            <span className="field-hint">請用最近一個月的平均使用頻率作答。</span>
           </label>
-          <label>
-            使用 AI 處理金融任務的頻率 *
-            <select
-              value={profile.financeLlmUsage}
-              onChange={(event) =>
-                setProfile({
-                  ...profile,
-                  financeLlmUsage: event.target.value as ParticipantProfile["financeLlmUsage"],
-                })
-              }
-            >
-              {FINANCE_LLM_USAGE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <span className="field-hint">
-              金融任務包含理解財報、投資風險、總經事件、金融名詞或理財問題。
-            </span>
-          </label>
+          <div className="field-group">
+            <span className="field-label">是否曾用 AI / ChatGPT 處理金融、投資、財報、課業或工作相關問題？ *</span>
+            <div className="radio-row">
+              <label className="check-option">
+                <input
+                  checked={profile.hasUsedAiForFinance === true}
+                  name="hasUsedAiForFinance"
+                  type="radio"
+                  onChange={() => setProfile({ ...profile, hasUsedAiForFinance: true })}
+                />
+                是
+              </label>
+              <label className="check-option">
+                <input
+                  checked={profile.hasUsedAiForFinance === false}
+                  name="hasUsedAiForFinance"
+                  type="radio"
+                  onChange={() => setProfile({ ...profile, hasUsedAiForFinance: false })}
+                />
+                否
+              </label>
+            </div>
+            <span className="field-hint">兩個選項預設皆未選，請依實際情況勾選一項。</span>
+          </div>
           <label>
             其他背景備註
             <textarea
