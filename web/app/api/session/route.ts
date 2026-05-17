@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server"
 
 import { SEEDED_PARTICIPANTS } from "@/lib/evaluation/config"
-import { validateParticipantProfile } from "@/lib/evaluation/profile"
+import { isCompleteParticipantProfile, validateParticipantProfile } from "@/lib/evaluation/profile"
 import type { ParticipantProfile, ParticipantProfileDraft, ParticipantStatus } from "@/lib/evaluation/types"
 import {
-  clearPendingQuestionsForParticipant,
   getEvaluationRecordsByParticipant,
   getParticipantStatus,
   getPendingQuestionsByParticipant,
   normalizeToken,
   upsertParticipantStatus,
+  upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
 import { requireEvaluationSession } from "@/lib/server/session"
 
@@ -83,18 +83,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing participant token." }, { status: 400 })
   }
 
+  // Type predicate narrows body.profile from ParticipantProfileDraft to ParticipantProfile
+  // when validation passes. We capture the narrowed value in a typed local so the
+  // assignment downstream doesn't need an `as ParticipantProfile` cast.
+  let validatedProfile: ParticipantProfile | undefined
   if (body?.profile) {
-    const issues = validateParticipantProfile(body.profile)
-    if (issues.length > 0) {
+    if (!isCompleteParticipantProfile(body.profile)) {
+      const issues = validateParticipantProfile(body.profile)
       return NextResponse.json({ error: "Incomplete participant profile.", issues }, { status: 400 })
     }
+    validatedProfile = body.profile
   }
 
   const now = new Date().toISOString()
   const existing = await getParticipantStatus(token)
   const wasLegacy = isLegacyShape(existing?.profile)
-  const profile = body?.profile
-    ? buildPersistedProfile(token, body.profile as ParticipantProfile, existing?.profile?.knownName)
+  const profile = validatedProfile
+    ? buildPersistedProfile(token, validatedProfile, existing?.profile?.knownName)
     : existing?.profile
 
   const status: ParticipantStatus = {
@@ -106,13 +111,15 @@ export async function POST(request: Request) {
     completedAt: existing?.completedAt,
   }
 
-  const participant = await upsertParticipantStatus(status)
   // Legacy → new-shape transition: pending questions carry a legacy participantProfile
   // snapshot and would otherwise leak into the saved evaluation record, or block
-  // regeneration via 409. Clear them so the participant restarts cleanly.
-  if (body?.profile && wasLegacy) {
-    await clearPendingQuestionsForParticipant(participant.token)
-  }
+  // regeneration via 409. We run upsert + clear in a SINGLE mutex window (combined
+  // helper) so a concurrent answer-generation POST can't insert a fresh pending row
+  // between the two writes that the late clear would then nuke.
+  const participant =
+    validatedProfile && wasLegacy
+      ? await upsertParticipantStatusAndClearPending(status)
+      : await upsertParticipantStatus(status)
 
   const answeredCount = (await getEvaluationRecordsByParticipant(participant.token)).length
   const [pendingQuestion] = await getPendingQuestionsByParticipant(participant.token)

@@ -158,10 +158,20 @@ export interface ParticipantProfile {
 }
 
 // Form-state representation of a participant profile in progress.
-// hasUsedAiForFinance starts as null and MUST be explicitly set to true/false
-// before validation passes — see Codex review note in design.md D3.
-export type ParticipantProfileDraft = Omit<ParticipantProfile, "hasUsedAiForFinance"> & {
+// Every required field starts as null until the participant explicitly picks; validation
+// rejects null so no field can silently default. The Y/N field uses tri-state (D3); the
+// five enum fields use null-sentinel (extends D3 to the primary stratifier and siblings,
+// caught by verify-perspective review).
+export type ParticipantProfileDraft = Omit<
+  ParticipantProfile,
+  "hasUsedAiForFinance" | "gender" | "educationLevel" | "financeBackgroundType" | "financeWorkExperience" | "investmentExperience"
+> & {
   hasUsedAiForFinance: boolean | null
+  gender: Gender | null
+  educationLevel: EducationLevel | null
+  financeBackgroundType: FinanceBackgroundType | null
+  financeWorkExperience: FinanceWorkExperience | null
+  investmentExperience: InvestmentExperience | null
 }
 
 export interface ParticipantStatus {

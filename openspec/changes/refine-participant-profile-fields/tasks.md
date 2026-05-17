@@ -120,3 +120,18 @@
 - [x] 11.5 `npm run build` → PASS (17 static pages generated, no route/metadata errors).
 - [ ] 11.6 Manual end-to-end smoke remains — recommended to run before `/opsxp-archive`. Automated coverage already validates: validate-rejects-null hasUsedAi, legacy migrate-on-read, clearPendingQuestionsForParticipant, legacy_* CSV emission paths (via verify-profile-validation). The remaining smoke is purely UI-visual confirmation.
 - [ ] 11.7 No legacy `.data/evaluation-store.json` simulation was created during apply — verify scripts use OS tmp dirs.
+
+## 12. Verify-driven follow-up (`/opsxp-verify` 2026-05-17)
+
+Multi-perspective verify surfaced four CRITICAL + several WARNING issues. Fixes:
+
+- [x] 12.1 Anti-silent-default for all required pick-one fields. `ParticipantProfileDraft` now allows `null` for `gender / educationLevel / financeBackgroundType / financeWorkExperience / investmentExperience` in addition to `hasUsedAiForFinance`. `createParticipantProfileDraft` seeds these as `null`; profile-form selects render a `disabled` "請選擇" placeholder option. `validateParticipantProfile` already rejected non-option values, so the existing checks cover the new null sentinels. Protects the primary stratifier `financeWorkExperience` (D2) from silent contamination.
+- [x] 12.2 `buildExportJson` now migrates `record.participantProfile` and `participant.profile` before serialization, so the active profile block in JSON export no longer leaks legacy keys. The nested `legacyProfile` block is attached only when `extractLegacyProfileSnapshot` returns non-empty. Regression: `testJsonExportMigratesAndAttachesLegacy`.
+- [x] 12.3 `extractLegacyProfileSnapshot` coerces non-string legacy values via `String()` (was silently dropping booleans/numbers persisted by older serialization). Regression: `testExtractLegacyHandlesNonString`.
+- [x] 12.4 Deleted dead exports `hasLegacyProfileFields` and `LegacyProfileField`. `LegacyProfileSnapshot` interface derived from `LEGACY_FIELDS` via mapped type so the two cannot drift.
+- [x] 12.5 Atomic combined helper `upsertParticipantStatusAndClearPending` closes the race window in session-route (upsert + pending-clear now share one `withStoreMutex`). Standalone `clearPendingQuestionsForParticipant` retained for direct testing. Regression: `testCombinedUpsertClearsPending`.
+- [x] 12.6 `migrateLegacyProfile` now PRESERVES new required fields when they're already in storage (previously stripped them, which would have caused `isLegacyShape` to clear pending on every routine re-submit by new-shape participants). Bug surfaced by `testCombinedUpsertClearsPending` during apply. Design D6 updated.
+- [x] 12.7 Session route uses `isCompleteParticipantProfile` type predicate to narrow `ParticipantProfileDraft → ParticipantProfile` instead of `as ParticipantProfile` cast — `buildPersistedProfile` now reads a guaranteed-complete profile.
+- [x] 12.8 `getAdminSnapshot` finance-background bucket counting replaced with `switch (bg)` + `never` exhaustiveness check — adding a new `FinanceBackgroundType` arm without updating the switch becomes a compile error.
+- [x] 12.9 Removed duplicate methodology paragraph from `profile-form.tsx` (kept the canonical copy in `study.intro.paragraphs`). Removed misleading "Step 1 / 6" pill (questionnaire is 5 questions, not 6). Replaced ambiguous comment in `buildExportCsv` about migration ordering.
+- [x] 12.10 Verify: `npm run typecheck` PASS, `npm run lint` PASS, `npm run verify:profile` 8/8 PASS, `npm run verify:reset-pending` 4/4 PASS, `npm run build` PASS, `openspec validate --strict` PASS.

@@ -73,10 +73,11 @@ These two have no corresponding `promptCategories` and would yield near-empty ce
 
 ### D6. Backward-compatible read of legacy profiles
 
-When the server reads a persisted profile that has `fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, or `financeLlmUsage` (string-enum form), the read path:
-1. Drops the removed fields without erroring.
-2. Returns `null` (or `partial`) for the new required fields (`gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance`).
-3. `validateParticipantProfile` reports the missing new fields, triggering the existing "legacy profile returns to form with prefill" scenario.
+When the server reads a persisted profile, the read path:
+1. Drops the legacy fields (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`) without erroring.
+2. For legacy inputs (no new fields in storage): the new required fields (`gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance`) are NOT defaulted — they stay absent from the returned partial. `isLegacyShape` keys off this absence to trigger the legacy → new transition (pending clear + form re-prompt).
+3. For new-shape inputs (new fields already in storage): the read path PRESERVES the new fields verbatim. This is required so a returning participant who already submitted the new profile reads back identical data on subsequent requests — without preservation, every read would look "legacy" and `isLegacyShape` would clear pending on every profile resubmit. (Bug uncovered by verify-driven follow-up regression test `testCombinedUpsertClearsPending`.)
+4. `validateParticipantProfile` reports the missing new fields, triggering the existing "legacy profile returns to form with prefill" scenario.
 
 The form pre-fills compatible legacy fields (ageRange, financeFamiliarity, llmExperience, financeWorkExperience, investmentExperience, financeSubdomains, optional gradeOrOccupation). The participant fills the new fields and re-submits; the server then writes the new shape.
 

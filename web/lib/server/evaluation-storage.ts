@@ -250,6 +250,34 @@ export async function clearPendingQuestionsForParticipant(token: string): Promis
   })
 }
 
+// Atomic combination of upsert + pending-clear used by the session route on the
+// legacy → new-shape profile transition. Calling the two helpers separately would
+// leave a window where a concurrent answer-generation POST could re-insert a pending
+// question between the upsert mutex release and the clear mutex acquisition — that
+// new pending would then be nuked by the late clear, recreating the F2 deadlock.
+export async function upsertParticipantStatusAndClearPending(
+  status: ParticipantStatus,
+): Promise<ParticipantStatus> {
+  const normalizedStatus: ParticipantStatus = {
+    ...status,
+    token: normalizeToken(status.token),
+    profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
+  }
+  const normalizedToken = normalizedStatus.token
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedToken)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+      pendingQuestions: store.pendingQuestions.filter(
+        (question) => normalizeToken(question.participantToken) !== normalizedToken,
+      ),
+    })
+  })
+  return normalizedStatus
+}
+
 export async function upsertParticipantStatus(status: ParticipantStatus): Promise<ParticipantStatus> {
   const normalizedStatus: ParticipantStatus = {
     ...status,
@@ -545,9 +573,9 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
   const latencyP95 = computeLatencyP95(store.records)
 
   // financeBackgroundType drives the four mutually-exclusive KPI buckets. Legacy
-  // records that lack the field fall into unknownBackgroundCount.
-  const FINANCE_RELEVANT = new Set(["student_finance_related", "working_finance_related"])
-  const NON_FINANCE = new Set(["student_other", "working_other"])
+  // records that lack the field fall into unknownBackgroundCount. The switch's never
+  // fallthrough is a compile-time exhaustiveness check: adding a new arm to the
+  // FinanceBackgroundType union without updating this switch becomes a type error.
   let financeBackgroundCount = 0
   let nonFinanceBackgroundCount = 0
   let refusalBackgroundCount = 0
@@ -556,14 +584,25 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     const bg = participant.profile?.financeBackgroundType
     if (!bg) {
       unknownBackgroundCount += 1
-    } else if (FINANCE_RELEVANT.has(bg)) {
-      financeBackgroundCount += 1
-    } else if (NON_FINANCE.has(bg)) {
-      nonFinanceBackgroundCount += 1
-    } else if (bg === "prefer_not_to_say") {
-      refusalBackgroundCount += 1
-    } else {
-      unknownBackgroundCount += 1
+      continue
+    }
+    switch (bg) {
+      case "student_finance_related":
+      case "working_finance_related":
+        financeBackgroundCount += 1
+        break
+      case "student_other":
+      case "working_other":
+        nonFinanceBackgroundCount += 1
+        break
+      case "prefer_not_to_say":
+        refusalBackgroundCount += 1
+        break
+      default: {
+        const exhaustive: never = bg
+        void exhaustive
+        unknownBackgroundCount += 1
+      }
     }
   }
 
@@ -585,15 +624,28 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
 
 export async function buildExportJson(settings?: PlatformSettingsSnapshot): Promise<string> {
   const store = await readStore()
-  // Attach a nested legacyProfile block to records whose original profile snapshot
-  // still uses the legacy schema; new-shape records get no legacyProfile field. See D9.
+  // For every record / participant we:
+  //   1. Extract the legacy field snapshot from the ORIGINAL stored profile (must
+  //      happen before migration, since migrate drops the legacy keys).
+  //   2. Migrate the active profile so its serialized form matches the new schema
+  //      (legacy keys stripped) — satisfies design D6 "server consumers see only the
+  //      new shape".
+  //   3. Attach the legacyProfile block only when the snapshot is non-empty.
+  // Together this ensures the JSON export shows a clean active profile plus a nested
+  // legacyProfile pocket for legacy-cohort identification — see design D9.
   const records = store.records.map((record) => {
     const legacyProfile = extractLegacyProfileSnapshot(record.participantProfile)
-    return legacyProfile ? { ...record, legacyProfile } : record
+    const migrated = migrateLegacyProfile(record.participantProfile) as ParticipantProfile
+    return legacyProfile
+      ? { ...record, participantProfile: migrated, legacyProfile }
+      : { ...record, participantProfile: migrated }
   })
   const participants = store.participants.map((participant) => {
     const legacyProfile = extractLegacyProfileSnapshot(participant.profile)
-    return legacyProfile ? { ...participant, legacyProfile } : participant
+    const migrated = participant.profile ? (migrateLegacyProfile(participant.profile) as ParticipantProfile) : undefined
+    return legacyProfile
+      ? { ...participant, profile: migrated, legacyProfile }
+      : { ...participant, profile: migrated }
   })
   return JSON.stringify(
     {
@@ -610,10 +662,13 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
 export async function buildExportCsv(): Promise<string> {
   const records = await getEvaluationRecords()
   const rows = records.map((record) => {
-    // Read the raw stored profile (pre-migration) so we can recover legacy field values
-    // for the legacy_* columns. After this line, profile uses the new schema view.
-    const rawProfile = record.participantProfile as unknown as Record<string, unknown>
-    const legacy = extractLegacyProfileSnapshot(rawProfile)
+    // record.participantProfile is the original immutable snapshot saved when the
+    // participant submitted judgment — getEvaluationRecords() does NOT migrate it.
+    // We extract the legacy fields directly from the snapshot (only legacy records
+    // have non-empty extraction). The active-profile columns below read the same
+    // snapshot under its typed view; legacy records will surface undefined for the
+    // new fields (CSV emits `""`) and that's the signal of "legacy cohort row".
+    const legacy = extractLegacyProfileSnapshot(record.participantProfile)
     const profile = record.participantProfile
     return {
     participant_token: record.participantToken,

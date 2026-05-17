@@ -14,6 +14,7 @@ import {
   GENDER_OPTIONS,
   INVESTMENT_EXPERIENCE_OPTIONS,
   createParticipantProfileDraft,
+  isCompleteParticipantProfile,
   validateParticipantProfile,
 } from "@/lib/evaluation/profile"
 import type {
@@ -58,17 +59,13 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
       gradeOrOccupation: profile.gradeOrOccupation?.trim() || undefined,
       notes: profile.notes.trim(),
     }
-    const issues = validateParticipantProfile(draft)
-    if (issues.length > 0) {
-      toast.info(issues[0])
+    // isCompleteParticipantProfile narrows the draft to ParticipantProfile only when
+    // every required field is non-null — so silent defaults are caught before submit.
+    if (!isCompleteParticipantProfile(draft)) {
+      toast.info(validateParticipantProfile(draft)[0])
       return
     }
-
-    // After successful validation hasUsedAiForFinance is guaranteed boolean.
-    const nextProfile: ParticipantProfile = {
-      ...draft,
-      hasUsedAiForFinance: draft.hasUsedAiForFinance === true,
-    }
+    const nextProfile: ParticipantProfile = draft
 
     setIsSubmitting(true)
     try {
@@ -101,16 +98,14 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <p className="eyebrow">Participant {token}</p>
           <h1>背景資料與研究分層</h1>
         </div>
-        <div className="progress-pill">Step 1 / 6</div>
       </header>
 
       <form className="form-panel" onSubmit={submitProfile}>
         <section className="form-intro" aria-label="背景資料用途">
           <h2>正式作答前，先補齊非識別性背景資料</h2>
           <p>
-            背景資料主要用於樣本描述與金融相關性檢核；主要分層變項預先指定為金融工作或實習經驗，金融熟悉度作為次要連續變項；
-            其他人口統計與使用經驗欄位僅作探索性分析，不作為主要推論依據。
             本研究不收集姓名、公司、帳號或精確年齡；若不方便回答，可選擇不願透露或不確定。
+            每個欄位都需明確選擇 — 若略過不選，系統會擋下送出以避免靜默預設汙染分析。
           </p>
         </section>
 
@@ -119,14 +114,17 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <label>
             性別 *
             <select
-              value={profile.gender}
+              value={profile.gender ?? ""}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  gender: event.target.value as ParticipantProfileDraft["gender"],
+                  gender: (event.target.value || null) as ParticipantProfileDraft["gender"],
                 })
               }
             >
+              <option value="" disabled>
+                請選擇
+              </option>
               {GENDER_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -156,14 +154,17 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <label>
             最高學歷 *
             <select
-              value={profile.educationLevel}
+              value={profile.educationLevel ?? ""}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  educationLevel: event.target.value as ParticipantProfileDraft["educationLevel"],
+                  educationLevel: (event.target.value || null) as ParticipantProfileDraft["educationLevel"],
                 })
               }
             >
+              <option value="" disabled>
+                請選擇
+              </option>
               {EDUCATION_LEVEL_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -194,14 +195,17 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <label>
             金融背景類型 *
             <select
-              value={profile.financeBackgroundType}
+              value={profile.financeBackgroundType ?? ""}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  financeBackgroundType: event.target.value as ParticipantProfileDraft["financeBackgroundType"],
+                  financeBackgroundType: (event.target.value || null) as ParticipantProfileDraft["financeBackgroundType"],
                 })
               }
             >
+              <option value="" disabled>
+                請選擇
+              </option>
               {FINANCE_BACKGROUND_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -216,32 +220,39 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
           <label>
             金融工作、實習或專題經驗 *
             <select
-              value={profile.financeWorkExperience}
+              value={profile.financeWorkExperience ?? ""}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  financeWorkExperience: event.target.value as ParticipantProfileDraft["financeWorkExperience"],
+                  financeWorkExperience: (event.target.value || null) as ParticipantProfileDraft["financeWorkExperience"],
                 })
               }
             >
+              <option value="" disabled>
+                請選擇
+              </option>
               {FINANCE_WORK_EXPERIENCE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
+            <span className="field-hint">本欄位是論文預先指定的主要分層變項，請依實際經驗誠實作答。</span>
           </label>
           <label>
             投資 / 理財經驗 *
             <select
-              value={profile.investmentExperience}
+              value={profile.investmentExperience ?? ""}
               onChange={(event) =>
                 setProfile({
                   ...profile,
-                  investmentExperience: event.target.value as ParticipantProfileDraft["investmentExperience"],
+                  investmentExperience: (event.target.value || null) as ParticipantProfileDraft["investmentExperience"],
                 })
               }
             >
+              <option value="" disabled>
+                請選擇
+              </option>
               {INVESTMENT_EXPERIENCE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}

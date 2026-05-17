@@ -91,27 +91,31 @@ export function createParticipantProfileDraft(
   initialProfile?: Partial<ParticipantProfile> | Partial<ParticipantProfileDraft> | null,
 ): ParticipantProfileDraft {
   const initialHasUsedAi = (initialProfile as Partial<ParticipantProfileDraft> | null | undefined)?.hasUsedAiForFinance
+  // Every required field starts as null when the stored value doesn't match a current
+  // option. Validation rejects null so the participant must explicitly pick (including
+  // "不願透露" / "no relevant experience" if that's their honest answer). This avoids
+  // silent defaults contaminating the analysis — especially for financeWorkExperience
+  // which is the pre-registered primary stratifier (D2).
   return {
     token,
     knownName: initialProfile?.knownName,
     ageRange: hasChoice(initialProfile?.ageRange, AGE_RANGE_VALUES) ? initialProfile.ageRange : "prefer_not_to_say",
-    gender: hasChoice(initialProfile?.gender, GENDER_VALUES) ? initialProfile.gender : "prefer_not_to_say",
+    gender: hasChoice(initialProfile?.gender, GENDER_VALUES) ? initialProfile.gender : null,
     educationLevel: hasChoice(initialProfile?.educationLevel, EDUCATION_LEVEL_VALUES)
       ? initialProfile.educationLevel
-      : "prefer_not_to_say",
+      : null,
     financeBackgroundType: hasChoice(initialProfile?.financeBackgroundType, FINANCE_BACKGROUND_TYPE_VALUES)
       ? initialProfile.financeBackgroundType
-      : "prefer_not_to_say",
+      : null,
     gradeOrOccupation: initialProfile?.gradeOrOccupation ?? "",
     financeWorkExperience: hasChoice(initialProfile?.financeWorkExperience, FINANCE_WORK_EXPERIENCE_VALUES)
       ? initialProfile.financeWorkExperience
-      : "none",
+      : null,
     investmentExperience: hasChoice(initialProfile?.investmentExperience, INVESTMENT_EXPERIENCE_VALUES)
       ? initialProfile.investmentExperience
-      : "none",
+      : null,
     financeFamiliarity: initialProfile?.financeFamiliarity ?? 3,
     llmExperience: initialProfile?.llmExperience ?? "rare",
-    // Intentionally null until the participant explicitly picks yes/no — see Codex review F1.
     hasUsedAiForFinance: typeof initialHasUsedAi === "boolean" ? initialHasUsedAi : null,
     financeSubdomains: Array.isArray(initialProfile?.financeSubdomains)
       ? initialProfile.financeSubdomains.filter((item): item is FinanceSubdomain =>
@@ -177,19 +181,7 @@ export function formatProfileChoice<T extends string>(
   return options.find((option) => option.value === value)?.label ?? value ?? "-"
 }
 
-const LEGACY_FIELDS = [
-  "fieldOrWorkDomain",
-  "isBusinessOrFinance",
-  "hasTakenFinanceCourse",
-  "financeLlmUsage",
-] as const
-export type LegacyProfileField = (typeof LEGACY_FIELDS)[number]
-
-export function hasLegacyProfileFields(raw: unknown): boolean {
-  if (!raw || typeof raw !== "object") return false
-  const obj = raw as Record<string, unknown>
-  return LEGACY_FIELDS.some((field) => field in obj && obj[field] !== undefined && obj[field] !== "")
-}
+const LEGACY_FIELDS = ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"] as const
 
 // Reads a persisted profile (which may use the legacy schema) and returns a
 // Partial<ParticipantProfile> with (a) legacy keys dropped, (b) under_20 ageRange
@@ -244,30 +236,47 @@ export function migrateLegacyProfile(raw: unknown): Partial<ParticipantProfile> 
     out.notes = obj.notes
   }
 
-  // gender / educationLevel / financeBackgroundType / hasUsedAiForFinance: intentionally
-  // NOT populated. Legacy records lack the analytical intent these fields capture; we
-  // re-prompt the participant via the existing "legacy profile returns to form" scenario.
+  // Preserve the new required fields when the input already has them (i.e. a new-shape
+  // profile being read back from storage). For genuine legacy inputs these keys are
+  // absent in `obj`, so the assignments below no-op — leaving the partial in the
+  // "needs re-prompt" state that `isLegacyShape` keys off of.
+  if (hasChoice(obj.gender, GENDER_VALUES)) {
+    out.gender = obj.gender
+  }
+  if (hasChoice(obj.educationLevel, EDUCATION_LEVEL_VALUES)) {
+    out.educationLevel = obj.educationLevel
+  }
+  if (hasChoice(obj.financeBackgroundType, FINANCE_BACKGROUND_TYPE_VALUES)) {
+    out.financeBackgroundType = obj.financeBackgroundType
+  }
+  if (typeof obj.hasUsedAiForFinance === "boolean") {
+    out.hasUsedAiForFinance = obj.hasUsedAiForFinance
+  }
   return out
 }
 
 // Snapshot of the legacy fields preserved verbatim from a stored profile so admin
 // exports can still surface the legacy cohort's original answers — see design D9.
-export interface LegacyProfileSnapshot {
-  fieldOrWorkDomain?: string
-  isBusinessOrFinance?: string
-  hasTakenFinanceCourse?: string
-  financeLlmUsage?: string
+// Derived from LEGACY_FIELDS so adding a new entry to LEGACY_FIELDS automatically
+// extends the snapshot shape.
+export type LegacyProfileSnapshot = {
+  [K in (typeof LEGACY_FIELDS)[number]]?: string
 }
 
+// Coerces legacy field values to strings via String(). Older on-disk records might
+// have persisted booleans / numbers for these fields; without coercion the snapshot
+// would silently drop them and the legacy_* CSV / legacyProfile JSON block would be
+// empty — violating spec D9's "emit verbatim" requirement.
 export function extractLegacyProfileSnapshot(raw: unknown): LegacyProfileSnapshot | undefined {
   if (!raw || typeof raw !== "object") return undefined
   const obj = raw as Record<string, unknown>
   const snapshot: LegacyProfileSnapshot = {}
   for (const field of LEGACY_FIELDS) {
     const value = obj[field]
-    if (typeof value === "string" && value !== "") {
-      snapshot[field] = value
-    }
+    if (value === undefined || value === null) continue
+    const stringified = String(value)
+    if (stringified === "") continue
+    snapshot[field] = stringified
   }
   return Object.keys(snapshot).length > 0 ? snapshot : undefined
 }
