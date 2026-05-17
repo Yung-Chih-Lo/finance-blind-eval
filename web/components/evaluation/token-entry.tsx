@@ -41,13 +41,13 @@ export function TokenEntry({
       } | null
 
       if (!response.ok || !payload?.participant) {
-        toast.error(payload?.error || "無法開始測驗，請再試一次。")
+        toast.error(payload?.error || "無法開始問卷，請再試一次。")
         return
       }
 
       onStart(payload.participant, payload.answeredCount ?? 0)
     } catch {
-      toast.error("無法開始測驗，請確認網路後再試一次。")
+      toast.error("無法開始問卷，請確認網路後再試一次。")
     } finally {
       setIsStarting(false)
     }
@@ -63,7 +63,7 @@ export function TokenEntry({
 
         {initialInviteCode ? (
           <div className="invite-prefilled-banner" role="status">
-            ✓ 邀請碼已自動填入。閱讀完下方說明後，捲到底部點「開始測驗」即可。
+            ✓ 邀請碼已自動填入。閱讀完下方說明後，捲到底部點「開始問卷」即可。
           </div>
         ) : null}
 
@@ -113,7 +113,7 @@ export function TokenEntry({
           </label>
           <div className="entry-actions">
             <Button type="submit" disabled={isStarting}>
-              {isStarting ? "驗證中" : "開始測驗"}
+              {isStarting ? "驗證中" : "開始問卷"}
             </Button>
           </div>
         </form>

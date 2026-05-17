@@ -158,7 +158,7 @@ export function QuestionFlow({
       return
     }
     if (!bestReason.trim() && !worstReason.trim()) {
-      toast.info("請至少填寫一欄原因。")
+      toast.info("請至少填寫一欄簡短原因；若可以，請同時說明最好與最差的判斷。")
       return
     }
 
@@ -260,7 +260,7 @@ export function QuestionFlow({
                 ref={questionInputRef}
                 value={question}
                 rows={1}
-                placeholder="想問什麼都可以"
+                placeholder="請輸入金融相關問題；避免個人持股、內部資料、即時股價或直接買賣建議"
                 disabled={Boolean(answerResponse) || isLoading}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={(event) => {
@@ -295,7 +295,6 @@ export function QuestionFlow({
                 <p className="panel-kicker">Blind Comparison</p>
                 <h2>比較 A / B / C 回答</h2>
               </div>
-              <span>{answerResponse.latencyMs} ms</span>
             </div>
 
             <div className="answer-grid">
@@ -342,7 +341,7 @@ export function QuestionFlow({
                 </select>
               </label>
               <label>
-                為什麼你選它最好？
+                為什麼你選它最好？（簡短說明）
                 <textarea
                   value={bestReason}
                   rows={3}
@@ -350,13 +349,16 @@ export function QuestionFlow({
                 />
               </label>
               <label>
-                為什麼你選它最差？
+                為什麼你選它最差？（簡短說明）
                 <textarea
                   value={worstReason}
                   rows={3}
                   onChange={(event) => setWorstReason(event.target.value)}
                 />
               </label>
+              <p className="judgment-helper">
+                至少需填寫一欄原因；若可以，請同時說明最好與最差的判斷依據，方便後續質性分析。
+              </p>
             </fieldset>
 
             <QualityControls

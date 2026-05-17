@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   // participants on the same NAT (lab, dorm, coffee shop).
   const completedCookie = (await cookies()).get(EVAL_COMPLETED_COOKIE)?.value
   if (completedCookie === "1") {
-    return NextResponse.json({ error: "本裝置已完成測驗。" }, { status: 403 })
+    return NextResponse.json({ error: "本裝置已完成問卷。" }, { status: 403 })
   }
 
   const clientIp = getClientIp(request)
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     // (token allocation, file-write errors) aren't leaked to clients.
     console.error("redeem-invite: failed to create participant session", error)
     return NextResponse.json(
-      { error: "無法建立測驗 session，請稍後再試。" },
+      { error: "無法建立問卷 session，請稍後再試。" },
       { status: 500 },
     )
   }

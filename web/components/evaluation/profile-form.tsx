@@ -188,7 +188,7 @@ export function ProfileForm({ token, onSubmit }: ProfileFormProps) {
 
         <div className="form-actions">
           <Button disabled={isSubmitting} type="submit">
-            {isSubmitting ? "儲存中..." : "開始 5 題盲測"}
+            {isSubmitting ? "儲存中..." : "開始 5 題盲測問卷"}
           </Button>
         </div>
       </form>
