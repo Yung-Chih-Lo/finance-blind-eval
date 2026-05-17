@@ -1,5 +1,7 @@
-// One-off ESM resolver hook for the `verify-study-copy.ts` harness.
-// Not part of CI. Maps `@/*` aliases and inlines JSON imports for plain Node ESM.
+// Shared ESM resolver hook for the `verify-*.ts` harnesses (currently
+// `verify-study-copy.ts` and `verify-provider-url-resolution.ts`). Not part of
+// CI. Maps `@/*` aliases, stubs `server-only`, and inlines JSON imports so the
+// TypeScript files can run under plain Node ESM after tsc compilation.
 
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { existsSync, readFileSync } from "node:fs"

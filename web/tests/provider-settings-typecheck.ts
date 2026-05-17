@@ -1,9 +1,10 @@
 import type { ProviderSettings } from "@/lib/evaluation/types"
 import {
   createProviderSettingsStatus,
-  deriveProviderModelsEndpoint,
   getDefaultProviderSettings,
   renderProviderUserPrompt,
+  resolveChatCompletionsUrl,
+  resolveModelsEndpoint,
   validateProviderSettings,
 } from "@/lib/server/provider-settings"
 
@@ -11,8 +12,8 @@ const defaults = getDefaultProviderSettings()
 
 const providerSettings: ProviderSettings = {
   ...defaults,
-  chatCompletionsEndpoint: "http://127.0.0.1:8080/v1/chat/completions",
-  modelsEndpoint: "",
+  apiBaseUrl: "http://127.0.0.1:8080/v1",
+  modelsEndpointOverride: "",
   apiKeyEnvVar: "OPENAI_COMPAT_API_KEY",
   modelMapping: {
     "H1-best": "model-a",
@@ -27,7 +28,8 @@ const providerSettings: ProviderSettings = {
 
 const validation = validateProviderSettings(providerSettings)
 const status = createProviderSettingsStatus(providerSettings)
-const modelsEndpoint = deriveProviderModelsEndpoint(providerSettings)
+const chatUrl = resolveChatCompletionsUrl(providerSettings)
+const modelsUrl = resolveModelsEndpoint(providerSettings)
 const prompt = renderProviderUserPrompt(providerSettings.userPromptTemplate, {
   categoryTitle: "金融概念理解",
   categoryInstruction: "請測試金融概念",
@@ -36,5 +38,6 @@ const prompt = renderProviderUserPrompt(providerSettings.userPromptTemplate, {
 
 validation.ok satisfies boolean
 status.apiKeyConfigured satisfies boolean
-modelsEndpoint satisfies string
+chatUrl satisfies string
+modelsUrl satisfies string
 prompt satisfies string

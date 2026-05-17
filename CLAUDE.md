@@ -32,9 +32,12 @@ Configured (values held in Zeabur, not committed):
 - `PUBLIC_BASE_URL=https://finance-blind-eval.zeabur.app` — origin used to build the invite QR link in `/api/admin/invite-qr`. Set this in Zeabur so the QR points at the participant-facing host even when admin opens the panel via internal DNS or another proxy. Falls back to `request.url` origin when unset.
 
 Pending (set when LLM gateway is ready):
-- `OPENAI_COMPAT_API_ENDPOINT`
+- `OPENAI_COMPAT_API_BASE_URL` — gateway base URL (e.g. `https://owui-llm.vixight.com/v1`). Do **not** include `/chat/completions`; the server appends `/chat/completions` and `/models` itself.
 - `OPENAI_COMPAT_API_KEY`
+- (optional) `OPENAI_COMPAT_MODELS_ENDPOINT` — overrides the derived `${base}/models` URL when discovery lives on a different host
 - (optional) `OPENAI_COMPAT_MODEL_H1` / `H2` / `TAIDE`
+
+**Migration note**: After deploying the `provider-api-base-url` change, open `/admin`. If a banner reports `偵測到舊版 provider 設定格式`, press the in-page reset button (or call `POST /api/admin/settings/reset`) to drop the legacy `chatCompletionsEndpoint` / `modelsEndpoint` keys from the persisted `platform-settings.json`.
 
 Cookie note: both `eval_session` and `eval_completed` set the `Secure` flag
 only when `NODE_ENV=production`. Zeabur's zbpack runs `next start` which sets

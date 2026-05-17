@@ -8,6 +8,7 @@ import { NetBadge } from "@/components/admin/net-badge"
 import { RecordsTable } from "@/components/admin/records-table"
 import { AdminExportActions } from "@/components/evaluation/admin-export-actions"
 import { AdminInviteActions } from "@/components/evaluation/admin-invite-actions"
+import { AdminLegacySettingsBanner } from "@/components/evaluation/admin-legacy-settings-banner"
 import { AdminProviderSettings } from "@/components/evaluation/admin-provider-settings"
 import { AdminStudyCopySettings } from "@/components/evaluation/admin-study-copy-settings"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/table"
 import type { ModelComparisonCounts } from "@/lib/evaluation/types"
 import { getAdminSnapshot } from "@/lib/server/evaluation-storage"
-import { getActivePlatformSettings } from "@/lib/server/platform-settings"
+import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
 
 export const dynamic = "force-dynamic"
 
@@ -53,7 +54,19 @@ const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "r
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = (await searchParams) ?? {}
   const defaultTab = pickTab(params.tab)
-  const settings = await getActivePlatformSettings()
+  let settings: Awaited<ReturnType<typeof getActivePlatformSettings>>
+  try {
+    settings = await getActivePlatformSettings()
+  } catch (error) {
+    if (error instanceof PlatformSettingsError && error.message.startsWith("Legacy provider schema")) {
+      return (
+        <main className="admin-shell admin-tokens">
+          <AdminLegacySettingsBanner issues={error.issues} />
+        </main>
+      )
+    }
+    throw error
+  }
   const config = settings.config
   const snapshot = await getAdminSnapshot(config)
   const recordCount = snapshot.records.length

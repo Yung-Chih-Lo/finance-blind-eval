@@ -75,6 +75,21 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value)
 }
 
+// Pre-`apiBaseUrl` deployments persisted these keys. Detected before
+// `normalizeProviderSettings` (which would silently drop unknown keys) so
+// the admin sees a banner instead of running with stale data.
+const LEGACY_PROVIDER_KEYS = ["chatCompletionsEndpoint", "modelsEndpoint"] as const
+
+export function detectLegacyProviderSchema(rawProvider: unknown): string[] {
+  if (!isObject(rawProvider)) {
+    return []
+  }
+  const provider = rawProvider as Record<string, unknown>
+  return LEGACY_PROVIDER_KEYS.filter((key) =>
+    Object.prototype.hasOwnProperty.call(provider, key),
+  )
+}
+
 export function getPlatformSettingsPath() {
   const fileName = basename(process.env.PLATFORM_SETTINGS_FILE || "platform-settings.json")
   return join(process.cwd(), ".data", fileName)
@@ -312,6 +327,17 @@ function normalizeEnvelope(value: unknown): PlatformSettingsEnvelope {
     : DEFAULT_SETTINGS_VERSION
   const updatedAt = isNonEmptyString(maybeEnvelope.updatedAt) ? maybeEnvelope.updatedAt : new Date().toISOString()
   const updatedBy = isNonEmptyString(maybeEnvelope.updatedBy) ? maybeEnvelope.updatedBy : "admin"
+  const legacyKeys = detectLegacyProviderSchema(maybeEnvelope.provider)
+  if (legacyKeys.length > 0) {
+    throw new PlatformSettingsError(
+      "Legacy provider schema in runtime settings file.",
+      [
+        `Legacy provider keys (${legacyKeys.join(", ")}) detected. Open /admin and either reset to defaults or re-save provider settings.`,
+      ],
+      500,
+    )
+  }
+
   try {
     const provider = normalizeProviderSettings(maybeEnvelope.provider, getDefaultProviderSettings())
     return buildEnvelope(assertValidStudyConfig(maybeEnvelope.config), provider, { settingsVersion, updatedAt, updatedBy })

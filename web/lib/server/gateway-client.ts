@@ -13,10 +13,11 @@ import type {
 import {
   assertValidProviderSettings,
   createProviderSettingsStatus,
-  deriveProviderModelsEndpoint,
   getDefaultProviderSettings,
   getProviderApiKey,
   renderProviderUserPrompt,
+  resolveChatCompletionsUrl,
+  resolveModelsEndpoint,
 } from "@/lib/server/provider-settings"
 
 const MODEL_HINTS: Record<ModelId, RegExp[]> = {
@@ -82,13 +83,6 @@ function getModelOverrides(): Partial<Record<ModelId, string>> {
   }
 }
 
-export function deriveModelsEndpoint(chatEndpoint: string): string {
-  return deriveProviderModelsEndpoint({
-    chatCompletionsEndpoint: chatEndpoint,
-    modelsEndpoint: process.env.OPENAI_COMPAT_MODELS_ENDPOINT ?? "",
-  })
-}
-
 function inferModelName(modelId: ModelId, availableModelIds: string[], used: Set<string>): string | undefined {
   const override = getModelOverrides()[modelId]
   if (override) {
@@ -147,10 +141,7 @@ export async function discoverProviderModels(settings: ProviderSettings): Promis
     requireEndpoint: true,
     requireApiKeyConfigured: true,
   })
-  const endpoint = deriveProviderModelsEndpoint(readySettings)
-  if (!endpoint) {
-    throw new Error("Models endpoint is not configured.")
-  }
+  const endpoint = resolveModelsEndpoint(readySettings)
 
   const response = await fetch(endpoint, {
     headers: getAuthHeaders(readySettings),
@@ -197,7 +188,7 @@ async function requestGatewayAnswer(params: {
   category: PromptCategory
   question: string
 }): Promise<string> {
-  const response = await fetch(params.settings.chatCompletionsEndpoint, {
+  const response = await fetch(resolveChatCompletionsUrl(params.settings), {
     method: "POST",
     headers: getAuthHeaders(params.settings, true),
     body: JSON.stringify({
@@ -253,9 +244,6 @@ export async function generateBlindAnswers(params: {
     requireEndpoint: true,
     requireApiKeyConfigured: true,
   })
-  if (!providerSettings.chatCompletionsEndpoint) {
-    throw new Error("模型服務尚未連線：缺少 OPENAI_COMPAT_API_ENDPOINT。請通知研究人員。")
-  }
 
   const gatewayModelNames = await getGatewayModelNames(providerSettings, params.modelIds)
   const answersByModel = await Promise.all(

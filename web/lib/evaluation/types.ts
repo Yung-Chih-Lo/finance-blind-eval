@@ -5,8 +5,8 @@ export type EvaluationFacetId = "correctness" | "reasoning" | "completeness" | "
 export type PlatformSettingsSource = "default" | "runtime"
 
 export interface ProviderSettings {
-  chatCompletionsEndpoint: string
-  modelsEndpoint: string
+  apiBaseUrl: string
+  modelsEndpointOverride: string
   apiKeyEnvVar: string
   modelMapping: Record<ModelId, string>
   systemPrompt: string
@@ -18,7 +18,6 @@ export interface ProviderSettings {
 export interface ProviderSettingsStatus {
   apiKeyEnvVar: string
   apiKeyConfigured: boolean
-  modelsEndpoint: string
   hasCompleteModelMapping: boolean
   mappedModelCount: number
 }
