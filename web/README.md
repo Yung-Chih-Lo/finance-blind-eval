@@ -45,7 +45,7 @@ Do not use `NEXT_PUBLIC_` for gateway API keys. The browser only calls Next.js A
 Optional variables:
 
 ```bash
-OPENAI_COMPAT_MODELS_ENDPOINT=http://127.0.0.1:8080/v1/models
+OPENAI_COMPAT_MODELS_ENDPOINT=
 OPENAI_COMPAT_MODEL_H1=
 OPENAI_COMPAT_MODEL_H2=
 OPENAI_COMPAT_MODEL_TAIDE=

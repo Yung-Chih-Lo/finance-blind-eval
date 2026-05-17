@@ -244,9 +244,6 @@ export async function generateBlindAnswers(params: {
     requireEndpoint: true,
     requireApiKeyConfigured: true,
   })
-  if (!providerSettings.apiBaseUrl) {
-    throw new Error("模型服務尚未連線：缺少 OPENAI_COMPAT_API_BASE_URL。請通知研究人員。")
-  }
 
   const gatewayModelNames = await getGatewayModelNames(providerSettings, params.modelIds)
   const answersByModel = await Promise.all(

@@ -131,3 +131,12 @@ Triggered by `/opsxp-verify` round 2: maintainer agent caught `.env.example` mis
 - [x] 13.5 SUGGESTION: Verify-script throw assertions tightened from `/apiBaseUrl/` to `/apiBaseUrl is empty/` (3 assertions)
 - [x] 13.6 SUGGESTION: Added symmetric assertion — `resolveChatCompletionsUrl` ignores `modelsEndpointOverride` and still throws on empty base
 - [x] 13.7 All gates green: typecheck, lint, verify:provider-url (17/17 assertions), build, `openspec validate --strict`
+
+## 14. Round-3 verify follow-up
+
+Triggered by `/opsxp-verify` round 3: doc consistency drift + symmetric dead-guard miss.
+
+- [x] 14.1 WARNING: `web/README.md:48` — `OPENAI_COMPAT_MODELS_ENDPOINT=` empty by default (matches `.env.example`)
+- [x] 14.2 WARNING: `docs/USAGE.{en,zh-TW}.md:122` — provider tab description now says "API base URL, optional models endpoint override" matching renamed UI
+- [x] 14.3 SUGGESTION: Dropped symmetric dead guard in `gateway-client.ts:generateBlindAnswers`
+- [x] 14.4 All gates green: typecheck, lint, verify:provider-url (17/17), build, `openspec validate --strict`

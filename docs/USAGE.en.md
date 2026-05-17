@@ -119,7 +119,7 @@ The console is a **sidebar dashboard** with seven tabs (deep-linkable via `?tab=
 | `participants` | Per-token table: background, finance familiarity, LLM experience, completion status, answered count / max |
 | `models` | Leaderboard + comparative best/worst/net by facet + worst-flag counts |
 | `invites` | Invite usage summary + generation actions |
-| `provider` | Editable gateway endpoint, models endpoint, model picker (calls `/v1/models`), system prompt, user-prompt template, temperature, max tokens; includes a "test call" preview that does NOT write to records |
+| `provider` | Editable API base URL, optional models endpoint override, model picker (calls `/v1/models`), system prompt, user-prompt template, temperature, max tokens; includes a "test call" preview that does NOT write to records |
 | `study-copy` | Editable participant-facing copy: intro letter, prompt categories, examples, signature metadata, completion page text |
 | `records` | Per-question records table (token · # · category · best · worst · latency); click any row → side drawer with full question text, facet selections, worst-answer flags, hidden mapping, reason text |
 
