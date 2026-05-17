@@ -22,12 +22,14 @@
 
 ## 2. DELETE route handler
 
-- [ ] 2.1 RED: write `web/scripts/verify-reset-pending-flow.mjs` (mirror `verify-invite-flow.mjs` style) — start a dev server externally; the script issues a redeem to get a session cookie, posts a profile, posts a question to get `{ questionId, ... }`, then `DELETE /api/evaluation/answers` with `{ questionId }`; assert HTTP 204 and that a subsequent `GET /api/session` returns `pendingQuestion: null`. Run it once and confirm it fails (route returns 405 because DELETE is unimplemented).
-- [ ] 2.2 Verify RED: `node web/scripts/verify-reset-pending-flow.mjs` → fail on DELETE.
-- [ ] 2.3 GREEN: in `web/app/api/evaluation/answers/route.ts`, export `async function DELETE(request: Request)`. Steps: call `requireEvaluationSession(request)` → 401 if absent; parse JSON body, validate `questionId` is a non-empty string → 400 otherwise; call `deletePendingQuestion(questionId, activeSession.participant.token)`; map `deleted`/`not_found` → `new NextResponse(null, { status: 204 })`, `forbidden` → 403 JSON `{ error: "You cannot delete another participant's pending question." }`.
-- [ ] 2.4 Verify GREEN: re-run `verify-reset-pending-flow.mjs` → PASS on the delete and the session-cleared assertions.
-- [ ] 2.5 Extend the smoke test with the re-submit case: after DELETE, POST the same `questionIndex` again and assert HTTP 200 (no 409). Verify PASS.
-- [ ] 2.6 Extend with auth case: DELETE without a session cookie → 401. Verify PASS.
+**Strategy note**: an automated HTTP smoke test for the full POST→DELETE→POST flow needs a running dev server with a live LLM gateway configured (POST hits `generateBlindAnswers`). That's too heavy for this fix. The route stays thin (parse → call storage helper → map status to NextResponse); business policy lives in `deletePendingQuestion`, which is already covered by section 1's verify script. The HTTP wiring itself is validated by section 4 manual end-to-end testing.
+
+- [x] 2.1 Add `DELETE` export to `web/app/api/evaluation/answers/route.ts` with signature `export async function DELETE(request: Request)`.
+- [x] 2.2 In the handler: call `await requireEvaluationSession(request)`; if absent, return `NextResponse.json({ error: "Invite session is required." }, { status: 401 })`.
+- [x] 2.3 Parse the JSON body. If parsing fails or `questionId` is not a non-empty string, return `NextResponse.json({ error: "questionId is required." }, { status: 400 })`.
+- [x] 2.4 Call `deletePendingQuestion(questionId, activeSession.participant.token)`. Map results: `"deleted"` and `"not_found"` → `new NextResponse(null, { status: 204 })`; `"forbidden"` → `NextResponse.json({ error: "You cannot delete another participant's pending question." }, { status: 403 })`.
+- [x] 2.5 Import `deletePendingQuestion` from `@/lib/server/evaluation-storage` alongside the existing storage imports at the top of the route file.
+- [x] 2.6 Run `cd web && npm run typecheck` → PASS (catches signature mistakes; route handlers are otherwise covered by section 4 manual UI testing).
 
 ## 3. Frontend reset wiring
 

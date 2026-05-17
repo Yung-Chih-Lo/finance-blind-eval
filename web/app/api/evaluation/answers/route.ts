@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 
 import { generateBlindAnswers } from "@/lib/server/gateway-client"
 import {
+  deletePendingQuestion,
   getEvaluationRecordsByParticipant,
   getPendingQuestionsByParticipant,
   savePendingQuestion,
@@ -137,4 +138,30 @@ export async function POST(request: Request) {
       { status: 502 },
     )
   }
+}
+
+interface DeleteRequest {
+  questionId?: unknown
+}
+
+export async function DELETE(request: Request) {
+  const activeSession = await requireEvaluationSession(request)
+  if (!activeSession) {
+    return NextResponse.json({ error: "Invite session is required." }, { status: 401 })
+  }
+
+  const body = (await request.json().catch(() => null)) as DeleteRequest | null
+  const questionId = typeof body?.questionId === "string" ? body.questionId.trim() : ""
+  if (!questionId) {
+    return NextResponse.json({ error: "questionId is required." }, { status: 400 })
+  }
+
+  const result = await deletePendingQuestion(questionId, activeSession.participant.token)
+  if (result.status === "forbidden") {
+    return NextResponse.json(
+      { error: "You cannot delete another participant's pending question." },
+      { status: 403 },
+    )
+  }
+  return new NextResponse(null, { status: 204 })
 }
