@@ -17,7 +17,7 @@ export function CompletionPage({ config }: CompletionPageProps) {
           ))}
         </div>
         <p className="completion-fallback-hint" role="note">
-          若你並非剛剛完成測驗的人，可能是此瀏覽器先前已參與過。
+          若你並非剛剛完成問卷的人，可能是此瀏覽器先前已參與過。
           請改用無痕模式，或聯絡研究人員協助你開始。
         </p>
       </section>
