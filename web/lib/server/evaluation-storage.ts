@@ -248,6 +248,28 @@ export async function getPendingQuestion(questionId: string): Promise<PendingQue
   return (await readStore()).pendingQuestions.find((question) => question.id === questionId)
 }
 
+export async function deletePendingQuestion(
+  questionId: string,
+  participantToken: string,
+): Promise<{ status: "deleted" | "not_found" | "forbidden" }> {
+  const expectedToken = normalizeToken(participantToken)
+  return withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.pendingQuestions.find((question) => question.id === questionId)
+    if (!existing) {
+      return { status: "not_found" }
+    }
+    if (existing.participantToken !== expectedToken) {
+      return { status: "forbidden" }
+    }
+    await writeStore({
+      ...store,
+      pendingQuestions: store.pendingQuestions.filter((question) => question.id !== questionId),
+    })
+    return { status: "deleted" }
+  })
+}
+
 export async function saveEvaluationRecord(record: EvaluationRecord): Promise<EvaluationRecord> {
   await withStoreMutex(async () => {
     const store = await readStore()
