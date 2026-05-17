@@ -4,15 +4,16 @@ Next.js implementation of the research survey-style blind evaluation workflow.
 
 ## Routes
 
-- `/eval` — participant entry; requires a researcher-issued invite code
+- `/` — participant entry; requires the shared invite code (server-side gated by `eval_completed` cookie for re-entry)
+- `/eval` — legacy redirect to `/` (preserves both `?invite=` and `?invite_code=`)
 - `/admin` — research admin dashboard; use `/admin?token=<admin-link-token>` for magic-link entry
-- `/api/session/redeem-invite` — validates invite code, creates anonymous participant ID, sets httpOnly session cookie
+- `/api/session/redeem-invite` — validates the shared invite code, creates an anonymous participant ID, sets httpOnly session cookie
 - `/api/session` — current participant session and profile submission
 - `/api/evaluation/answers` — server-side model discovery, fanout, and A/B/C answer generation
-- `/api/evaluation/records` — participant judgment recording
+- `/api/evaluation/records` — participant judgment recording; sets the `eval_completed` cookie on the final answer
 - `/api/admin/auth/exchange` — exchanges an admin URL token for an httpOnly admin session cookie
 - `/api/admin/auth/logout` — clears the admin session cookie
-- `/api/admin/invites` — admin invite and QR-code generation
+- `/api/admin/invite-qr` — admin-only read of the shared invite code plus a freshly rendered QR SVG
 - `/api/admin/records` — admin snapshot data
 - `/api/admin/export?format=json|csv` — exports
 - `/api/admin/settings` — reads and saves runtime platform settings
@@ -26,6 +27,7 @@ Next.js implementation of the research survey-style blind evaluation workflow.
 Use server-only variables in `.env.local`:
 
 ```bash
+SHARED_INVITE_CODE=ailab502
 OPENAI_COMPAT_API_ENDPOINT=http://127.0.0.1:8080/v1/chat/completions
 OPENAI_COMPAT_TEMPERATURE=0.2
 OPENAI_COMPAT_MAX_TOKENS=1200
@@ -53,7 +55,7 @@ The admin page can save provider runtime settings for endpoint, models endpoint,
 
 ## Local Persistence
 
-Evaluation records, invite-code hashes, and anonymous sessions are stored in `.data/evaluation-store.json` by default. You can change the file name with `EVALUATION_DATA_FILE`, but storage remains scoped under `.data/`. This is for local pilot use only and should be replaced with a durable database before production deployment.
+Evaluation records and anonymous sessions are stored in `.data/evaluation-store.json` by default. You can change the file name with `EVALUATION_DATA_FILE`, but storage remains scoped under `.data/`. This is for local pilot use only and should be replaced with a durable database before production deployment.
 
 Runtime platform settings are stored in `.data/platform-settings.json` by default. You can change the file name with `PLATFORM_SETTINGS_FILE`, but the file also remains scoped under `.data/`.
 
@@ -69,7 +71,7 @@ config/evaluation.config.json
 
 This file is safe to commit. At runtime, the app first checks `.data/platform-settings.json`; if no runtime file exists, it falls back to the repository default template. Admin settings APIs can save, reset, and export the runtime settings without modifying source files.
 
-Do not put live invite codes, gateway API keys, or provider secrets in either config file. API keys stay in environment variables such as `OPENAI_COMPAT_API_KEY`.
+Do not put gateway API keys or provider secrets in either config file. API keys stay in environment variables such as `OPENAI_COMPAT_API_KEY`. The shared invite code likewise stays in `SHARED_INVITE_CODE`.
 
 Current limitation: the participant-facing blind test still uses three internal candidates, `H1-best`, `H2-best`, and `TAIDE-baseline`, mapped to A/B/C per question. The admin UI can change which provider model each internal candidate points to. Fully dynamic candidate IDs are intentionally left for a later migration.
 
@@ -93,29 +95,23 @@ ADMIN_SESSION_SECRET=<separate-random-session-secret>
 
 `ADMIN_PASSWORD` remains supported as a Basic Auth fallback. In production, admin routes fail closed unless an admin link token or `ADMIN_PASSWORD` is configured.
 
-## Invite Codes and QR Codes
+## Shared Invite Code
 
-Generate researcher-issued invite codes and QR SVG files:
+The whole study uses a single fixed invite code supplied by `SHARED_INVITE_CODE` (recommended value `ailab502`). Distribute a single QR code that points at `https://your-domain.example/?invite_code=<code>`.
 
-```bash
-npm run invites:create -- --count 40 --base-url https://your-domain.example --label-prefix pilot
-```
-
-Outputs:
-
-- `.data/evaluation-store.json` — stores invite hashes, not plaintext invite codes
-- `.data/invite-qr/invites.csv` — plaintext distribution list
-- `.data/invite-qr/*.svg` — QR codes pointing to `/eval?invite=<code>`
-
-The admin page can also generate invite codes and QR SVGs after entering through an admin link token or Basic Auth fallback.
+- The admin dashboard's `邀請碼` tab fetches `/api/admin/invite-qr` and renders the current code + a downloadable QR SVG. Re-deploys with a different env value pick up automatically.
+- When `SHARED_INVITE_CODE` is unset, the redeem API returns HTTP 503 and the admin panel surfaces a warning — no participant can enter.
+- The code is compared case-insensitively after stripping all Unicode whitespace, so paste-from-styled-doc still works.
+- Re-entry is hard-blocked per browser via the `eval_completed` cookie (HttpOnly, 365d). Clearing cookies allows re-entry — by design.
 
 ## Public Deployment Notes
 
+- Set `SHARED_INVITE_CODE` in your deployment platform (Zeabur, Vercel, etc.) before the first participant arrives.
 - Set `ADMIN_LINK_TOKEN` or `ADMIN_LINK_TOKEN_SHA256` for admin magic-link entry. Keep `ADMIN_PASSWORD` as a fallback if desired.
 - Set `ADMIN_SESSION_SECRET` to a separate high-entropy value in deployments.
+- The `eval_completed` and `eval_session` cookies set the `Secure` flag only when `NODE_ENV=production`. `next start` sets this automatically; if you ever override it, expect cleartext cookies.
 - Keep gateway credentials server-side only.
 - Keep `.data/platform-settings.json` uncommitted; use it for deployment/runtime customization.
-- Use invite codes instead of public token links.
 - The built-in rate limiter is in-memory and suitable for a single Node process or pilot deployment. For multi-instance production, move rate limits and persistence to Redis/KV or a database.
 - Upgrade Next.js before serious public deployment if `npm audit` reports framework vulnerabilities for the installed version.
 
@@ -123,8 +119,8 @@ The admin page can also generate invite codes and QR SVGs after entering through
 
 ```bash
 npm run dev -- --port 5174
-npm run invites:create -- --count 40 --base-url http://localhost:5174
 npm run typecheck
 npm run lint
 npm run build
+node scripts/verify-invite-flow.mjs  # smoke-tests the redeem flow against a running dev server
 ```

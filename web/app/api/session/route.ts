@@ -56,7 +56,6 @@ export async function POST(request: Request) {
 
   const status: ParticipantStatus = {
     token,
-    inviteId: existing?.inviteId || activeSession.session.inviteId,
     profile,
     completionStatus: profile ? existing?.completionStatus === "completed" ? "completed" : "in_progress" : "profile_started",
     startedAt: existing?.startedAt || now,

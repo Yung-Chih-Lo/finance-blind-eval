@@ -61,6 +61,12 @@ export function TokenEntry({
           <h1>{config.study.title}</h1>
         </div>
 
+        {initialInviteCode ? (
+          <div className="invite-prefilled-banner" role="status">
+            ✓ 邀請碼已自動填入。閱讀完下方說明後，捲到底部點「開始測驗」即可。
+          </div>
+        ) : null}
+
         <div className="study-letter" aria-label="研究問卷說明">
           <p>{config.study.intro.greeting}</p>
           {config.study.intro.paragraphs.slice(0, 2).map((paragraph) => (
@@ -95,6 +101,7 @@ export function TokenEntry({
         >
           <label>
             邀請碼
+            <small className="invite-hint">不分大小寫，例如 AILAB502</small>
             <input
               autoComplete="one-time-code"
               value={inviteCode}

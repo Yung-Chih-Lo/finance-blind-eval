@@ -9,7 +9,7 @@ import {
   upsertParticipantStatus,
 } from "@/lib/server/evaluation-storage"
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
-import { requireEvaluationSession } from "@/lib/server/session"
+import { requireEvaluationSession, setCompletedCookie } from "@/lib/server/session"
 
 interface RecordRequest {
   questionId?: string
@@ -112,7 +112,6 @@ export async function POST(request: Request) {
   const isCompleted = pending.questionIndex >= config.promptCategories.length
   await upsertParticipantStatus({
     token: pending.participantToken,
-    inviteId: existingParticipant?.inviteId || activeSession.session.inviteId,
     profile: pending.participantProfile,
     completionStatus: isCompleted ? "completed" : "in_progress",
     startedAt: existingParticipant?.startedAt || pending.timestamp,
@@ -120,9 +119,13 @@ export async function POST(request: Request) {
     completedAt: isCompleted ? now : existingParticipant?.completedAt,
   })
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     answeredCount,
     completionStatus: isCompleted ? "completed" : "in_progress",
   })
+  if (isCompleted) {
+    setCompletedCookie(response)
+  }
+  return response
 }

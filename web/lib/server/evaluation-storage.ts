@@ -13,7 +13,6 @@ import type {
   EvaluationRecord,
   EvaluationSession,
   EvaluationStore,
-  InviteCodeRecord,
   ModelComparisonCounts,
   ModelId,
   ParticipantStatus,
@@ -29,7 +28,6 @@ const MAX_STALLED_PARTICIPANTS = 5
 
 const EMPTY_STORE: EvaluationStore = {
   participants: [],
-  invites: [],
   sessions: [],
   pendingQuestions: [],
   records: [],
@@ -37,10 +35,28 @@ const EMPTY_STORE: EvaluationStore = {
 
 let memoryStore: EvaluationStore = structuredClone(EMPTY_STORE)
 
+// Serializes read-modify-write store mutations so concurrent requests (e.g.
+// a participant double-clicking 完成 on the final question) don't both read
+// the same snapshot and overwrite each other.
+let mutateQueue: Promise<unknown> = Promise.resolve()
+
+async function withStoreMutex<T>(work: () => Promise<T>): Promise<T> {
+  const previous = mutateQueue.catch(() => undefined)
+  let release!: () => void
+  mutateQueue = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  try {
+    await previous
+    return await work()
+  } finally {
+    release()
+  }
+}
+
 function cloneStore(store: EvaluationStore): EvaluationStore {
   return {
     participants: [...store.participants],
-    invites: [...store.invites],
     sessions: [...store.sessions],
     pendingQuestions: [...store.pendingQuestions],
     records: [...store.records],
@@ -58,7 +74,6 @@ async function readStore(): Promise<EvaluationStore> {
     const parsed = JSON.parse(raw) as Partial<EvaluationStore>
     return {
       participants: Array.isArray(parsed.participants) ? parsed.participants : [],
-      invites: Array.isArray(parsed.invites) ? parsed.invites : [],
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       pendingQuestions: Array.isArray(parsed.pendingQuestions) ? parsed.pendingQuestions : [],
       records: Array.isArray(parsed.records) ? parsed.records : [],
@@ -93,16 +108,8 @@ export function normalizeToken(value: string) {
   return value.trim().toUpperCase()
 }
 
-export function normalizeInviteCode(value: string) {
-  return value.trim().replace(/\s+/g, "").toUpperCase()
-}
-
 export function hashSecret(value: string) {
   return createHash("sha256").update(value).digest("hex")
-}
-
-export function hashInviteCode(value: string) {
-  return hashSecret(normalizeInviteCode(value))
 }
 
 function randomCode(length: number) {
@@ -116,7 +123,7 @@ function createAnonymousParticipantToken() {
 }
 
 export async function resetEvaluationData() {
-  await writeStore(structuredClone(EMPTY_STORE))
+  await withStoreMutex(() => writeStore(structuredClone(EMPTY_STORE)))
 }
 
 async function getUsedParticipantTokens(store: EvaluationStore) {
@@ -127,124 +134,52 @@ async function getUsedParticipantTokens(store: EvaluationStore) {
   ])
 }
 
-export async function createInviteCodes(
-  count: number,
-  options: { labelPrefix?: string; maxUses?: number; expiresAt?: string } = {},
-): Promise<Array<{ code: string; invite: InviteCodeRecord }>> {
-  const store = await readStore()
-  const usedHashes = new Set(store.invites.map((invite) => invite.codeHash))
-  const createdAt = new Date().toISOString()
-  const created: Array<{ code: string; invite: InviteCodeRecord }> = []
+export async function createAnonymousParticipantSession(
+  options: { sessionTtlDays?: number } = {},
+): Promise<{ participant: ParticipantStatus; sessionToken: string; session: EvaluationSession }> {
+  return withStoreMutex(async () => {
+    const store = await readStore()
+    const now = new Date()
 
-  for (let index = 0; index < count; index += 1) {
-    let code = ""
-    let codeHash = ""
+    const usedTokens = await getUsedParticipantTokens(store)
+    let token = ""
     for (let attempts = 0; attempts < 200; attempts += 1) {
-      code = `${randomCode(4)}-${randomCode(4)}`
-      codeHash = hashInviteCode(code)
-      if (!usedHashes.has(codeHash)) {
-        usedHashes.add(codeHash)
+      const candidate = createAnonymousParticipantToken()
+      if (!usedTokens.has(candidate)) {
+        token = candidate
         break
       }
     }
-
-    if (!code || !codeHash) {
-      throw new Error("Unable to allocate invite code.")
+    if (!token) {
+      throw new Error("Unable to allocate participant token.")
     }
 
-    const invite: InviteCodeRecord = {
+    const createdAt = now.toISOString()
+    const participant: ParticipantStatus = {
+      token,
+      completionStatus: "profile_started",
+      startedAt: createdAt,
+      updatedAt: createdAt,
+    }
+    const sessionToken = randomBytes(32).toString("base64url")
+    const expiresAt = new Date(now.getTime() + (options.sessionTtlDays ?? 14) * 24 * 60 * 60 * 1000).toISOString()
+    const session: EvaluationSession = {
       id: randomBytes(12).toString("base64url"),
-      codeHash,
-      label: options.labelPrefix ? `${options.labelPrefix}-${index + 1}` : undefined,
-      maxUses: options.maxUses ?? 1,
-      uses: 0,
+      sessionHash: hashSecret(sessionToken),
+      participantToken: token,
       createdAt,
-      expiresAt: options.expiresAt,
-      participantTokens: [],
+      lastSeenAt: createdAt,
+      expiresAt,
     }
-    created.push({ code, invite })
-  }
 
-  await writeStore({
-    ...store,
-    invites: [...store.invites, ...created.map((item) => item.invite)],
+    await writeStore({
+      ...store,
+      sessions: [...store.sessions, session],
+      participants: [...store.participants, participant],
+    })
+
+    return { participant, sessionToken, session }
   })
-
-  return created
-}
-
-export async function getInviteCodes(): Promise<InviteCodeRecord[]> {
-  return (await readStore()).invites
-}
-
-export async function redeemInviteCode(
-  rawCode: string,
-  options: { sessionTtlDays?: number } = {},
-): Promise<{ participant: ParticipantStatus; invite: InviteCodeRecord; sessionToken: string; session: EvaluationSession }> {
-  const codeHash = hashInviteCode(rawCode)
-  const store = await readStore()
-  const invite = store.invites.find((item) => item.codeHash === codeHash)
-
-  if (!invite) {
-    throw new Error("邀請碼無效，請確認後再試一次。")
-  }
-
-  const now = new Date()
-  if (invite.expiresAt && new Date(invite.expiresAt).getTime() < now.getTime()) {
-    throw new Error("邀請碼已過期，請聯絡研究人員。")
-  }
-  if (invite.uses >= invite.maxUses) {
-    throw new Error("邀請碼已使用，請聯絡研究人員。")
-  }
-
-  const usedTokens = await getUsedParticipantTokens(store)
-  let token = ""
-  for (let attempts = 0; attempts < 200; attempts += 1) {
-    const candidate = createAnonymousParticipantToken()
-    if (!usedTokens.has(candidate)) {
-      token = candidate
-      break
-    }
-  }
-
-  if (!token) {
-    throw new Error("Unable to allocate participant token.")
-  }
-
-  const createdAt = now.toISOString()
-  const participant: ParticipantStatus = {
-    token,
-    inviteId: invite.id,
-    completionStatus: "profile_started",
-    startedAt: createdAt,
-    updatedAt: createdAt,
-  }
-  const sessionToken = randomBytes(32).toString("base64url")
-  const expiresAt = new Date(now.getTime() + (options.sessionTtlDays ?? 14) * 24 * 60 * 60 * 1000).toISOString()
-  const session: EvaluationSession = {
-    id: randomBytes(12).toString("base64url"),
-    sessionHash: hashSecret(sessionToken),
-    participantToken: token,
-    inviteId: invite.id,
-    createdAt,
-    lastSeenAt: createdAt,
-    expiresAt,
-  }
-  const nextInvite: InviteCodeRecord = {
-    ...invite,
-    uses: invite.uses + 1,
-    lastRedeemedAt: createdAt,
-    participantTokens: [...invite.participantTokens, token],
-  }
-
-  await writeStore({
-    ...store,
-    invites: store.invites.map((item) => (item.id === invite.id ? nextInvite : item)),
-    sessions: [...store.sessions, session],
-    participants: [...store.participants, participant],
-  })
-
-  return { participant, invite: nextInvite, sessionToken, session }
 }
 
 export async function getSessionByToken(sessionToken: string): Promise<EvaluationSession | undefined> {
@@ -261,11 +196,13 @@ export async function getSessionByToken(sessionToken: string): Promise<Evaluatio
 }
 
 export async function touchSession(sessionId: string): Promise<void> {
-  const store = await readStore()
-  const now = new Date().toISOString()
-  await writeStore({
-    ...store,
-    sessions: store.sessions.map((session) => (session.id === sessionId ? { ...session, lastSeenAt: now } : session)),
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const now = new Date().toISOString()
+    await writeStore({
+      ...store,
+      sessions: store.sessions.map((session) => (session.id === sessionId ? { ...session, lastSeenAt: now } : session)),
+    })
   })
 }
 
@@ -284,22 +221,25 @@ export async function upsertParticipantStatus(status: ParticipantStatus): Promis
     token: normalizeToken(status.token),
     profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
   }
-  const store = await readStore()
-  const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
-  const nextStore = {
-    ...store,
-    participants: [...existing, normalizedStatus],
-  }
-  await writeStore(nextStore)
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+    })
+  })
   return normalizedStatus
 }
 
 export async function savePendingQuestion(question: PendingQuestion): Promise<PendingQuestion> {
-  const store = await readStore()
-  const existing = store.pendingQuestions.filter((item) => item.id !== question.id)
-  await writeStore({
-    ...store,
-    pendingQuestions: [...existing, question],
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.pendingQuestions.filter((item) => item.id !== question.id)
+    await writeStore({
+      ...store,
+      pendingQuestions: [...existing, question],
+    })
   })
   return question
 }
@@ -309,13 +249,15 @@ export async function getPendingQuestion(questionId: string): Promise<PendingQue
 }
 
 export async function saveEvaluationRecord(record: EvaluationRecord): Promise<EvaluationRecord> {
-  const store = await readStore()
-  const existingRecords = store.records.filter((item) => item.id !== record.id)
-  const pendingQuestions = store.pendingQuestions.filter((item) => item.id !== record.id)
-  await writeStore({
-    ...store,
-    pendingQuestions,
-    records: [...existingRecords, record],
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existingRecords = store.records.filter((item) => item.id !== record.id)
+    const pendingQuestions = store.pendingQuestions.filter((item) => item.id !== record.id)
+    await writeStore({
+      ...store,
+      pendingQuestions,
+      records: [...existingRecords, record],
+    })
   })
   return record
 }
@@ -442,16 +384,14 @@ function resolveGatewayModel(record: EvaluationRecord, label?: AnswerLabel): str
 
 function computeFunnelStages(
   participants: ParticipantStatus[],
-  invites: InviteCodeRecord[],
   records: EvaluationRecord[],
 ): AdminFunnelStages {
-  const invited = invites.reduce((sum, invite) => sum + invite.maxUses, 0)
   const redeemed = participants.length
   const profileCompleted = participants.filter((participant) => participant.profile != null).length
   const tokensWithRecords = new Set(records.map((record) => record.participantToken))
   const answeredAny = tokensWithRecords.size
   const completed = participants.filter((participant) => participant.completionStatus === "completed").length
-  return { invited, redeemed, profileCompleted, answeredAny, completed }
+  return { redeemed, profileCompleted, answeredAny, completed }
 }
 
 function computeLatencyP95(records: EvaluationRecord[]): number {
@@ -547,7 +487,6 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     modelCounts: countModelSelections(store.records, config),
     comparativeCounts: countComparativeSelections(store.records, config),
     worstFlagCounts,
-    invites: store.invites,
     completedCount: store.participants.filter((participant) => participant.completionStatus === "completed").length,
     financeBackgroundCount: store.participants.filter(
       (participant) => participant.profile?.isBusinessOrFinance === "yes",
@@ -555,7 +494,7 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     nonFinanceBackgroundCount: store.participants.filter(
       (participant) => participant.profile?.isBusinessOrFinance === "no",
     ).length,
-    funnelStages: computeFunnelStages(store.participants, store.invites, store.records),
+    funnelStages: computeFunnelStages(store.participants, store.records),
     attentionItems: computeAttentionItems(store.participants, store.records, worstFlagCounts, latencyP95, config),
   }
 }
@@ -567,7 +506,6 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
       exportedAt: new Date().toISOString(),
       settings,
       participants: store.participants,
-      invites: store.invites,
       records: store.records,
     },
     null,

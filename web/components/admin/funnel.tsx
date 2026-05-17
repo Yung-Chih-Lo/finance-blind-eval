@@ -7,7 +7,6 @@ interface FunnelProps {
 }
 
 const STAGE_ORDER: { id: keyof AdminFunnelStages; label: string }[] = [
-  { id: "invited", label: "Invited" },
   { id: "redeemed", label: "Redeemed" },
   { id: "profileCompleted", label: "Profile" },
   { id: "answeredAny", label: "Answered" },

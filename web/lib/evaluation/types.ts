@@ -129,7 +129,6 @@ export interface ParticipantProfile {
 
 export interface ParticipantStatus {
   token: string
-  inviteId?: string
   profile?: ParticipantProfile
   completionStatus: CompletionStatus
   startedAt: string
@@ -137,23 +136,10 @@ export interface ParticipantStatus {
   completedAt?: string
 }
 
-export interface InviteCodeRecord {
-  id: string
-  codeHash: string
-  label?: string
-  maxUses: number
-  uses: number
-  createdAt: string
-  expiresAt?: string
-  lastRedeemedAt?: string
-  participantTokens: string[]
-}
-
 export interface EvaluationSession {
   id: string
   sessionHash: string
   participantToken: string
-  inviteId: string
   createdAt: string
   lastSeenAt: string
   expiresAt: string
@@ -221,14 +207,12 @@ export interface EvaluationRecord extends PendingQuestion {
 
 export interface EvaluationStore {
   participants: ParticipantStatus[]
-  invites: InviteCodeRecord[]
   sessions: EvaluationSession[]
   pendingQuestions: PendingQuestion[]
   records: EvaluationRecord[]
 }
 
 export interface AdminFunnelStages {
-  invited: number
   redeemed: number
   profileCompleted: number
   answeredAny: number
@@ -267,7 +251,6 @@ export interface AdminSnapshot {
   modelCounts: Record<ModelId, { best: number; worst: number }>
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
-  invites: InviteCodeRecord[]
   completedCount: number
   financeBackgroundCount: number
   nonFinanceBackgroundCount: number

@@ -4,19 +4,35 @@
 TBD - created by archiving change migrate-vite-to-nextjs. Update Purpose after archive.
 ## Requirements
 ### Requirement: Participant token entry
-The system SHALL provide a participant evaluation entry route at `/eval` that requires a researcher-issued invite code before creating an anonymous participant session.
+The system SHALL provide a participant evaluation entry route at `/` (root) that requires a researcher-distributed shared invite code before creating an anonymous participant session. The shared invite code SHALL be sourced from the `SHARED_INVITE_CODE` server environment variable. The route SHALL hard-block re-entry when a completion cookie (`eval_completed=1`) is present on the request.
 
 #### Scenario: Invite code entered
-- **WHEN** a participant opens `/eval` and enters a valid invite code
-- **THEN** the system creates an anonymous participant token and an httpOnly session cookie
+- **WHEN** a participant opens `/` without an `eval_completed` cookie and enters a value matching `SHARED_INVITE_CODE`
+- **THEN** the system creates an anonymous participant token (`P-XXXXXXXX`) and an httpOnly session cookie
 - **AND** advances to the background form
 
 #### Scenario: Invite query provided
-- **WHEN** a participant opens `/eval?invite=ABCD-EFGH`
-- **THEN** the system pre-fills the invite-code field without treating the invite code as a participant identity
+- **WHEN** a participant opens `/?invite_code=ailab502` without an `eval_completed` cookie
+- **THEN** the system pre-fills the invite-code field with the URL value without treating that string as a participant identity
+
+#### Scenario: Invite code mismatch
+- **WHEN** a participant submits an invite code value that does not match `SHARED_INVITE_CODE`
+- **THEN** the system rejects the redeem request with a 403 response and SHALL NOT create a participant or session
+
+#### Scenario: Shared invite code not configured
+- **WHEN** the server receives a redeem request while `SHARED_INVITE_CODE` is unset or empty
+- **THEN** the system returns 503 with a service-configuration error message and SHALL NOT create a participant or session
+
+#### Scenario: Re-entry blocked by completion cookie
+- **WHEN** a participant opens `/` with an `eval_completed=1` cookie present
+- **THEN** the page server-side renders a "已完成測驗" terminal view that does NOT show the invite-code input or the start button
+
+#### Scenario: Server-side re-entry guard
+- **WHEN** a `POST /api/session/redeem-invite` request arrives carrying an `eval_completed=1` cookie
+- **THEN** the API rejects the request with 403 before evaluating the invite code
 
 #### Scenario: Arbitrary participant token in URL
-- **WHEN** a participant opens `/eval?token=123456`
+- **WHEN** a participant opens `/?token=123456`
 - **THEN** the system SHALL NOT use that token as authorization or create a participant from it
 
 ### Requirement: Participant background form
@@ -42,7 +58,7 @@ The system SHALL present exactly five guided prompt categories for participant-a
 - **THEN** the system rejects the submission and keeps the participant on the current question
 
 ### Requirement: Server-mediated model answer generation
-The system SHALL generate answer A, answer B, and answer C through a Next.js server route only after validating the active invite session and active provider settings.
+The system SHALL generate answer A, answer B, and answer C through a Next.js server route only after validating the active participant session and active provider settings.
 
 #### Scenario: Answers requested without invite session
 - **WHEN** a browser calls `/api/evaluation/answers` without a valid evaluation session cookie
@@ -58,13 +74,7 @@ The system SHALL generate answer A, answer B, and answer C through a Next.js ser
 
 #### Scenario: Provider settings invalid
 - **WHEN** active provider settings are missing endpoint, API key, model mapping, prompt template, temperature, or max token configuration
-- **THEN** the API rejects the request before creating a pending question
-- **AND** the API does not call the model gateway
-
-#### Scenario: Answers generated with runtime provider settings
-- **WHEN** active provider settings are valid and a participant submits a valid question
-- **THEN** the system calls the configured chat completions endpoint with the configured model mapping, system prompt, user prompt template, temperature, and max tokens
-- **AND** stores the settings version and snapshot hash on the pending question
+- **THEN** the API rejects the request before calling the model gateway
 
 ### Requirement: Gateway model discovery
 The system SHALL discover available models from the configured OpenAI-compatible models endpoint before admins assign model mappings, and SHALL use admin-configured model mapping for formal blind comparison.
@@ -123,11 +133,11 @@ The system SHALL store each answered question with participant token, participan
 - **THEN** the system marks the participant as completed and shows a thank-you page without model results
 
 ### Requirement: Admin evaluation dashboard
-The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, finance-vs-non-finance breakdown, and invite code count. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.
+The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, and finance-vs-non-finance breakdown. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.
 
 #### Scenario: Admin opens dashboard
 - **WHEN** an admin opens `/admin` without a `tab` query parameter
-- **THEN** the system renders the KPI bar with the six participant/record metrics and selects the `總覽` tab by default
+- **THEN** the system renders the KPI bar with the participant/record metrics and selects the `總覽` tab by default
 
 #### Scenario: Admin opens a specific tab via URL
 - **WHEN** an admin opens `/admin?tab=models`
@@ -135,7 +145,7 @@ The system SHALL provide an admin page at `/admin` organized as a Tabbed Single 
 
 #### Scenario: Admin reviews participant funnel
 - **WHEN** the `總覽` tab is active
-- **THEN** the page displays a participant funnel visualizing five stages — Invited, Redeemed, Profile completed, Answered any question, Completed — each with absolute count and the percentage retained from the previous stage
+- **THEN** the page displays a participant funnel visualizing four stages — Redeemed, Profile completed, Answered any question, Completed — each with absolute count and the percentage retained from the previous stage
 
 #### Scenario: Admin reviews attention items
 - **WHEN** the `總覽` tab is active and evaluation records exist
@@ -162,9 +172,14 @@ The system SHALL provide an admin page at `/admin` organized as a Tabbed Single 
 - **WHEN** the `受測者` tab is active
 - **THEN** the page lists each participant with token, business-or-finance background, finance familiarity, LLM experience, completion status, and answered-count over question limit
 
-#### Scenario: Admin manages invites
-- **WHEN** the `邀請碼` tab is active
-- **THEN** the page renders invite generation actions alongside the invite code count from the snapshot
+#### Scenario: Admin views the shared invite code
+- **WHEN** the `邀請碼` tab is active and `SHARED_INVITE_CODE` is configured
+- **THEN** the page renders the configured invite code as read-only text alongside a QR-code image whose payload is `${origin}/?invite_code=<code>` and a download action for the QR image
+- **AND** the page SHALL NOT render any invite-generation form or batch-creation action
+
+#### Scenario: Admin views the invite tab without configuration
+- **WHEN** the `邀請碼` tab is active and `SHARED_INVITE_CODE` is unset or empty
+- **THEN** the page renders a warning that the shared invite code is not configured and SHALL NOT render a QR image
 
 #### Scenario: Admin edits provider settings
 - **WHEN** the `Provider 設定` tab is active
@@ -203,17 +218,6 @@ The system SHALL load study copy, signature metadata, prompt categories, example
 #### Scenario: Runtime settings not yet initialized
 - **WHEN** the app starts before any runtime settings file has been saved
 - **THEN** the active platform settings SHALL match the repository default config
-
-### Requirement: Invite and QR administration
-The system SHALL provide researcher tooling to generate invite codes and QR-code links without committing live invite codes to the public repository.
-
-#### Scenario: Admin generates invites through API
-- **WHEN** an admin requests invite generation
-- **THEN** the system creates hashed invite records and returns plaintext codes, entry links, and QR SVGs in the response
-
-#### Scenario: Researcher generates invites through CLI
-- **WHEN** a researcher runs the invite-generation script with a base URL and count
-- **THEN** the script writes hashed invite records, a CSV distribution list, and QR SVG files under `.data`
 
 ### Requirement: Admin access protection
 The system SHALL protect admin pages and admin APIs with an admin session created from a researcher-issued URL token, while retaining Basic Auth as a fallback when configured.
@@ -412,4 +416,15 @@ The system SHALL keep participant-facing study-copy settings separate from provi
 #### Scenario: Provider template helper shown
 - **WHEN** an admin views the provider prompt template field
 - **THEN** the UI distinguishes provider prompt-template variables from participant-facing study-copy fields
+
+### Requirement: Completion cookie issuance
+When a participant transitions to `completionStatus = "completed"`, the system SHALL set a cookie that allows server-side re-entry blocking on subsequent visits to the participant entry route.
+
+#### Scenario: Completion cookie set on final question
+- **WHEN** the server records the participant's final answer such that `completionStatus` becomes `"completed"`
+- **THEN** the same HTTP response SHALL set a cookie named `eval_completed` with value `"1"`, `Max-Age=31536000`, `Path=/`, `HttpOnly`, `SameSite=Lax`, and `Secure` in production
+
+#### Scenario: Completion cookie not set before completion
+- **WHEN** the server records an answer that does NOT transition the participant to completed status
+- **THEN** the response SHALL NOT set the `eval_completed` cookie
 

@@ -7,7 +7,6 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "invites:create": "node scripts/create-invites.mjs",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit"
