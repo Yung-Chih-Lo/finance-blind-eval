@@ -312,6 +312,22 @@ function normalizeEnvelope(value: unknown): PlatformSettingsEnvelope {
     : DEFAULT_SETTINGS_VERSION
   const updatedAt = isNonEmptyString(maybeEnvelope.updatedAt) ? maybeEnvelope.updatedAt : new Date().toISOString()
   const updatedBy = isNonEmptyString(maybeEnvelope.updatedBy) ? maybeEnvelope.updatedBy : "admin"
+  if (isObject(maybeEnvelope.provider)) {
+    const rawProvider = maybeEnvelope.provider as Record<string, unknown>
+    const legacyKeys = ["chatCompletionsEndpoint", "modelsEndpoint"].filter((key) =>
+      Object.prototype.hasOwnProperty.call(rawProvider, key),
+    )
+    if (legacyKeys.length > 0) {
+      throw new PlatformSettingsError(
+        "Legacy provider schema in runtime settings file.",
+        [
+          `Legacy provider keys (${legacyKeys.join(", ")}) detected. Open /admin and either reset to defaults or re-save provider settings.`,
+        ],
+        500,
+      )
+    }
+  }
+
   try {
     const provider = normalizeProviderSettings(maybeEnvelope.provider, getDefaultProviderSettings())
     return buildEnvelope(assertValidStudyConfig(maybeEnvelope.config), provider, { settingsVersion, updatedAt, updatedBy })

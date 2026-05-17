@@ -68,8 +68,8 @@ function validateOptionalUrl(value: string, path: string, issues: string[], opti
 
 export function getDefaultProviderSettings(): ProviderSettings {
   return {
-    chatCompletionsEndpoint: envString("OPENAI_COMPAT_API_ENDPOINT"),
-    modelsEndpoint: envString("OPENAI_COMPAT_MODELS_ENDPOINT"),
+    apiBaseUrl: envString("OPENAI_COMPAT_API_BASE_URL"),
+    modelsEndpointOverride: envString("OPENAI_COMPAT_MODELS_ENDPOINT"),
     apiKeyEnvVar: envString("OPENAI_COMPAT_API_KEY_ENV") || DEFAULT_API_KEY_ENV_VAR,
     modelMapping: {
       "H1-best": envString("OPENAI_COMPAT_MODEL_H1"),
@@ -89,8 +89,9 @@ export function normalizeProviderSettings(value: unknown, fallback = getDefaultP
   }
 
   return {
-    chatCompletionsEndpoint: typeof value.chatCompletionsEndpoint === "string" ? value.chatCompletionsEndpoint.trim() : "",
-    modelsEndpoint: typeof value.modelsEndpoint === "string" ? value.modelsEndpoint.trim() : "",
+    apiBaseUrl: typeof value.apiBaseUrl === "string" ? value.apiBaseUrl.trim() : "",
+    modelsEndpointOverride:
+      typeof value.modelsEndpointOverride === "string" ? value.modelsEndpointOverride.trim() : "",
     apiKeyEnvVar: typeof value.apiKeyEnvVar === "string" ? value.apiKeyEnvVar.trim() : fallback.apiKeyEnvVar,
     modelMapping: normalizeModelMapping(value.modelMapping),
     systemPrompt: typeof value.systemPrompt === "string" ? value.systemPrompt : fallback.systemPrompt,
@@ -109,10 +110,11 @@ export function validateProviderSettings(
   const issues: string[] = []
   const requireComplete = options.requireComplete ?? false
 
-  validateOptionalUrl(settings.chatCompletionsEndpoint, "provider.chatCompletionsEndpoint", issues, {
+  validateOptionalUrl(settings.apiBaseUrl, "provider.apiBaseUrl", issues, {
     required: requireComplete || options.requireEndpoint,
   })
-  validateOptionalUrl(settings.modelsEndpoint, "provider.modelsEndpoint", issues)
+  validateApiBaseUrlSemantics(settings.apiBaseUrl, issues)
+  validateOptionalUrl(settings.modelsEndpointOverride, "provider.modelsEndpointOverride", issues)
 
   if (!/^[A-Z_][A-Z0-9_]*$/.test(settings.apiKeyEnvVar)) {
     issues.push("provider.apiKeyEnvVar must be an uppercase environment variable name.")
@@ -170,34 +172,51 @@ export function createProviderSettingsStatus(settings: ProviderSettings): Provid
   return {
     apiKeyEnvVar: settings.apiKeyEnvVar,
     apiKeyConfigured: Boolean(getProviderApiKey(settings)),
-    modelsEndpoint: deriveProviderModelsEndpoint(settings),
     hasCompleteModelMapping: mappedModelCount === MODEL_IDS.length,
     mappedModelCount,
   }
 }
 
-export function deriveProviderModelsEndpoint(settings: Pick<ProviderSettings, "chatCompletionsEndpoint" | "modelsEndpoint">) {
-  if (settings.modelsEndpoint.trim()) {
-    return settings.modelsEndpoint.trim()
-  }
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "")
+}
 
-  if (!settings.chatCompletionsEndpoint.trim()) {
-    return ""
-  }
+export function resolveChatCompletionsUrl(settings: Pick<ProviderSettings, "apiBaseUrl">): string {
+  return `${stripTrailingSlash(settings.apiBaseUrl.trim())}/chat/completions`
+}
 
+export function resolveModelsEndpoint(
+  settings: Pick<ProviderSettings, "apiBaseUrl" | "modelsEndpointOverride">,
+): string {
+  const override = settings.modelsEndpointOverride.trim()
+  if (override) {
+    return override
+  }
+  return `${stripTrailingSlash(settings.apiBaseUrl.trim())}/models`
+}
+
+function validateApiBaseUrlSemantics(value: string, issues: string[]) {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return
+  }
   let url: URL
   try {
-    url = new URL(settings.chatCompletionsEndpoint)
+    url = new URL(trimmed)
   } catch {
-    return ""
+    return
   }
-  if (/\/chat\/completions\/?$/.test(url.pathname)) {
-    url.pathname = url.pathname.replace(/\/chat\/completions\/?$/, "/models")
-    return url.toString()
+  if (/\/(chat\/completions|completions)\/?$/.test(url.pathname)) {
+    issues.push(
+      "provider.apiBaseUrl should be a base URL (e.g. https://gateway.example.com/v1), not the chat completions URL.",
+    )
   }
-
-  url.pathname = `${url.pathname.replace(/\/$/, "")}/models`
-  return url.toString()
+  if (url.search !== "") {
+    issues.push("provider.apiBaseUrl must not include a query string.")
+  }
+  if (url.hash !== "") {
+    issues.push("provider.apiBaseUrl must not include a fragment.")
+  }
 }
 
 export function renderProviderUserPrompt(

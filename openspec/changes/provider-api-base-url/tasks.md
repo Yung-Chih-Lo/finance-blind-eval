@@ -33,40 +33,40 @@
 
 ## 3. Type rename (compile-driven sweep)
 
-- [ ] 3.1 In `web/lib/evaluation/types.ts:7-16`, rename `chatCompletionsEndpoint` → `apiBaseUrl` and `modelsEndpoint` → `modelsEndpointOverride` in `ProviderSettings`
-- [ ] 3.2 In `web/lib/evaluation/types.ts:18-24`, rename `modelsEndpoint` → `modelsEndpointOverride` in `ProviderSettingsStatus` (mirrors the source-of-truth field)
-- [ ] 3.3 Run `npm run typecheck` and capture every error site (expected: provider-settings.ts, gateway-client.ts, platform-settings.ts, admin-provider-settings.tsx, tests/provider-settings-typecheck.ts)
+- [x] 3.1 In `web/lib/evaluation/types.ts:7-16`, rename `chatCompletionsEndpoint` → `apiBaseUrl` and `modelsEndpoint` → `modelsEndpointOverride` in `ProviderSettings`
+- [x] 3.2 In `web/lib/evaluation/types.ts:18-24`, rename `modelsEndpoint` → `modelsEndpointOverride` in `ProviderSettingsStatus` (mirrors the source-of-truth field)
+- [x] 3.3 Run `npm run typecheck` and capture every error site (confirmed: provider-settings.ts, gateway-client.ts, admin-provider-settings.tsx, tests, scripts; platform-settings.ts propagates via normalizer and did not error directly)
 
 ## 4. Core resolver + validation in `provider-settings.ts`
 
-- [ ] 4.1 In `web/lib/server/provider-settings.ts`, replace env read at line 71 from `envString("OPENAI_COMPAT_API_ENDPOINT")` to `envString("OPENAI_COMPAT_API_BASE_URL")` and rename target field to `apiBaseUrl`
-- [ ] 4.2 Replace the `OPENAI_COMPAT_MODELS_ENDPOINT` read so it populates `modelsEndpointOverride`
-- [ ] 4.3 In `normalizeProviderSettings`, rename incoming keys to `apiBaseUrl` / `modelsEndpointOverride` (do NOT accept legacy keys here — keep the rename clean; legacy detection happens at `platform-settings.ts` load)
-- [ ] 4.4 Add `resolveChatCompletionsUrl(settings: Pick<ProviderSettings, "apiBaseUrl">): string` that returns `${stripTrailingSlash(settings.apiBaseUrl)}/chat/completions`; export it
-- [ ] 4.5 Add `resolveModelsEndpoint(settings: Pick<ProviderSettings, "apiBaseUrl" | "modelsEndpointOverride">): string` that returns `modelsEndpointOverride.trim()` if non-empty else `${stripTrailingSlash(settings.apiBaseUrl)}/models`; export it
-- [ ] 4.6 Add helper `stripTrailingSlash(value: string): string` (private, module-local) that returns `value.replace(/\/+$/, "")`
-- [ ] 4.7 Remove old `deriveProviderModelsEndpoint` export and its internal logic
-- [ ] 4.8 In `validateProviderSettings`, rename the `apiBaseUrl` URL check (was `chatCompletionsEndpoint`), and add three failure modes: path ends `/chat/completions` or `/chat/completions/` or `/completions` → issue `"provider.apiBaseUrl should be a base URL (e.g. https://gateway.example.com/v1), not the chat completions URL."`; `url.search` non-empty → issue `"provider.apiBaseUrl must not include a query string."`; `url.hash` non-empty → issue `"provider.apiBaseUrl must not include a fragment."`
-- [ ] 4.9 In `validateProviderSettings`, rename `modelsEndpoint` references to `modelsEndpointOverride` (validation remains: optional http(s) URL, no extra rules)
-- [ ] 4.10 In `createProviderSettingsStatus`, replace `deriveProviderModelsEndpoint(settings)` call with `resolveModelsEndpoint(settings)`; field on the status remains `modelsEndpoint` (status type already renamed to `modelsEndpointOverride` in 3.2 — adjust accordingly)
-- [ ] 4.11 Run `npm run typecheck` in `web/` and fix any residual `chatCompletionsEndpoint` / `modelsEndpoint` references inside `provider-settings.ts`
+- [x] 4.1 In `web/lib/server/provider-settings.ts`, replace env read at line 71 from `envString("OPENAI_COMPAT_API_ENDPOINT")` to `envString("OPENAI_COMPAT_API_BASE_URL")` and rename target field to `apiBaseUrl`
+- [x] 4.2 Replace the `OPENAI_COMPAT_MODELS_ENDPOINT` read so it populates `modelsEndpointOverride`
+- [x] 4.3 In `normalizeProviderSettings`, rename incoming keys to `apiBaseUrl` / `modelsEndpointOverride` (do NOT accept legacy keys here — keep the rename clean; legacy detection happens at `platform-settings.ts` load)
+- [x] 4.4 Add `resolveChatCompletionsUrl(settings: Pick<ProviderSettings, "apiBaseUrl">): string` that returns `${stripTrailingSlash(settings.apiBaseUrl)}/chat/completions`; export it
+- [x] 4.5 Add `resolveModelsEndpoint(settings: Pick<ProviderSettings, "apiBaseUrl" | "modelsEndpointOverride">): string` that returns `modelsEndpointOverride.trim()` if non-empty else `${stripTrailingSlash(settings.apiBaseUrl)}/models`; export it
+- [x] 4.6 Add helper `stripTrailingSlash(value: string): string` (private, module-local) that returns `value.replace(/\/+$/, "")`
+- [x] 4.7 Remove old `deriveProviderModelsEndpoint` export and its internal logic
+- [x] 4.8 In `validateProviderSettings`, added `validateApiBaseUrlSemantics` covering: path ends `/chat/completions` or `/completions` → "provider.apiBaseUrl should be a base URL ..."; non-empty `url.search` → "provider.apiBaseUrl must not include a query string."; non-empty `url.hash` → "provider.apiBaseUrl must not include a fragment."
+- [x] 4.9 In `validateProviderSettings`, rename `modelsEndpoint` references to `modelsEndpointOverride` (validation remains: optional http(s) URL, no extra rules)
+- [x] 4.10 `createProviderSettingsStatus`: dropped the `modelsEndpoint` field from the status — no consumer reads it (verified by grep). Status now exposes only `apiKeyEnvVar`, `apiKeyConfigured`, `hasCompleteModelMapping`, `mappedModelCount`.
+- [x] 4.11 Ran `npm run typecheck`: `provider-settings.ts` clean; remaining errors are in `gateway-client.ts` and `admin-provider-settings.tsx`, addressed in sections 5 and 7.
 
 ## 5. Wire `gateway-client.ts` to resolver + new env var
 
-- [ ] 5.1 In `web/lib/server/gateway-client.ts`, replace `chatCompletionsEndpoint` usage at line 200 (`fetch(params.settings.chatCompletionsEndpoint, ...)`) with `fetch(resolveChatCompletionsUrl(params.settings), ...)`
-- [ ] 5.2 Replace the `!providerSettings.chatCompletionsEndpoint` guard at line 256 with `!providerSettings.apiBaseUrl`
-- [ ] 5.3 Update the error message at line 257 to reference `OPENAI_COMPAT_API_BASE_URL` instead of `OPENAI_COMPAT_API_ENDPOINT`
-- [ ] 5.4 Remove the wrapper `deriveModelsEndpoint` (lines 85-90) and any remaining `OPENAI_COMPAT_MODELS_ENDPOINT` direct reads — `provider-settings.ts` now owns env reads
-- [ ] 5.5 Replace `discoverProviderModels`'s call to `deriveProviderModelsEndpoint(readySettings)` (line 150) with `resolveModelsEndpoint(readySettings)`
-- [ ] 5.6 Import `resolveChatCompletionsUrl` and `resolveModelsEndpoint` from `@/lib/server/provider-settings`
-- [ ] 5.7 Run `npm run typecheck` and verify gateway-client compiles
+- [x] 5.1 In `web/lib/server/gateway-client.ts`, replace `chatCompletionsEndpoint` usage at line 200 (`fetch(params.settings.chatCompletionsEndpoint, ...)`) with `fetch(resolveChatCompletionsUrl(params.settings), ...)`
+- [x] 5.2 Replace the `!providerSettings.chatCompletionsEndpoint` guard at line 256 with `!providerSettings.apiBaseUrl`
+- [x] 5.3 Update the error message at line 257 to reference `OPENAI_COMPAT_API_BASE_URL` instead of `OPENAI_COMPAT_API_ENDPOINT`
+- [x] 5.4 Removed the `deriveModelsEndpoint` wrapper and its `OPENAI_COMPAT_MODELS_ENDPOINT` direct read (no external callers; `provider-settings.ts` now owns env reads)
+- [x] 5.5 Replace `discoverProviderModels`'s call to `deriveProviderModelsEndpoint(readySettings)` (line 150) with `resolveModelsEndpoint(readySettings)`
+- [x] 5.6 Import `resolveChatCompletionsUrl` and `resolveModelsEndpoint` from `@/lib/server/provider-settings`
+- [x] 5.7 Ran `npm run typecheck`: provider-settings.ts + gateway-client.ts clean; only admin UI remains
 
 ## 6. Legacy schema detection in `platform-settings.ts`
 
-- [ ] 6.1 In `web/lib/server/platform-settings.ts`, locate the envelope-load path (around line 316 where `normalizeProviderSettings` is called) and inspect `maybeEnvelope.provider` raw object before normalization
-- [ ] 6.2 If raw provider object has own-property `chatCompletionsEndpoint` or `modelsEndpoint`, throw `PlatformSettingsError("Legacy provider schema in runtime settings file.", ["Legacy provider keys (chatCompletionsEndpoint / modelsEndpoint) detected. Open /admin and either reset to defaults or re-save provider settings."], 500)`
-- [ ] 6.3 Ensure detection happens BEFORE `normalizeProviderSettings` (which would silently drop the unknown keys)
-- [ ] 6.4 Run `npm run typecheck` to confirm no regressions
+- [x] 6.1 In `web/lib/server/platform-settings.ts`, locate the envelope-load path (around line 316 where `normalizeProviderSettings` is called) and inspect `maybeEnvelope.provider` raw object before normalization
+- [x] 6.2 If raw provider object has own-property `chatCompletionsEndpoint` or `modelsEndpoint`, throw `PlatformSettingsError("Legacy provider schema in runtime settings file.", ["Legacy provider keys (...) detected. Open /admin and either reset to defaults or re-save provider settings."], 500)` — message dynamically names the detected keys
+- [x] 6.3 Ensure detection happens BEFORE `normalizeProviderSettings` (which would silently drop the unknown keys)
+- [x] 6.4 Run `npm run typecheck` to confirm no regressions (only admin UI errors remain)
 
 ## 7. Admin UI: field, helper text, legacy banner
 
