@@ -28,7 +28,7 @@ Use server-only variables in `.env.local`:
 
 ```bash
 SHARED_INVITE_CODE=ailab502
-OPENAI_COMPAT_API_ENDPOINT=http://127.0.0.1:8080/v1/chat/completions
+OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1
 OPENAI_COMPAT_TEMPERATURE=0.2
 OPENAI_COMPAT_MAX_TOKENS=1200
 OPENAI_COMPAT_API_KEY_ENV=OPENAI_COMPAT_API_KEY
@@ -37,6 +37,8 @@ ADMIN_LINK_TOKEN=replace-with-random-admin-entry-token
 ADMIN_SESSION_SECRET=replace-with-random-session-secret
 ADMIN_PASSWORD=replace-with-admin-password-before-public-deploy
 ```
+
+`OPENAI_COMPAT_API_BASE_URL` is the OpenAI-compatible gateway **base URL** (do not include `/chat/completions`). The server derives both `${base}/chat/completions` and `${base}/models` from it. The base URL is validated: trailing `/chat/completions`, query strings, and fragments are rejected.
 
 Do not use `NEXT_PUBLIC_` for gateway API keys. The browser only calls Next.js API routes.
 
@@ -52,9 +54,11 @@ OPENAI_COMPAT_USER_PROMPT_TEMPLATE=
 PUBLIC_BASE_URL=https://finance-blind-eval.zeabur.app
 ```
 
+`OPENAI_COMPAT_MODELS_ENDPOINT` is an **override** for the derived `${base}/models` URL — leave empty unless models discovery lives on a different host than chat.
+
 Set `PUBLIC_BASE_URL` whenever the admin host differs from the participant-facing host (proxies, internal DNS, custom domains). It overrides the `request.url` origin used to build the QR link. Falls back to `request.url` when unset, so local dev keeps working.
 
-The admin page can save provider runtime settings for endpoint, models endpoint, A/B/C model mapping, system prompt, user prompt template, temperature, and max tokens. The raw API key is never stored in runtime settings; the admin UI only stores the env var name, and the server reads the secret from that variable.
+The admin page can save provider runtime settings for API base URL, optional models endpoint override, A/B/C model mapping, system prompt, user prompt template, temperature, and max tokens. The raw API key is never stored in runtime settings; the admin UI only stores the env var name, and the server reads the secret from that variable.
 
 ## Local Persistence
 

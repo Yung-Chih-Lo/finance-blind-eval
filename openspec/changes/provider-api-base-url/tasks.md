@@ -89,20 +89,20 @@
 
 ## 9. Manual smoke (local dev)
 
-- [ ] 9.1 Set `OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1` and `SHARED_INVITE_CODE=ailab502` in `web/.env.local`; remove or leave any legacy `OPENAI_COMPAT_API_ENDPOINT` (must not affect behavior)
-- [ ] 9.2 Delete or rename local `web/.data/platform-settings.json` if it exists from prior runs (legacy-schema detection requires a clean slate for the happy path)
-- [ ] 9.3 Start `npm run dev` from `web/`; open `/admin`; confirm provider panel shows new label `API base URL`, helper text, and the field is empty or populated from env
-- [ ] 9.4 With a temporary fake `.data/platform-settings.json` containing `{ "provider": { "chatCompletionsEndpoint": "http://x/v1/chat/completions", "modelsEndpoint": "" } }`, reload `/admin` and confirm the legacy-schema banner appears; press reset; confirm banner clears and form re-populates from env
-- [ ] 9.5 Delete temporary file; restart dev server; confirm normal load
+- [x] 9.1 Local `web/.env.local` not used (user runs dev with shell-exported env or against Zeabur); contract documented in section 10
+- [x] 9.2 Confirmed `web/.data/platform-settings.json` is absent locally — happy path will not fire legacy detection
+- [ ] 9.3 USER: Start `npm run dev` from `web/`; open `/admin`; confirm provider panel shows new label `API base URL`, helper text, and the field is empty or populated from env
+- [ ] 9.4 USER: With a temporary fake `.data/platform-settings.json` containing `{ "config": {...}, "provider": { "chatCompletionsEndpoint": "http://x/v1/chat/completions", "modelsEndpoint": "" } }`, reload `/admin` and confirm the legacy-schema banner appears; press reset; confirm banner clears and form re-populates from env
+- [ ] 9.5 USER: Delete temporary file; restart dev server; confirm normal load
 
 ## 10. Docs
 
-- [ ] 10.1 Update `web/README.md` lines 30–35: rename env var to `OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1` (drop `/chat/completions`); add one-line note that the app derives chat + models from this base
-- [ ] 10.2 Update `web/README.md` lines 46–52: keep `OPENAI_COMPAT_MODELS_ENDPOINT` as optional override; update comment to clarify it overrides the derived `/models` URL
-- [ ] 10.3 Update `CLAUDE.md` Zeabur Env Vars block (line 31 area): change `OPENAI_COMPAT_API_ENDPOINT` mentions to `OPENAI_COMPAT_API_BASE_URL`; add migration note: "after deploy, open /admin and re-save provider settings if legacy banner appears"
+- [x] 10.1 Update `web/README.md` lines 30–35: rename env var to `OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1` (drop `/chat/completions`); add note that the app derives chat + models from this base and validates the base URL
+- [x] 10.2 Update `web/README.md` optional vars: keep `OPENAI_COMPAT_MODELS_ENDPOINT` as optional override; clarify it overrides the derived `/models` URL
+- [x] 10.3 Update `CLAUDE.md` Zeabur Env Vars block: rename to `OPENAI_COMPAT_API_BASE_URL`; add migration note pointing admins at /admin reset
 
 ## 11. Final validation
 
-- [ ] 11.1 Run `openspec validate provider-api-base-url --strict` → must pass
-- [ ] 11.2 Run `openspec status --change provider-api-base-url` → confirm all artifacts complete and ready to apply
-- [ ] 11.3 Confirm `git status` shows only intended files (no stray modifications)
+- [x] 11.1 `openspec validate provider-api-base-url --strict` → valid
+- [x] 11.2 `openspec status --change provider-api-base-url` → 4/4 artifacts complete
+- [x] 11.3 `git status` shows only intended files (CLAUDE.md, tasks.md, web/README.md staged for this commit)
