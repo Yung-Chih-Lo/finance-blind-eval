@@ -26,12 +26,12 @@
 
 ## 2. Types (RED → GREEN)
 
-- [ ] 2.1 RED: Write `web/tests/profile-typecheck.ts` that declares one `ParticipantProfile` value using ONLY the new shape (`gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance`, optional `gradeOrOccupation`, no removed fields) and one legacy value cast to `unknown` then narrowed by a `migrateLegacyProfile` helper (yet to be written) returning `Partial<ParticipantProfile>`.
-- [ ] 2.2 Verify RED: `cd web && npm run typecheck` → FAIL (new types and helper missing).
-- [ ] 2.3 GREEN: Update `web/lib/evaluation/types.ts` — add `Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"`, `EducationLevel = "high_school_or_below" | "undergrad_in_progress" | "undergrad_completed" | "grad_or_above" | "prefer_not_to_say"`, `FinanceBackgroundType = "student_finance_related" | "student_other" | "working_finance_related" | "working_other" | "prefer_not_to_say"`.
-- [ ] 2.4 GREEN: Update `AgeRange` in `types.ts` — remove `under_20` literal.
-- [ ] 2.5 GREEN: Update `ParticipantProfile` in `types.ts` — add `gender: Gender`, `educationLevel: EducationLevel`, `financeBackgroundType: FinanceBackgroundType`, `hasUsedAiForFinance: boolean`; remove `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`; make `gradeOrOccupation?: string` (optional); confirm removal of `fieldOrWorkDomain`. Also export a `ParticipantProfileDraft` type = `Omit<ParticipantProfile, "hasUsedAiForFinance"> & { hasUsedAiForFinance: boolean | null }` for the form/draft path; stored `ParticipantProfile.hasUsedAiForFinance` remains `boolean`.
-- [ ] 2.6 Verify GREEN: `cd web && npm run typecheck` → ALL PASS (after `migrateLegacyProfile` stub added in step 4.1).
+- [x] 2.1 RED: Wrote `web/tests/profile-typecheck.ts` exercising new types + `migrateLegacyProfile` import.
+- [x] 2.2 Verify RED: typecheck failed on 5 missing exports (Gender / EducationLevel / FinanceBackgroundType / ParticipantProfileDraft / migrateLegacyProfile) — see commit output.
+- [x] 2.3 GREEN: Added Gender, EducationLevel, FinanceBackgroundType type unions to `types.ts`.
+- [x] 2.4 GREEN: Removed `under_20` from AgeRange union.
+- [x] 2.5 GREEN: Updated ParticipantProfile (gender/educationLevel/financeBackgroundType/hasUsedAiForFinance added; isBusinessOrFinance/hasTakenFinanceCourse/financeLlmUsage/fieldOrWorkDomain removed; gradeOrOccupation made optional). Added ParticipantProfileDraft type. Also reduced FinanceSubdomain literal union (rolled in from task 3.6 since both touch same file).
+- [ ] 2.6 Verify GREEN: deferred until Rounds 2-5 land — cascade errors at consumer sites are expected until profile.ts / storage / form / admin / drawer / session-route / verify-reset-pending are updated.
 
 ## 3. Profile options & validation (RED → GREEN)
 

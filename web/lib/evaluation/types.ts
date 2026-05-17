@@ -115,36 +115,53 @@ export interface PlatformSettingsValidationResult {
   issues: string[]
 }
 
-export type AgeRange = "under_20" | "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
+export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
+export type Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"
+export type EducationLevel =
+  | "high_school_or_below"
+  | "undergrad_in_progress"
+  | "undergrad_completed"
+  | "grad_or_above"
+  | "prefer_not_to_say"
+export type FinanceBackgroundType =
+  | "student_finance_related"
+  | "student_other"
+  | "working_finance_related"
+  | "working_other"
+  | "prefer_not_to_say"
 export type FinanceWorkExperience = "none" | "course_project" | "internship" | "professional" | "prefer_not_to_say"
 export type InvestmentExperience = "none" | "basic" | "regular" | "advanced" | "prefer_not_to_say"
-export type FinanceLlmUsage = "never" | "tried" | "monthly" | "weekly" | "daily"
 export type FinanceSubdomain =
   | "accounting"
   | "stocks"
   | "funds_etf"
   | "bonds_rates"
   | "macro_fx"
-  | "derivatives"
   | "personal_finance"
-  | "risk_management"
   | "not_sure"
 
 export interface ParticipantProfile {
   token: string
   knownName?: string
   ageRange: AgeRange
-  fieldOrWorkDomain: string
-  isBusinessOrFinance: "yes" | "no" | "unsure"
-  gradeOrOccupation: string
-  hasTakenFinanceCourse: "yes" | "no" | "in_progress"
+  gender: Gender
+  educationLevel: EducationLevel
+  financeBackgroundType: FinanceBackgroundType
+  gradeOrOccupation?: string
   financeWorkExperience: FinanceWorkExperience
   investmentExperience: InvestmentExperience
   financeFamiliarity: number
   llmExperience: "none" | "rare" | "monthly" | "weekly" | "daily"
-  financeLlmUsage: FinanceLlmUsage
+  hasUsedAiForFinance: boolean
   financeSubdomains: FinanceSubdomain[]
   notes: string
+}
+
+// Form-state representation of a participant profile in progress.
+// hasUsedAiForFinance starts as null and MUST be explicitly set to true/false
+// before validation passes — see Codex review note in design.md D3.
+export type ParticipantProfileDraft = Omit<ParticipantProfile, "hasUsedAiForFinance"> & {
+  hasUsedAiForFinance: boolean | null
 }
 
 export interface ParticipantStatus {
