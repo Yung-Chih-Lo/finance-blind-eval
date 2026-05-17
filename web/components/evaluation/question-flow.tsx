@@ -130,7 +130,7 @@ export function QuestionFlow({
     }
   }
 
-  function resetForQuestion() {
+  function clearQuestionState() {
     setQuestion("")
     setAnswerResponse(null)
     setSelectedBest("")
@@ -139,6 +139,33 @@ export function QuestionFlow({
     setWorstReason("")
     setFacetSelections(createEmptyFacetSelections(config))
     setWorstAnswerFlags([])
+  }
+
+  async function resetForQuestion() {
+    if (!answerResponse) {
+      clearQuestionState()
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/evaluation/answers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId: answerResponse.questionId }),
+      })
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error || "目前無法重設本題，請稍後再試。")
+      }
+      clearQuestionState()
+    } catch (resetError) {
+      toast.error(
+        resetError instanceof Error ? resetError.message : "目前無法重設本題，請稍後再試。"
+      )
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   async function saveJudgment() {
@@ -193,7 +220,7 @@ export function QuestionFlow({
       onAnswerSaved?.(data.answeredCount ?? questionIndex + 1)
       toast.success("本題評分已儲存。")
       setQuestionIndex((value) => value + 1)
-      resetForQuestion()
+      clearQuestionState()
     } catch (saveError) {
       toast.error(
         saveError instanceof Error ? saveError.message : "評分儲存失敗。"

@@ -33,13 +33,13 @@
 
 ## 3. Frontend reset wiring
 
-- [ ] 3.1 In `web/components/evaluation/question-flow.tsx`, change `resetForQuestion` from sync to `async function resetForQuestion()`. Guard with `if (!answerResponse) { clear-local-state-only; return }` so reset before a question is submitted still works.
-- [ ] 3.2 Set `setIsLoading(true)` before the call; in a `try` block call `fetch("/api/evaluation/answers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: answerResponse.questionId }) })`. If `!response.ok` throw with the server's error message (parse JSON best-effort, fall back to `"目前無法重設本題，請稍後再試。"`).
-- [ ] 3.3 On success, run the existing local-clear block (the original body of `resetForQuestion`). On error catch, `toast.error(message)` and DO NOT clear local state.
-- [ ] 3.4 In `finally`, `setIsLoading(false)`.
-- [ ] 3.5 Confirm the reset button at `web/components/evaluation/question-flow.tsx:379` already has `disabled={isLoading}` (it does) — no JSX change needed there.
-- [ ] 3.6 Run `cd web && npm run typecheck` → PASS.
-- [ ] 3.7 Run `cd web && npm run lint` → PASS.
+- [x] 3.1 In `web/components/evaluation/question-flow.tsx`, change `resetForQuestion` from sync to `async function resetForQuestion()`. Guard with `if (!answerResponse) { clear-local-state-only; return }` so reset before a question is submitted still works.
+- [x] 3.2 Set `setIsLoading(true)` before the call; in a `try` block call `fetch("/api/evaluation/answers", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ questionId: answerResponse.questionId }) })`. If `!response.ok` throw with the server's error message (parse JSON best-effort, fall back to `"目前無法重設本題，請稍後再試。"`).
+- [x] 3.3 On success, run the existing local-clear block (the original body of `resetForQuestion`). On error catch, `toast.error(message)` and DO NOT clear local state.
+- [x] 3.4 In `finally`, `setIsLoading(false)`.
+- [x] 3.5 Confirm the reset button at `web/components/evaluation/question-flow.tsx:379` already has `disabled={isLoading}` (it does) — no JSX change needed there. (Bonus: replaced the `resetForQuestion()` call inside `saveJudgment`'s success path with `clearQuestionState()` since the pending row is already consumed by `saveEvaluationRecord` — avoids a wasted DELETE roundtrip.)
+- [x] 3.6 Run `cd web && npm run typecheck` → PASS.
+- [x] 3.7 Run `cd web && npm run lint` → PASS.
 
 ## 4. End-to-end manual verification
 
