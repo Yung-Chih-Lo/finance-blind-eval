@@ -7,6 +7,7 @@ import { CompletionPage } from "@/components/evaluation/completion-page"
 import { ProfileForm } from "@/components/evaluation/profile-form"
 import { QuestionFlow } from "@/components/evaluation/question-flow"
 import { TokenEntry } from "@/components/evaluation/token-entry"
+import { isCompleteParticipantProfile } from "@/lib/evaluation/profile"
 import type { AnswerLabel, ParticipantProfile, ParticipantStatus, StudyConfig } from "@/lib/evaluation/types"
 
 type ParticipantStep = "entry" | "profile" | "question" | "done"
@@ -68,7 +69,7 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
         ) {
           setStep("done")
         } else {
-          setStep(data.participant.profile ? "question" : "profile")
+          setStep(isCompleteParticipantProfile(data.participant.profile) ? "question" : "profile")
         }
         router.replace("/")
       } catch {
@@ -97,7 +98,7 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
           setAnsweredCount(nextAnsweredCount)
           setPendingQuestion(null)
           router.replace("/")
-          setStep(participant.profile ? "question" : "profile")
+          setStep(isCompleteParticipantProfile(participant.profile) ? "question" : "profile")
         }}
       />
     )
@@ -107,6 +108,7 @@ export function EvaluationApp({ config, initialInviteCode = "" }: EvaluationAppP
     return (
       <ProfileForm
         token={token}
+        initialProfile={profile}
         onSubmit={(nextProfile) => {
           setProfile(nextProfile)
           setAnsweredCount(0)

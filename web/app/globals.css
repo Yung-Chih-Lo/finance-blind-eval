@@ -245,6 +245,63 @@
     width: 100%;
   }
 
+  .study-briefing {
+    gap: 20px;
+  }
+
+  .brief-section {
+    display: grid;
+    gap: 8px;
+  }
+
+  .brief-section h2 {
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .brief-facts {
+    border-bottom: 1px solid #dbe4ee;
+    border-top: 1px solid #dbe4ee;
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+  }
+
+  .brief-facts div {
+    border-right: 1px solid #dbe4ee;
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+  }
+
+  .brief-facts div:last-child {
+    border-right: 0;
+  }
+
+  .brief-facts dt {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 900;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .brief-facts dd {
+    color: #0f172a;
+    font-weight: 900;
+    line-height: 1.45;
+    margin: 0;
+  }
+
+  .brief-warning {
+    border-left: 3px solid #0f766e;
+    padding-left: 14px;
+  }
+
   .study-letter p {
     margin: 0;
     text-align: left;
@@ -399,10 +456,27 @@
   }
 
   .form-intro p,
-  .field-hint {
+  .field-hint,
+  .field-label {
     color: #475569;
     font-size: 0.94rem;
     line-height: 1.65;
+  }
+
+  .field-group {
+    display: grid;
+    gap: 10px;
+  }
+
+  .field-label {
+    color: #334155;
+    font-weight: 800;
+  }
+
+  .checkbox-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .form-actions {
@@ -1301,8 +1375,18 @@
   .facet-row,
   .rating-grid,
   .invite-grid,
-  .invite-form {
+  .invite-form,
+  .brief-facts {
     grid-template-columns: 1fr;
+  }
+
+  .brief-facts div {
+    border-bottom: 1px solid #dbe4ee;
+    border-right: 0;
+  }
+
+  .brief-facts div:last-child {
+    border-bottom: 0;
   }
 
   .provider-grid,
@@ -1386,7 +1470,8 @@
 
   .inline-control,
   .scale-row,
-  .flag-grid {
+  .flag-grid,
+  .checkbox-grid {
     grid-template-columns: 1fr;
   }
 

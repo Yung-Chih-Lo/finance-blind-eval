@@ -59,6 +59,7 @@ export function TokenEntry({
         <div className="start-heading">
           <p className="eyebrow">{config.study.eyebrow}</p>
           <h1>{config.study.title}</h1>
+          <p className="lede">{config.study.rootDescription}</p>
         </div>
 
         {initialInviteCode ? (
@@ -67,21 +68,48 @@ export function TokenEntry({
           </div>
         ) : null}
 
-        <div className="study-letter" aria-label="研究問卷說明">
-          <p>{config.study.intro.greeting}</p>
-          {config.study.intro.paragraphs.slice(0, 2).map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-          <ol>
-            {config.study.intro.tasks.map((task) => (
-              <li key={task}>{task}</li>
+        <div className="study-letter study-briefing" aria-label="研究問卷說明">
+          <section className="brief-section">
+            <h2>研究目的</h2>
+            <p>{config.study.intro.paragraphs[0]}</p>
+          </section>
+
+          <dl className="brief-facts" aria-label="問卷摘要">
+            <div>
+              <dt>時間</dt>
+              <dd>約 8-12 分鐘</dd>
+            </div>
+            <div>
+              <dt>題數</dt>
+              <dd>{config.limits.maxQuestionsPerParticipant} 題金融問題</dd>
+            </div>
+            <div>
+              <dt>比較方式</dt>
+              <dd>A / B / C 匿名盲測</dd>
+            </div>
+            <div>
+              <dt>資料用途</dt>
+              <dd>論文量化與質性分析</dd>
+            </div>
+          </dl>
+
+          <section className="brief-section">
+            <h2>你需要完成的事</h2>
+            <ol>
+              {config.study.intro.tasks.map((task) => (
+                <li key={task}>{task}</li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="brief-section brief-warning">
+            <h2>作答前請注意</h2>
+            {config.study.intro.paragraphs.slice(1).map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
             ))}
-          </ol>
-          {config.study.intro.paragraphs.slice(2).map((paragraph) => (
-            <p key={paragraph}>{paragraph}</p>
-          ))}
-          <div className="study-signature">
-            <p>{config.study.signature.closing}</p>
+          </section>
+
+          <section className="study-signature" aria-label="研究者資訊">
             <p>{config.study.signature.studentName}</p>
             <p>{config.study.signature.affiliation}</p>
             <p>{config.study.signature.advisor}</p>
@@ -89,7 +117,7 @@ export function TokenEntry({
               <strong>Thesis Title:</strong>{" "}
               {config.study.signature.thesisTitle}
             </p>
-          </div>
+          </section>
         </div>
 
         <form
