@@ -106,3 +106,16 @@
 - [x] 11.1 `openspec validate provider-api-base-url --strict` → valid
 - [x] 11.2 `openspec status --change provider-api-base-url` → 4/4 artifacts complete
 - [x] 11.3 `git status` shows only intended files (CLAUDE.md, tasks.md, web/README.md staged for this commit)
+
+## 12. Verify-driven fixes
+
+Triggered by `/opsxp-verify` round 1: multi-agent review found docs miss + UX/hardening gaps not in the original scope.
+
+- [x] 12.1 CRITICAL: `docs/USAGE.en.md` — env var, narrative, models-endpoint reference updated to base-URL semantics
+- [x] 12.2 CRITICAL: `docs/USAGE.zh-TW.md` — same three spots updated
+- [x] 12.3 WARNING: `admin-legacy-settings-banner.tsx` — dropped redundant English `message` prop; banner is now Chinese-only with issues list intact
+- [x] 12.4 WARNING: `router.refresh()` → `router.push("/admin?tab=provider")` after successful reset
+- [x] 12.5 WARNING: Inline comments added above `validateApiBaseUrlSemantics` and legacy-key array
+- [x] 12.6 SUGGESTION: `resolveChatCompletionsUrl` / `resolveModelsEndpoint` throw on empty `apiBaseUrl` (override still wins for models). RED proved via verify script; GREEN passes.
+- [x] 12.7 SUGGESTION: Verify script now asserts multi-slash collapse, empty-base throw, whitespace-only throw, override-with-empty-base
+- [x] 12.8 All gates green: typecheck, lint, verify:provider-url (10/10), next build (17 routes), `openspec validate --strict`

@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
 
 interface AdminLegacySettingsBannerProps {
-  message: string
   issues: string[]
 }
 
-export function AdminLegacySettingsBanner({ message, issues }: AdminLegacySettingsBannerProps) {
+export function AdminLegacySettingsBanner({ issues }: AdminLegacySettingsBannerProps) {
   const router = useRouter()
   const toast = useToast()
   const [isResetting, setIsResetting] = useState(false)
@@ -27,7 +26,7 @@ export function AdminLegacySettingsBanner({ message, issues }: AdminLegacySettin
         return
       }
       toast.success("Provider 設定已重置為環境變數預設值。")
-      router.refresh()
+      router.push("/admin?tab=provider")
     } catch {
       toast.error("Reset 失敗，請確認網路後重試。")
     } finally {
@@ -41,7 +40,9 @@ export function AdminLegacySettingsBanner({ message, issues }: AdminLegacySettin
       className="admin-tokens m-4 rounded-md border border-[var(--admin-warning,#c43)] bg-[var(--admin-warning-bg,#fff4f4)] p-5 text-[var(--admin-fg)]"
     >
       <h2 className="text-base font-semibold">偵測到舊版 provider 設定格式</h2>
-      <p className="mt-2 text-sm">{message}</p>
+      <p className="mt-2 text-sm">
+        系統偵測到先前儲存的 provider 設定使用了舊版 schema。請重新儲存設定，或按下方「重置為環境變數預設值」一鍵清除舊欄位。
+      </p>
       {issues.length > 0 ? (
         <ul className="mt-3 list-inside list-disc text-sm">
           {issues.map((issue) => (
@@ -49,9 +50,6 @@ export function AdminLegacySettingsBanner({ message, issues }: AdminLegacySettin
           ))}
         </ul>
       ) : null}
-      <p className="mt-3 text-sm">
-        請重新儲存設定，或按下方「重置為環境變數預設值」一鍵清除舊欄位。
-      </p>
       <div className="mt-4">
         <Button type="button" onClick={handleReset} disabled={isResetting}>
           {isResetting ? "重置中…" : "重置為環境變數預設值"}

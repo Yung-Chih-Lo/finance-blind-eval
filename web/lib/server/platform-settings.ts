@@ -313,6 +313,9 @@ function normalizeEnvelope(value: unknown): PlatformSettingsEnvelope {
   const updatedAt = isNonEmptyString(maybeEnvelope.updatedAt) ? maybeEnvelope.updatedAt : new Date().toISOString()
   const updatedBy = isNonEmptyString(maybeEnvelope.updatedBy) ? maybeEnvelope.updatedBy : "admin"
   if (isObject(maybeEnvelope.provider)) {
+    // Legacy schema sentinel: pre-`apiBaseUrl` deployments persisted these keys. Detect
+    // them BEFORE normalization (which would silently drop unknown keys) so the admin
+    // sees a banner instead of running with stale data.
     const rawProvider = maybeEnvelope.provider as Record<string, unknown>
     const legacyKeys = ["chatCompletionsEndpoint", "modelsEndpoint"].filter((key) =>
       Object.prototype.hasOwnProperty.call(rawProvider, key),

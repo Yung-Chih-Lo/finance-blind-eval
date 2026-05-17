@@ -77,4 +77,37 @@ assert.equal(badQuery.ok, false, "reject base with query string")
 const badFragment = validateProviderSettings(baseSettings({ apiBaseUrl: "https://x/v1#frag" }))
 assert.equal(badFragment.ok, false, "reject base with fragment")
 
+const multiSlash = baseSettings({ apiBaseUrl: "https://x/v1///" })
+assert.equal(
+  resolveChatCompletionsUrl(multiSlash),
+  "https://x/v1/chat/completions",
+  "chat URL collapses multiple trailing slashes",
+)
+assert.equal(
+  resolveModelsEndpoint(multiSlash),
+  "https://x/v1/models",
+  "models URL collapses multiple trailing slashes",
+)
+
+assert.throws(
+  () => resolveChatCompletionsUrl(baseSettings({ apiBaseUrl: "" })),
+  /apiBaseUrl/,
+  "resolveChatCompletionsUrl throws on empty base",
+)
+assert.throws(
+  () => resolveChatCompletionsUrl(baseSettings({ apiBaseUrl: "   " })),
+  /apiBaseUrl/,
+  "resolveChatCompletionsUrl throws on whitespace-only base",
+)
+assert.throws(
+  () => resolveModelsEndpoint(baseSettings({ apiBaseUrl: "" })),
+  /apiBaseUrl/,
+  "resolveModelsEndpoint throws on empty base without override",
+)
+assert.equal(
+  resolveModelsEndpoint(baseSettings({ apiBaseUrl: "", modelsEndpointOverride: "https://other/m" })),
+  "https://other/m",
+  "resolveModelsEndpoint returns override even when base is empty",
+)
+
 console.log("verify-provider-url-resolution: all assertions passed")

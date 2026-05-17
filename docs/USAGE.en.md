@@ -19,11 +19,12 @@ This guide covers setup, the participant flow, the admin research console, and t
 All env vars are **server-only**. They live in `web/.env.local`. There must be **no `NEXT_PUBLIC_*` keys for secrets** — those leak to the browser bundle.
 
 ```bash
-# LLM gateway
-OPENAI_COMPAT_API_ENDPOINT=http://127.0.0.1:8080/v1/chat/completions
+# LLM gateway — paste the base URL only (do NOT include /chat/completions).
+# The server derives `${base}/chat/completions` and `${base}/models` from this.
+OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1
 OPENAI_COMPAT_API_KEY=sk-...                # optional if your gateway is open
 OPENAI_COMPAT_API_KEY_ENV=OPENAI_COMPAT_API_KEY
-OPENAI_COMPAT_MODELS_ENDPOINT=              # optional override; defaults to <chat endpoint>/../models
+OPENAI_COMPAT_MODELS_ENDPOINT=              # optional override; defaults to ${OPENAI_COMPAT_API_BASE_URL}/models
 OPENAI_COMPAT_TEMPERATURE=0.2
 OPENAI_COMPAT_MAX_TOKENS=1200
 
@@ -146,13 +147,13 @@ The sidebar can be collapsed (top-left toggle). Content scrolls independently of
      "max_tokens": 1200
    }
    ```
-4. Issues a `POST` to `OPENAI_COMPAT_API_ENDPOINT` with header `Authorization: Bearer ${process.env[OPENAI_COMPAT_API_KEY_ENV]}` (the admin UI only stores the **name** of the env var, never the raw key)
+4. Issues a `POST` to `${OPENAI_COMPAT_API_BASE_URL}/chat/completions` with header `Authorization: Bearer ${process.env[OPENAI_COMPAT_API_KEY_ENV]}` (the admin UI only stores the **name** of the env var, never the raw key)
 5. Awaits the three responses, measures latency, randomizes the A/B/C label order
 6. Returns to the browser **only** `{ A: "...", B: "...", C: "..." }` plus a pending-question ID. The mapping table stays on the server.
 
 ### Models discovery
 
-The admin "Provider 設定" tab calls **`GET /api/admin/provider/models`** which proxies a server-side request to `OPENAI_COMPAT_MODELS_ENDPOINT` (defaults to `<chat endpoint base>/v1/models`). The response is the gateway's raw `data: [{ id: "..." }]` array, surfaced as a select control so the admin can pin which three model IDs map to the H1 / H2 / TAIDE slots.
+The admin "Provider 設定" tab calls **`GET /api/admin/provider/models`** which proxies a server-side request to `OPENAI_COMPAT_MODELS_ENDPOINT` (defaults to `${OPENAI_COMPAT_API_BASE_URL}/models`). The response is the gateway's raw `data: [{ id: "..." }]` array, surfaced as a select control so the admin can pin which three model IDs map to the H1 / H2 / TAIDE slots.
 
 ### Provider test (dry run)
 

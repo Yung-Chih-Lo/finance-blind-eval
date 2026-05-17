@@ -19,11 +19,12 @@
 所有 env vars 都是 **server-only**，放在 `web/.env.local`。**絕對不要** 加 `NEXT_PUBLIC_*` 前綴的秘密 — 那會洩漏到瀏覽器 bundle。
 
 ```bash
-# LLM gateway
-OPENAI_COMPAT_API_ENDPOINT=http://127.0.0.1:8080/v1/chat/completions
+# LLM gateway — 只填 base URL（不要包含 /chat/completions）。
+# 後端會自動 derive `${base}/chat/completions` 與 `${base}/models`。
+OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1
 OPENAI_COMPAT_API_KEY=sk-...                # 如果 gateway 開放可以不填
 OPENAI_COMPAT_API_KEY_ENV=OPENAI_COMPAT_API_KEY
-OPENAI_COMPAT_MODELS_ENDPOINT=              # 選填；預設 <chat endpoint>/../models
+OPENAI_COMPAT_MODELS_ENDPOINT=              # 選填；預設 ${OPENAI_COMPAT_API_BASE_URL}/models
 OPENAI_COMPAT_TEMPERATURE=0.2
 OPENAI_COMPAT_MAX_TOKENS=1200
 
@@ -146,13 +147,13 @@ Sidebar 可收（左上 toggle）。Content 區獨立滾動、header 固定。
      "max_tokens": 1200
    }
    ```
-4. `POST` 到 `OPENAI_COMPAT_API_ENDPOINT`，header `Authorization: Bearer ${process.env[OPENAI_COMPAT_API_KEY_ENV]}`（後台 UI 只存 env var **名稱**，永遠不存明文 key）
+4. `POST` 到 `${OPENAI_COMPAT_API_BASE_URL}/chat/completions`，header `Authorization: Bearer ${process.env[OPENAI_COMPAT_API_KEY_ENV]}`（後台 UI 只存 env var **名稱**，永遠不存明文 key）
 5. 等三個回應、量延遲、隨機打亂 A/B/C 標籤順序
 6. **只** 回 `{ A: "...", B: "...", C: "..." }` + 一個 pending-question ID 給瀏覽器。對應表留在 server
 
 ### 模型探索
 
-後台「Provider 設定」tab 呼叫 **`GET /api/admin/provider/models`**，server 端代理一個請求到 `OPENAI_COMPAT_MODELS_ENDPOINT`（預設 `<chat endpoint base>/v1/models`）。回應是 gateway 的 `data: [{ id: "..." }]`，做成下拉選單讓後台把三個 model ID pin 到 H1 / H2 / TAIDE 三個 slot。
+後台「Provider 設定」tab 呼叫 **`GET /api/admin/provider/models`**，server 端代理一個請求到 `OPENAI_COMPAT_MODELS_ENDPOINT`（預設 `${OPENAI_COMPAT_API_BASE_URL}/models`）。回應是 gateway 的 `data: [{ id: "..." }]`，做成下拉選單讓後台把三個 model ID pin 到 H1 / H2 / TAIDE 三個 slot。
 
 ### Provider 試打（不寫資料庫）
 

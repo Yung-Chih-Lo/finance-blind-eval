@@ -182,7 +182,11 @@ function stripTrailingSlash(value: string): string {
 }
 
 export function resolveChatCompletionsUrl(settings: Pick<ProviderSettings, "apiBaseUrl">): string {
-  return `${stripTrailingSlash(settings.apiBaseUrl.trim())}/chat/completions`
+  const base = stripTrailingSlash(settings.apiBaseUrl.trim())
+  if (!base) {
+    throw new Error("Cannot resolve chat completions URL: apiBaseUrl is empty.")
+  }
+  return `${base}/chat/completions`
 }
 
 export function resolveModelsEndpoint(
@@ -192,9 +196,17 @@ export function resolveModelsEndpoint(
   if (override) {
     return override
   }
-  return `${stripTrailingSlash(settings.apiBaseUrl.trim())}/models`
+  const base = stripTrailingSlash(settings.apiBaseUrl.trim())
+  if (!base) {
+    throw new Error("Cannot resolve models endpoint: apiBaseUrl is empty and no modelsEndpointOverride is set.")
+  }
+  return `${base}/models`
 }
 
+// `apiBaseUrl` follows the OpenAI SDK base-URL convention (paste `…/v1`; server appends
+// `/chat/completions` and `/models`). Reject suffixes that suggest the admin pasted a full
+// chat URL by mistake — every OpenAI-compatible client we target derives the chat path from
+// the base, so a base ending with `/chat/completions` or the legacy `/completions` is wrong.
 function validateApiBaseUrlSemantics(value: string, issues: string[]) {
   const trimmed = value.trim()
   if (!trimmed) {

@@ -61,7 +61,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     if (error instanceof PlatformSettingsError && error.message.startsWith("Legacy provider schema")) {
       return (
         <main className="admin-shell admin-tokens">
-          <AdminLegacySettingsBanner message={error.message} issues={error.issues} />
+          <AdminLegacySettingsBanner issues={error.issues} />
         </main>
       )
     }
