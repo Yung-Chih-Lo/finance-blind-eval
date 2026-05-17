@@ -31,7 +31,7 @@
 - [x] 2.3 GREEN: Added Gender, EducationLevel, FinanceBackgroundType type unions to `types.ts`.
 - [x] 2.4 GREEN: Removed `under_20` from AgeRange union.
 - [x] 2.5 GREEN: Updated ParticipantProfile (gender/educationLevel/financeBackgroundType/hasUsedAiForFinance added; isBusinessOrFinance/hasTakenFinanceCourse/financeLlmUsage/fieldOrWorkDomain removed; gradeOrOccupation made optional). Added ParticipantProfileDraft type. Also reduced FinanceSubdomain literal union (rolled in from task 3.6 since both touch same file).
-- [ ] 2.6 Verify GREEN: deferred until Rounds 2-5 land — cascade errors at consumer sites are expected until profile.ts / storage / form / admin / drawer / session-route / verify-reset-pending are updated.
+- [x] 2.6 Verify GREEN: `npm run typecheck` PASSES at Round 11 final sweep — all cascade sites updated.
 
 ## 3. Profile options & validation (RED → GREEN)
 
@@ -43,7 +43,7 @@
 - [x] 3.6 GREEN: Reduced `FINANCE_SUBDOMAIN_OPTIONS` to 7 entries; relabelled `not_sure` to `都不熟悉 / 沒接觸過`. Type literal already updated in 2.5.
 - [x] 3.7 GREEN: `createParticipantProfileDraft` returns `ParticipantProfileDraft`; seeds `hasUsedAiForFinance: null`, gender/education/background as `prefer_not_to_say`.
 - [x] 3.8 GREEN: `validateParticipantProfile` accepts draft, rejects null/undefined `hasUsedAiForFinance` with explicit `"請選擇是否曾用 AI 處理金融問題"` issue; `isCompleteParticipantProfile` narrows draft → ParticipantProfile.
-- [ ] 3.9 Verify GREEN: deferred — cascade still pending at profile-form/admin/drawer/storage.
+- [x] 3.9 Verify GREEN at Round 11 final sweep.
 
 ## 4. Legacy profile read path (RED → GREEN)
 
@@ -62,7 +62,7 @@
 - [x] 5.3 GREEN: `getParticipantStatus` / `getParticipantStatuses` / `getAdminSnapshot` now call `migrateParticipantStatus` which routes through `migrateLegacyProfile`. The underlying JSON file is not mutated — only the in-memory view is migrated.
 - [x] 5.4 GREEN: `session/route.ts` validates via `validateParticipantProfile`, projects to new shape via `buildPersistedProfile` (silently drops any legacy keys client might send), and calls `clearPendingQuestionsForParticipant` only when `isLegacyShape(existing.profile)` is true (legacy → new transition).
 - [x] 5.5 Verify GREEN: `npm run verify:profile` PASS (storage read test green).
-- [ ] 5.6 Pending: typecheck snapshot taken — remaining errors at session/route, profile-form, admin/page, record-drawer (each handled in its dedicated round).
+- [x] 5.6 GREEN at Round 11 final sweep — all consumer-site cascade errors fixed.
 - [x] 5.7 Covered in `testClearPendingOnLegacyResubmit`.
 - [x] 5.8 Verify RED: prior run failed on missing `clearPendingQuestionsForParticipant` export.
 - [x] 5.9 GREEN: Added `clearPendingQuestionsForParticipant(token)` to evaluation-storage.ts (mutex-protected, no-op if no entries match). Session-route call-site wiring still pending in 5.4.
@@ -77,7 +77,7 @@
 - [x] 6.5 Added `金融背景類型` select.
 - [x] 6.6 Two-radio group for `hasUsedAiForFinance` — neither preselected, validation via `validateParticipantProfile` returns "請選擇是否曾用 AI 處理金融問題" when value is null.
 - [x] 6.7 Local state is `ParticipantProfileDraft`; submit projects `hasUsedAiForFinance: draft.hasUsedAiForFinance === true` after validation.
-- [ ] 6.8 Verify deferred to Round 11 final sweep (typecheck still cascade-fails at admin/page + record-drawer).
+- [x] 6.8 Verify GREEN at Round 11 — typecheck + lint both clean.
 - [ ] 6.9 Manual smoke deferred to Round 11 final sweep.
 
 ## 7. Study briefing copy
@@ -87,19 +87,19 @@
 
 ## 8. Admin participant table
 
-- [ ] 8.1 In `web/app/admin/page.tsx` (or the participant-table component it imports), remove the `field/work domain` column and the legacy `finance-task LLM usage` column.
-- [ ] 8.2 Add columns for `gender` (rendered via `formatProfileChoice(GENDER_OPTIONS, ...)`), `educationLevel`, `financeBackgroundType` (rendered as the Chinese label).
-- [ ] 8.3 Render `hasUsedAiForFinance` as `Y` / `N` (or `是` / `否`).
+- [x] 8.1 Removed `領域` / `背景` (isBusinessOrFinance) / `金融 AI 使用` (5-level) columns from participant table.
+- [x] 8.2 Added `性別` / `學歷` / `金融背景` columns rendered with `formatProfileChoice`.
+- [x] 8.3 `曾用 AI 處理金融` column renders `Y` / `N` / `-` (for legacy null).
 - [x] 8.4 GREEN: `getAdminSnapshot` now derives 4 mutually-exclusive counts (`financeBackgroundCount` / `nonFinanceBackgroundCount` / `refusalBackgroundCount` / `unknownBackgroundCount`) from `financeBackgroundType`. `AdminSnapshot` type extended in `types.ts`. UI rendering still pending in 8.x.
-- [ ] 8.5 For any participant row whose stored profile lacks the new fields (legacy snapshot), render `-` in the new columns; do NOT crash.
-- [ ] 8.6 Verify: `cd web && npm run typecheck && npm run lint` → PASS.
-- [ ] 8.7 Manual smoke: open `/admin?token=<token>`, switch to `受測者` tab, confirm new columns appear, legacy records render `-` for new columns, KPI bar reports the new breakdown. Document outcome.
+- [x] 8.5 `formatProfileChoice` returns `-` when value is undefined; `hasUsedAiForFinance` rendered as `-` for non-boolean values; legacy rows render gracefully.
+- [x] 8.6 Verify GREEN at Round 11.
+- [ ] 8.7 Manual smoke deferred to Round 11.
 
 ## 9. Admin record drawer
 
-- [ ] 9.1 In `web/components/admin/record-drawer.tsx`, replace the legacy field references with the new fields (gender, education level, finance background type label, `hasUsedAiForFinance` Y/N).
-- [ ] 9.2 For legacy snapshots that still carry `fieldOrWorkDomain` / `isBusinessOrFinance` / `hasTakenFinanceCourse` / `financeLlmUsage`, render those values inside a collapsed `legacy` section labelled `舊版欄位`; do not show them under the active profile section.
-- [ ] 9.3 Verify: open `/admin` record list, click a row, confirm new fields render and legacy section appears only for legacy records. Document outcome.
+- [x] 9.1 GREEN: Drawer now renders gender / age / education / financeBackgroundType / gradeOrOccupation / financeWorkExperience / investmentExperience / hasUsedAiForFinance (Y/N/—) / subdomains.
+- [x] 9.2 GREEN: Added `舊版欄位 (legacy)` section that renders only when `extractLegacyProfileSnapshot(record.participantProfile)` returns a non-empty snapshot; each visible legacy field has a `legacy.` prefix in its `<dt>`.
+- [ ] 9.3 Manual smoke deferred to Round 11.
 
 ## 10. CSV / JSON export
 
@@ -113,14 +113,10 @@
 
 ## 11. Final sweep
 
-- [ ] 11.1 Run `cd web && npm run typecheck` → PASS with zero errors.
-- [ ] 11.2 Run `cd web && npm run lint` → PASS with zero errors.
-- [ ] 11.3 Run `cd web && npm run verify:profile` → prints `OK`.
-- [ ] 11.4 Grep `web/` for `fieldOrWorkDomain|isBusinessOrFinance|hasTakenFinanceCourse|financeLlmUsage` (excluding `.next`, `node_modules`, archive specs). Expect references only inside `migrateLegacyProfile`, the CSV `legacy_*` column emitter, the JSON `legacyProfile` block emitter, the record-drawer legacy section, and any other explicit legacy-handling code path; remove any stragglers.
-- [ ] 11.5 Run `cd web && npm run build` → PASS (catches dynamic route / metadata issues).
-- [ ] 11.6 Manual end-to-end smoke (browser, on `npm run dev`):
-  - Redeem invite as a fresh participant; fill new profile form with mixed selections; submit; ensure question 1 appears.
-  - Refresh mid-questionnaire; ensure prefilled profile is preserved.
-  - Simulate a legacy session by manually editing `.data/evaluation-store.json` to add a participant entry with `fieldOrWorkDomain: "資管系", isBusinessOrFinance: "yes"`, no new fields. Visit `/eval` with that session cookie; confirm the form re-prompts with compatible fields prefilled.
-  - Open `/admin` as admin; confirm participant table, drawer, and CSV export all behave per spec.
-- [ ] 11.7 Confirm the legacy `.data/evaluation-store.json` simulation is reverted before commit.
+- [x] 11.1 `npm run typecheck` → PASS, zero errors.
+- [x] 11.2 `npm run lint` → PASS, zero errors.
+- [x] 11.3 `npm run verify:profile` → prints `OK` (all four runtime sections).
+- [x] 11.4 Grep audit: 40 occurrences total, all in expected legacy-handling paths (LEGACY_FIELDS definition + migrate + extract in profile.ts; legacy_* CSV columns in storage; legacy section in record-drawer; test fixtures in verify-profile-validation + profile-typecheck; comment in session/route). No stragglers.
+- [x] 11.5 `npm run build` → PASS (17 static pages generated, no route/metadata errors).
+- [ ] 11.6 Manual end-to-end smoke remains — recommended to run before `/opsxp-archive`. Automated coverage already validates: validate-rejects-null hasUsedAi, legacy migrate-on-read, clearPendingQuestionsForParticipant, legacy_* CSV emission paths (via verify-profile-validation). The remaining smoke is purely UI-visual confirmation.
+- [ ] 11.7 No legacy `.data/evaluation-store.json` simulation was created during apply — verify scripts use OS tmp dirs.
