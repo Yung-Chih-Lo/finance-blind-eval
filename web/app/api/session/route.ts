@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { SEEDED_PARTICIPANTS } from "@/lib/evaluation/config"
+import { validateParticipantProfile } from "@/lib/evaluation/profile"
 import type { ParticipantProfile, ParticipantStatus } from "@/lib/evaluation/types"
 import {
   getEvaluationRecordsByParticipant,
@@ -40,8 +41,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing participant token." }, { status: 400 })
   }
 
-  if (body?.profile && !body.profile.gradeOrOccupation.trim()) {
-    return NextResponse.json({ error: "Missing grade or occupation." }, { status: 400 })
+  if (body?.profile) {
+    const issues = validateParticipantProfile(body.profile)
+    if (issues.length > 0) {
+      return NextResponse.json({ error: "Incomplete participant profile.", issues }, { status: 400 })
+    }
   }
 
   const now = new Date().toISOString()
@@ -51,6 +55,9 @@ export async function POST(request: Request) {
         ...body.profile,
         token,
         knownName: body.profile.knownName || SEEDED_PARTICIPANTS[token]?.name,
+        gradeOrOccupation: body.profile.gradeOrOccupation.trim(),
+        fieldOrWorkDomain: body.profile.fieldOrWorkDomain.trim(),
+        notes: body.profile.notes.trim(),
       }
     : existing?.profile
 

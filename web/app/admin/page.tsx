@@ -20,6 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  AGE_RANGE_OPTIONS,
+  FINANCE_LLM_USAGE_OPTIONS,
+  formatProfileChoice,
+} from "@/lib/evaluation/profile"
 import type { ModelComparisonCounts } from "@/lib/evaluation/types"
 import { getAdminSnapshot } from "@/lib/server/evaluation-storage"
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
@@ -119,8 +124,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <TableRow>
               <TableHead>Token</TableHead>
               <TableHead>背景</TableHead>
+              <TableHead>年齡</TableHead>
+              <TableHead>領域</TableHead>
               <TableHead className="text-right">金融熟悉度</TableHead>
-              <TableHead>LLM 經驗</TableHead>
+              <TableHead>金融 AI 使用</TableHead>
               <TableHead>狀態</TableHead>
               <TableHead className="text-right">完成題數</TableHead>
             </TableRow>
@@ -128,7 +135,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <TableBody>
             {snapshot.participants.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-[var(--admin-muted)]">
+                <TableCell colSpan={8} className="text-center text-[var(--admin-muted)]">
                   尚無受測者紀錄。
                 </TableCell>
               </TableRow>
@@ -139,8 +146,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <TableRow key={participant.token}>
                     <TableCell className="font-mono text-xs">{participant.token}</TableCell>
                     <TableCell>{participant.profile?.isBusinessOrFinance ?? "-"}</TableCell>
+                    <TableCell>{formatProfileChoice(AGE_RANGE_OPTIONS, participant.profile?.ageRange)}</TableCell>
+                    <TableCell>{participant.profile?.fieldOrWorkDomain ?? "-"}</TableCell>
                     <TableCell className="text-right tabular-nums">{participant.profile?.financeFamiliarity ?? "-"}</TableCell>
-                    <TableCell>{participant.profile?.llmExperience ?? "-"}</TableCell>
+                    <TableCell>{formatProfileChoice(FINANCE_LLM_USAGE_OPTIONS, participant.profile?.financeLlmUsage)}</TableCell>
                     <TableCell>{participant.completionStatus}</TableCell>
                     <TableCell className="text-right tabular-nums">
                       {answered} / {config.limits.maxQuestionsPerParticipant}

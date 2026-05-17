@@ -9,6 +9,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  AGE_RANGE_OPTIONS,
+  FINANCE_LLM_USAGE_OPTIONS,
+  FINANCE_SUBDOMAIN_OPTIONS,
+  FINANCE_WORK_EXPERIENCE_OPTIONS,
+  INVESTMENT_EXPERIENCE_OPTIONS,
+  formatProfileChoice,
+} from "@/lib/evaluation/profile"
 
 interface RecordDrawerProps {
   record: EvaluationRecord | null
@@ -46,6 +54,39 @@ export function RecordDrawer({ record, config, onClose }: RecordDrawerProps) {
             </SheetHeader>
 
             <div className="mt-4 space-y-4">
+              <Section title="Participant profile">
+                <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Age</dt>
+                    <dd>{formatProfileChoice(AGE_RANGE_OPTIONS, record.participantProfile.ageRange)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Domain</dt>
+                    <dd>{record.participantProfile.fieldOrWorkDomain || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Finance work</dt>
+                    <dd>{formatProfileChoice(FINANCE_WORK_EXPERIENCE_OPTIONS, record.participantProfile.financeWorkExperience)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Investment</dt>
+                    <dd>{formatProfileChoice(INVESTMENT_EXPERIENCE_OPTIONS, record.participantProfile.investmentExperience)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Finance AI usage</dt>
+                    <dd>{formatProfileChoice(FINANCE_LLM_USAGE_OPTIONS, record.participantProfile.financeLlmUsage)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--admin-muted)]">Subdomains</dt>
+                    <dd>
+                      {(record.participantProfile.financeSubdomains ?? [])
+                        .map((item) => formatProfileChoice(FINANCE_SUBDOMAIN_OPTIONS, item))
+                        .join(", ") || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </Section>
+
               <Section title="User question">
                 <p className="whitespace-pre-wrap leading-relaxed">{record.userQuestion}</p>
               </Section>

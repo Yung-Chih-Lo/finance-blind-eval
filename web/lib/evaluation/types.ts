@@ -115,14 +115,35 @@ export interface PlatformSettingsValidationResult {
   issues: string[]
 }
 
+export type AgeRange = "under_20" | "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
+export type FinanceWorkExperience = "none" | "course_project" | "internship" | "professional" | "prefer_not_to_say"
+export type InvestmentExperience = "none" | "basic" | "regular" | "advanced" | "prefer_not_to_say"
+export type FinanceLlmUsage = "never" | "tried" | "monthly" | "weekly" | "daily"
+export type FinanceSubdomain =
+  | "accounting"
+  | "stocks"
+  | "funds_etf"
+  | "bonds_rates"
+  | "macro_fx"
+  | "derivatives"
+  | "personal_finance"
+  | "risk_management"
+  | "not_sure"
+
 export interface ParticipantProfile {
   token: string
   knownName?: string
+  ageRange: AgeRange
+  fieldOrWorkDomain: string
   isBusinessOrFinance: "yes" | "no" | "unsure"
   gradeOrOccupation: string
   hasTakenFinanceCourse: "yes" | "no" | "in_progress"
+  financeWorkExperience: FinanceWorkExperience
+  investmentExperience: InvestmentExperience
   financeFamiliarity: number
   llmExperience: "none" | "rare" | "monthly" | "weekly" | "daily"
+  financeLlmUsage: FinanceLlmUsage
+  financeSubdomains: FinanceSubdomain[]
   notes: string
 }
 
