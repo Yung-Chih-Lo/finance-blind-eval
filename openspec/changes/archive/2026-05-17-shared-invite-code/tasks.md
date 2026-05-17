@@ -40,7 +40,7 @@
 - [x] 2.2 In the same route, before validating code, read `eval_completed` cookie via `cookies()`; return 403 `{ error: "本裝置已完成測驗。" }` when present
 - [x] 2.3 Compare submitted `inviteCode.trim()` (case-insensitive) against `SHARED_INVITE_CODE`; on mismatch return 403 `{ error: "邀請碼不正確。" }`
 - [x] 2.4 On match, generate `P-XXXXXXXX` token + session as before (extract participant/session creation into a small helper inside `evaluation-storage.ts` or keep inline)
-- [x] 2.5 Keep existing IP rate-limit `checkRateLimit("invite:ip:<ip>")` ahead of cookie check
+- [x] 2.5 Place IP rate-limit `checkRateLimit("invite:ip:<ip>")` AFTER the `eval_completed` cookie check so a completed user spamming the endpoint cannot consume the per-IP bucket allotted to genuine participants on the same NAT (revised during verify; original ordering was the opposite)
 - [ ] 2.6 Verify manually: `curl -X POST localhost:3000/api/session/redeem-invite -H 'Content-Type: application/json' -d '{"inviteCode":"ailab502"}'` returns 200 with participant; same call with bad code returns 403; same call with `eval_completed=1` cookie returns 403
 
 ## 3. Completion cookie issuance

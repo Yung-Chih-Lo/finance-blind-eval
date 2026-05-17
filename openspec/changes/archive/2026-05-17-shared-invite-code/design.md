@@ -42,7 +42,7 @@
 
 ### D2: 邀請碼比對採直接字串比較 + IP rate limit
 
-**選擇**: 不 hash、不 normalize 大小寫以外的內容，做 `code.trim() === envCode.trim()` 比對。
+**選擇**: 不 hash；大小寫不敏感且去除所有 Unicode whitespace + format 字元（`[\s\p{Cf}]+`），即兩側 normalize 後做 `===` 比較。最終實作為 `lib/server/shared-invite.ts` 的 `matchesSharedInviteCode()`。
 
 **理由**:
 - 碼是公開分發（印在 QR 旁邊），不是 secret，不需要 hash

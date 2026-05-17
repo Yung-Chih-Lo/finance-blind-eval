@@ -63,8 +63,11 @@ export async function POST(request: Request) {
     setSessionCookie(response, sessionToken)
     return response
   } catch (error) {
+    // Log raw error server-side; respond generically so internal failure modes
+    // (token allocation, file-write errors) aren't leaked to clients.
+    console.error("redeem-invite: failed to create participant session", error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "無法建立測驗 session，請稍後再試。" },
+      { error: "無法建立測驗 session，請稍後再試。" },
       { status: 500 },
     )
   }

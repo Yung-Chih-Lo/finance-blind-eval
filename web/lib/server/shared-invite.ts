@@ -13,11 +13,16 @@ export function getSharedInviteCode(): string | null {
 /**
  * Whether `submitted` matches the configured shared invite code.
  *
- * Comparison is case-insensitive and strips ALL Unicode whitespace (including
- * NBSP / ZWSP / BOM) so participants pasting the code from styled documents
- * or chat apps don't get silently rejected. Case-folding is safe because the
- * code is public (printed beside the QR) and the input field already
- * up-cases on every keystroke — server-side fold is defense-in-depth.
+ * Normalization strips two character classes:
+ *   - `\s` — whitespace (space, NBSP U+00A0, ideographic space U+3000, ...)
+ *   - `\p{Cf}` — format chars (ZERO WIDTH SPACE U+200B, BOM U+FEFF, RTL marks, ...)
+ * ECMAScript's `\s` does NOT include U+200B / U+FEFF because they're in
+ * category Cf, not Zs — so both classes are needed to handle text pasted
+ * from styled docs, chat apps, or IME-injected zero-widths.
+ *
+ * Comparison is case-insensitive. Case-folding is safe because the code is
+ * public (printed beside the QR) and the input field already up-cases on
+ * every keystroke — server-side fold is defense-in-depth.
  *
  * Returns false (not throws) when the env var is unset: the redeem route is
  * responsible for the 503 path before calling here.
@@ -27,6 +32,6 @@ export function matchesSharedInviteCode(submitted: string): boolean {
   if (!expected) {
     return false
   }
-  const normalize = (value: string) => value.replace(/\s+/gu, "").toUpperCase()
+  const normalize = (value: string) => value.replace(/[\s\p{Cf}]+/gu, "").toUpperCase()
   return normalize(submitted) === normalize(expected)
 }
