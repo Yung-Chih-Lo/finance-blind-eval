@@ -50,6 +50,6 @@
 
 ## 5. Self-review before archive
 
-- [ ] 5.1 Re-read `proposal.md`, `design.md`, `specs/blind-evaluation-app/spec.md`, `tasks.md` — confirm each spec scenario maps to at least one task.
-- [ ] 5.2 Grep `web/` for residual `"This question is already pending judgment."` matches — only the POST 409 path should reference it; reset should no longer trigger it under normal flow.
-- [ ] 5.3 Run `openspec validate fix-reset-pending-question --strict` (or fallback to `openspec validate fix-reset-pending-question`) — confirm change is valid.
+- [x] 5.1 Re-read `proposal.md`, `design.md`, `specs/blind-evaluation-app/spec.md`, `tasks.md` — confirm each spec scenario maps to at least one task. Mapping: reset-success scenario → 1.3 + 2.1–2.5 + 3.1–3.5; reset-failure scenario → 3.3; owner-delete scenario → 1.3 + 2.4; delete-without-session → 2.2; cross-participant-delete → 1.3 + 2.4; unknown-id-delete (idempotent 204) → 1.3 + 2.4.
+- [x] 5.2 Grep `web/` for residual `"This question is already pending judgment."` matches — only the POST 409 path (`web/app/api/evaluation/answers/route.ts:98`) references it. Reset path no longer triggers this string.
+- [x] 5.3 Run `openspec validate fix-reset-pending-question --strict` — output: `Change 'fix-reset-pending-question' is valid`.
