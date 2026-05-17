@@ -18,6 +18,7 @@
   },
   "include": [
     "verify-study-copy.ts",
+    "verify-provider-url-resolution.ts",
     "../lib/evaluation/types.ts",
     "../lib/evaluation/config.ts",
     "../lib/evaluation/study-copy-form.ts",

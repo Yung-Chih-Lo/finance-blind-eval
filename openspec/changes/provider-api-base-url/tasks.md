@@ -18,18 +18,18 @@
 
 ## 2. Test scaffolding (RED-equivalent)
 
-- [ ] 2.1 Open `web/tests/provider-settings-typecheck.ts` and update fixture: replace `chatCompletionsEndpoint: "http://127.0.0.1:8080/v1/chat/completions"` with `apiBaseUrl: "http://127.0.0.1:8080/v1"` and `modelsEndpoint: ""` with `modelsEndpointOverride: ""`
-- [ ] 2.2 Append new compile-time checks importing yet-to-exist `resolveChatCompletionsUrl` and `resolveModelsEndpoint` from `@/lib/server/provider-settings`, calling them with the fixture, satisfying `string`
-- [ ] 2.3 Run `npm run typecheck` and verify it FAILS with module-export errors (RED: types/exports do not exist yet)
-- [ ] 2.4 Create `web/scripts/verify-provider-url-resolution.mjs` with assertions for these cases (use `node:assert/strict`):
+- [x] 2.1 Open `web/tests/provider-settings-typecheck.ts` and update fixture: replace `chatCompletionsEndpoint: "http://127.0.0.1:8080/v1/chat/completions"` with `apiBaseUrl: "http://127.0.0.1:8080/v1"` and `modelsEndpoint: ""` with `modelsEndpointOverride: ""`
+- [x] 2.2 Append new compile-time checks importing yet-to-exist `resolveChatCompletionsUrl` and `resolveModelsEndpoint` from `@/lib/server/provider-settings`, calling them with the fixture, satisfying `string`
+- [x] 2.3 Run `npm run typecheck` and verify it FAILS with module-export errors (RED: types/exports do not exist yet)
+- [x] 2.4 Create `web/scripts/verify-provider-url-resolution.ts` with assertions for these cases (use `node:assert/strict`):
   - base `https://x/v1` → chat `https://x/v1/chat/completions`, models `https://x/v1/models`
   - base `https://x/v1/` (trailing slash) → chat `https://x/v1/chat/completions`, models `https://x/v1/models`
   - base `https://x/v1` + override `https://other/m` → chat `https://x/v1/chat/completions`, models `https://other/m`
   - validate rejects base ending `/chat/completions`
   - validate rejects base containing `?foo=1`
   - validate rejects base containing `#frag`
-- [ ] 2.5 Run `node web/scripts/verify-provider-url-resolution.mjs` and verify it FAILS at import (RED: target functions absent)
-- [ ] 2.6 Add an `npm` script entry in `web/package.json` named `verify:provider-url` mapped to `node scripts/verify-provider-url-resolution.mjs`
+- [x] 2.5 Run `npm run verify:provider-url` and verify it FAILS at compile (RED: target functions absent). Followed existing `scripts/verify-tsconfig.json` + loader pattern instead of plain `.mjs`.
+- [x] 2.6 Add an `npm` script entry in `web/package.json` named `verify:provider-url` mapped to `tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-provider-url-resolution.js`
 
 ## 3. Type rename (compile-driven sweep)
 
