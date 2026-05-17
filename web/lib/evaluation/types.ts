@@ -289,8 +289,13 @@ export interface AdminSnapshot {
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
+  // Four mutually-exclusive buckets derived from financeBackgroundType (see spec
+  // scenario "KPI bar reports finance-background breakdown"). Legacy records that
+  // lack financeBackgroundType count under unknownBackgroundCount.
   financeBackgroundCount: number
   nonFinanceBackgroundCount: number
+  refusalBackgroundCount: number
+  unknownBackgroundCount: number
   funnelStages: AdminFunnelStages
   attentionItems: AdminAttentionItems
 }

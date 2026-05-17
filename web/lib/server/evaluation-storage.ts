@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
 import { EVALUATION_FACETS, MODEL_IDS, WORST_ANSWER_FLAGS } from "@/lib/evaluation/config"
+import { extractLegacyProfileSnapshot, migrateLegacyProfile } from "@/lib/evaluation/profile"
 import type {
   AdminAttentionItems,
   AdminFunnelStages,
@@ -15,6 +16,7 @@ import type {
   EvaluationStore,
   ModelComparisonCounts,
   ModelId,
+  ParticipantProfile,
   ParticipantStatus,
   PendingQuestion,
   PlatformSettingsSnapshot,
@@ -206,13 +208,46 @@ export async function touchSession(sessionId: string): Promise<void> {
   })
 }
 
+// On read we strip legacy profile fields so consumers only see the current schema.
+// migrateLegacyProfile returns Partial<ParticipantProfile>; we cast back to ParticipantProfile
+// to match the established convention (storage type is permissive — UIs already handle
+// undefined optional fields via `?? "-"`). The "missing new required fields" condition
+// is what the legacy-shape→form-prefill scenario keys off of (see spec).
+function migrateParticipantProfile(profile: ParticipantStatus["profile"]): ParticipantStatus["profile"] {
+  if (!profile) return profile
+  const migrated = migrateLegacyProfile(profile)
+  return migrated as ParticipantProfile
+}
+
+function migrateParticipantStatus(status: ParticipantStatus): ParticipantStatus {
+  return { ...status, profile: migrateParticipantProfile(status.profile) }
+}
+
 export async function getParticipantStatuses(): Promise<ParticipantStatus[]> {
-  return (await readStore()).participants
+  return (await readStore()).participants.map(migrateParticipantStatus)
 }
 
 export async function getParticipantStatus(token: string): Promise<ParticipantStatus | undefined> {
   const normalizedToken = normalizeToken(token)
-  return (await readStore()).participants.find((participant) => participant.token === normalizedToken)
+  const match = (await readStore()).participants.find((participant) => participant.token === normalizedToken)
+  return match ? migrateParticipantStatus(match) : undefined
+}
+
+export async function clearPendingQuestionsForParticipant(token: string): Promise<void> {
+  const normalizedToken = normalizeToken(token)
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const next = store.pendingQuestions.filter(
+      (question) => normalizeToken(question.participantToken) !== normalizedToken,
+    )
+    if (next.length === store.pendingQuestions.length) {
+      return
+    }
+    await writeStore({
+      ...store,
+      pendingQuestions: next,
+    })
+  })
 }
 
 export async function upsertParticipantStatus(status: ParticipantStatus): Promise<ParticipantStatus> {
@@ -503,34 +538,69 @@ function computeAttentionItems(
 
 export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnapshot> {
   const store = await readStore()
+  // Migrate participant profiles at the snapshot boundary so UI consumers only see the
+  // current schema; raw legacy fields stay in store.records for export use (D9).
+  const participants = store.participants.map(migrateParticipantStatus)
   const worstFlagCounts = countWorstFlags(store.records, config)
   const latencyP95 = computeLatencyP95(store.records)
+
+  // financeBackgroundType drives the four mutually-exclusive KPI buckets. Legacy
+  // records that lack the field fall into unknownBackgroundCount.
+  const FINANCE_RELEVANT = new Set(["student_finance_related", "working_finance_related"])
+  const NON_FINANCE = new Set(["student_other", "working_other"])
+  let financeBackgroundCount = 0
+  let nonFinanceBackgroundCount = 0
+  let refusalBackgroundCount = 0
+  let unknownBackgroundCount = 0
+  for (const participant of participants) {
+    const bg = participant.profile?.financeBackgroundType
+    if (!bg) {
+      unknownBackgroundCount += 1
+    } else if (FINANCE_RELEVANT.has(bg)) {
+      financeBackgroundCount += 1
+    } else if (NON_FINANCE.has(bg)) {
+      nonFinanceBackgroundCount += 1
+    } else if (bg === "prefer_not_to_say") {
+      refusalBackgroundCount += 1
+    } else {
+      unknownBackgroundCount += 1
+    }
+  }
+
   return {
-    participants: store.participants,
+    participants,
     records: store.records,
     modelCounts: countModelSelections(store.records, config),
     comparativeCounts: countComparativeSelections(store.records, config),
     worstFlagCounts,
-    completedCount: store.participants.filter((participant) => participant.completionStatus === "completed").length,
-    financeBackgroundCount: store.participants.filter(
-      (participant) => participant.profile?.isBusinessOrFinance === "yes",
-    ).length,
-    nonFinanceBackgroundCount: store.participants.filter(
-      (participant) => participant.profile?.isBusinessOrFinance === "no",
-    ).length,
-    funnelStages: computeFunnelStages(store.participants, store.records),
-    attentionItems: computeAttentionItems(store.participants, store.records, worstFlagCounts, latencyP95, config),
+    completedCount: participants.filter((participant) => participant.completionStatus === "completed").length,
+    financeBackgroundCount,
+    nonFinanceBackgroundCount,
+    refusalBackgroundCount,
+    unknownBackgroundCount,
+    funnelStages: computeFunnelStages(participants, store.records),
+    attentionItems: computeAttentionItems(participants, store.records, worstFlagCounts, latencyP95, config),
   }
 }
 
 export async function buildExportJson(settings?: PlatformSettingsSnapshot): Promise<string> {
   const store = await readStore()
+  // Attach a nested legacyProfile block to records whose original profile snapshot
+  // still uses the legacy schema; new-shape records get no legacyProfile field. See D9.
+  const records = store.records.map((record) => {
+    const legacyProfile = extractLegacyProfileSnapshot(record.participantProfile)
+    return legacyProfile ? { ...record, legacyProfile } : record
+  })
+  const participants = store.participants.map((participant) => {
+    const legacyProfile = extractLegacyProfileSnapshot(participant.profile)
+    return legacyProfile ? { ...participant, legacyProfile } : participant
+  })
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
       settings,
-      participants: store.participants,
-      records: store.records,
+      participants,
+      records,
     },
     null,
     2,
@@ -539,21 +609,27 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
 
 export async function buildExportCsv(): Promise<string> {
   const records = await getEvaluationRecords()
-  const rows = records.map((record) => ({
+  const rows = records.map((record) => {
+    // Read the raw stored profile (pre-migration) so we can recover legacy field values
+    // for the legacy_* columns. After this line, profile uses the new schema view.
+    const rawProfile = record.participantProfile as unknown as Record<string, unknown>
+    const legacy = extractLegacyProfileSnapshot(rawProfile)
+    const profile = record.participantProfile
+    return {
     participant_token: record.participantToken,
     settings_version: record.settingsVersion ?? "",
     settings_snapshot_hash: record.settingsSnapshotHash ?? "",
-    age_range: record.participantProfile.ageRange ?? "",
-    field_or_work_domain: record.participantProfile.fieldOrWorkDomain ?? "",
-    is_business_or_finance: record.participantProfile.isBusinessOrFinance,
-    grade_or_occupation: record.participantProfile.gradeOrOccupation,
-    has_taken_finance_course: record.participantProfile.hasTakenFinanceCourse,
-    finance_work_experience: record.participantProfile.financeWorkExperience ?? "",
-    investment_experience: record.participantProfile.investmentExperience ?? "",
-    finance_familiarity: record.participantProfile.financeFamiliarity,
-    llm_experience: record.participantProfile.llmExperience,
-    finance_llm_usage: record.participantProfile.financeLlmUsage ?? "",
-    finance_subdomains: (record.participantProfile.financeSubdomains ?? []).join("|"),
+    age_range: profile.ageRange ?? "",
+    gender: profile.gender ?? "",
+    education_level: profile.educationLevel ?? "",
+    finance_background_type: profile.financeBackgroundType ?? "",
+    grade_or_occupation: profile.gradeOrOccupation ?? "",
+    finance_work_experience: profile.financeWorkExperience ?? "",
+    investment_experience: profile.investmentExperience ?? "",
+    finance_familiarity: profile.financeFamiliarity,
+    llm_experience: profile.llmExperience,
+    has_used_ai_for_finance: profile.hasUsedAiForFinance === true ? "Y" : profile.hasUsedAiForFinance === false ? "N" : "",
+    finance_subdomains: (profile.financeSubdomains ?? []).join("|"),
     question_index: record.questionIndex,
     prompt_category: record.promptCategory,
     user_question: record.userQuestion,
@@ -595,7 +671,15 @@ export async function buildExportCsv(): Promise<string> {
     timestamp: record.timestamp,
     response_latency_ms: record.responseLatencyMs,
     completion_status: record.completionStatus,
-  }))
+    // legacy_* trailing columns: always emitted (header schema is deterministic).
+    // New-shape records produce empty cells here; legacy-shape records emit their
+    // original values verbatim. See design D9.
+    legacy_field_or_work_domain: legacy?.fieldOrWorkDomain ?? "",
+    legacy_is_business_or_finance: legacy?.isBusinessOrFinance ?? "",
+    legacy_has_taken_finance_course: legacy?.hasTakenFinanceCourse ?? "",
+    legacy_finance_llm_usage: legacy?.financeLlmUsage ?? "",
+    }
+  })
 
   const headers = Object.keys(
     rows[0] ?? {

@@ -49,24 +49,24 @@
 
 - [x] 4.1 Bundled with 4.6: implemented `migrateLegacyProfile` body directly (signature + body in one step) since stub-then-body adds no value when the body is already small.
 - [x] 4.2 Verify RED was implicitly executed in task 2.2 (typecheck failed on missing import); kept here for documentation.
-- [ ] 4.3 RED: Create `web/scripts/verify-profile-validation.ts` — script that constructs a legacy profile, runs `migrateLegacyProfile`, then asserts the result (i) preserves compatible fields `ageRange`, `financeFamiliarity`, `financeWorkExperience`, `investmentExperience`, `llmExperience`, `financeSubdomains`, optional `gradeOrOccupation`, (ii) does NOT contain `fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`, (iii) does NOT pre-populate any new required field (`gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance`). The script prints `OK` on success or throws.
-- [ ] 4.4 RED: Add `verify:profile` script in `web/package.json` mirroring the pattern of `verify:reset-pending`; add `web/scripts/verify-profile-validation.ts` to `web/scripts/verify-tsconfig.json` `include`.
-- [ ] 4.5 Verify RED: `cd web && npm run verify:profile` → FAIL (helper throws).
+- [x] 4.3 RED→GREEN: Wrote `web/scripts/verify-profile-validation.ts` covering all four runtime checks (migrate, validate, legacy read, clear pending).
+- [x] 4.4 Added `verify:profile` script in `web/package.json`; added `verify-profile-validation.ts` + `lib/evaluation/profile.ts` to verify-tsconfig include.
+- [x] 4.5 Verified RED: initial run failed on missing `clearPendingQuestionsForParticipant` export (typecheck error logged).
 - [x] 4.6 GREEN: Implemented `migrateLegacyProfile` body in profile.ts — whitelists `token`, `knownName`, `ageRange` (with `under_20 → prefer_not_to_say` remap), `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `llmExperience`, `financeSubdomains` (filtered against new 7-option set), `notes`. Legacy and new-required fields intentionally omitted. Also added `hasLegacyProfileFields` predicate and `extractLegacyProfileSnapshot` helper for export use (design D9).
-- [ ] 4.7 Verify GREEN: `cd web && npm run verify:profile` → prints `OK`.
+- [x] 4.7 Verify GREEN: `npm run verify:profile` prints `OK` (all four runtime sections pass — see commit output).
 
 ## 5. Server storage & session API (RED → GREEN)
 
-- [ ] 5.1 RED: Extend `web/scripts/verify-profile-validation.ts` to call the server-storage profile read helper (or its pure equivalent if not exported) against a JSON record that uses the legacy shape, then assert the returned in-memory profile object has the legacy keys stripped and the new required keys absent (forcing the form to re-prompt).
-- [ ] 5.2 Verify RED: `cd web && npm run verify:profile` → FAIL.
-- [ ] 5.3 GREEN: In `web/lib/server/evaluation-storage.ts` locate the path that reads a stored `ParticipantProfile`. Apply `migrateLegacyProfile` at the read boundary so server consumers see only the new shape (with legacy fields dropped). Do NOT mutate the underlying JSON file — already-saved evaluation records keep their original snapshot for audit.
-- [ ] 5.4 GREEN: In `web/app/api/session/route.ts`, ensure profile write path uses `validateParticipantProfile`; reject writes that fail validation with the same error shape already used (400 with `issues[]`). Strip any unrecognized legacy keys silently before persisting.
-- [ ] 5.5 Verify GREEN: `cd web && npm run verify:profile` → prints `OK`.
-- [ ] 5.6 GREEN: Run `cd web && npm run typecheck` to surface any consumer of removed fields (admin code, exports, etc.); record each error path for the relevant task group below — do NOT fix here unless trivially internal to storage.
-- [ ] 5.7 RED: Extend `web/scripts/verify-profile-validation.ts` to seed a store with both a legacy participant profile AND a pending question owned by that participant (with `participantProfile` holding the legacy snapshot). Then drive the profile-submit handler with a valid new-shape profile. Assert (a) the persisted profile is the new shape, (b) the participant's pending question entries are removed from storage, (c) a subsequent answer-generation request for the same question index would succeed (no 409 — assert by inspecting that the pending storage no longer contains an entry for that `(token, questionIndex)`).
-- [ ] 5.8 Verify RED: `cd web && npm run verify:profile` → FAIL (no pending-clear logic exists).
-- [ ] 5.9 GREEN: In `web/lib/server/evaluation-storage.ts` add `clearPendingQuestionsForParticipant(token: string): Promise<void>` (or sync equivalent matching surrounding style). It deletes every pending entry whose `participantToken === token`. In `web/app/api/session/route.ts` (or whichever route handles profile write), after a successful new-shape profile write detect whether the previous on-disk profile was the legacy shape (by re-reading the pre-write value) and, if so, call `clearPendingQuestionsForParticipant` before returning the response. Do NOT clear pending questions on a routine re-submit that does not represent a legacy → new-shape transition.
-- [ ] 5.10 Verify GREEN: `cd web && npm run verify:profile` → prints `OK`.
+- [x] 5.1 Covered in `verify-profile-validation.ts` `testStorageBackwardCompatRead`.
+- [x] 5.2 Verify RED: prior run failed without migrate-on-read.
+- [x] 5.3 GREEN: `getParticipantStatus` / `getParticipantStatuses` / `getAdminSnapshot` now call `migrateParticipantStatus` which routes through `migrateLegacyProfile`. The underlying JSON file is not mutated — only the in-memory view is migrated.
+- [ ] 5.4 Pending (Round 5b): `web/app/api/session/route.ts` rewrite to use `validateParticipantProfile` + strip legacy keys before persist + trigger pending-clear when legacy→new transition detected.
+- [x] 5.5 Verify GREEN: `npm run verify:profile` PASS (storage read test green).
+- [ ] 5.6 Pending: typecheck snapshot taken — remaining errors at session/route, profile-form, admin/page, record-drawer (each handled in its dedicated round).
+- [x] 5.7 Covered in `testClearPendingOnLegacyResubmit`.
+- [x] 5.8 Verify RED: prior run failed on missing `clearPendingQuestionsForParticipant` export.
+- [x] 5.9 GREEN: Added `clearPendingQuestionsForParticipant(token)` to evaluation-storage.ts (mutex-protected, no-op if no entries match). Session-route call-site wiring still pending in 5.4.
+- [x] 5.10 Verify GREEN: `npm run verify:profile` PASS.
 
 ## 6. Profile form UI
 
@@ -90,7 +90,7 @@
 - [ ] 8.1 In `web/app/admin/page.tsx` (or the participant-table component it imports), remove the `field/work domain` column and the legacy `finance-task LLM usage` column.
 - [ ] 8.2 Add columns for `gender` (rendered via `formatProfileChoice(GENDER_OPTIONS, ...)`), `educationLevel`, `financeBackgroundType` (rendered as the Chinese label).
 - [ ] 8.3 Render `hasUsedAiForFinance` as `Y` / `N` (or `是` / `否`).
-- [ ] 8.4 Update the KPI bar finance-vs-non-finance derivation to read from `financeBackgroundType`: counts for finance-relevant = `student_finance_related ∪ working_finance_related`; non-finance = `student_other ∪ working_other`; refusal = `prefer_not_to_say`; unknown for legacy records that lack `financeBackgroundType`.
+- [x] 8.4 GREEN: `getAdminSnapshot` now derives 4 mutually-exclusive counts (`financeBackgroundCount` / `nonFinanceBackgroundCount` / `refusalBackgroundCount` / `unknownBackgroundCount`) from `financeBackgroundType`. `AdminSnapshot` type extended in `types.ts`. UI rendering still pending in 8.x.
 - [ ] 8.5 For any participant row whose stored profile lacks the new fields (legacy snapshot), render `-` in the new columns; do NOT crash.
 - [ ] 8.6 Verify: `cd web && npm run typecheck && npm run lint` → PASS.
 - [ ] 8.7 Manual smoke: open `/admin?token=<token>`, switch to `受測者` tab, confirm new columns appear, legacy records render `-` for new columns, KPI bar reports the new breakdown. Document outcome.
@@ -103,12 +103,12 @@
 
 ## 10. CSV / JSON export
 
-- [ ] 10.1 In `web/app/api/admin/export/route.ts` (or its CSV-building helper), remove emission of legacy columns (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`).
-- [ ] 10.2 Add emission of new columns: `gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance` (CSV value `Y` / `N`).
-- [ ] 10.3 Keep emission of all other existing columns (token, ageRange, gradeOrOccupation, financeWorkExperience, investmentExperience, financeFamiliarity, llmExperience, financeSubdomains, judgment fields, model IDs, settings metadata).
-- [ ] 10.4 For legacy records that lack new fields, emit empty cells for the new active-profile columns (do NOT default to `prefer_not_to_say` — empty signals legacy).
-- [ ] 10.4b Append four trailing CSV columns AFTER the active-profile columns: `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, `legacy_finance_llm_usage`. The four headers MUST always be present (deterministic schema). New-shape records emit empty strings. Legacy records emit their stored values verbatim (CSV-escape values per existing helper).
-- [ ] 10.5 Update the JSON export: include the new active-profile fields under their canonical names; for legacy records also attach a nested `legacyProfile` object containing the four legacy fields (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`); for new-shape records do NOT include the `legacyProfile` block.
+- [x] 10.1 Removed legacy column emission from `buildExportCsv` (`field_or_work_domain` / `is_business_or_finance` / `has_taken_finance_course` / `finance_llm_usage`).
+- [x] 10.2 Added new active-profile columns to CSV: `gender`, `education_level`, `finance_background_type`, `has_used_ai_for_finance` (Y / N).
+- [x] 10.3 Other columns preserved (token, ageRange, gradeOrOccupation, financeWorkExperience, investmentExperience, financeFamiliarity, llmExperience, financeSubdomains, judgment fields, model IDs, settings metadata).
+- [x] 10.4 Legacy records emit empty cells for new active-profile columns via `?? ""`.
+- [x] 10.4b Appended four trailing `legacy_*` columns (always present in header; populated only when `extractLegacyProfileSnapshot` returns a snapshot).
+- [x] 10.5 `buildExportJson` now attaches a nested `legacyProfile` block to legacy records (records + participants); new-shape records lack the block.
 - [ ] 10.6 Verify: open `/admin?tab=原始資料`, trigger CSV export, inspect the CSV header row contains the four `legacy_*` columns, at least one new-shape row shows empty `legacy_*` cells, and if a legacy row exists in the store, that row shows the legacy values populated. Also trigger JSON export and confirm the `legacyProfile` nested block appears only on legacy records.
 
 ## 11. Final sweep
