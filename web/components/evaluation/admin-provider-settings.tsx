@@ -217,7 +217,7 @@ export function AdminProviderSettings({
             }
           />
           <small className="provider-helper">
-            請貼 base URL（例：https://gateway.example.com/v1），不要包含 /chat/completions。
+            請貼 base URL（例：https://gateway.example.com/v1），不要包含 /chat/completions 或 /completions。
           </small>
         </label>
         <label>

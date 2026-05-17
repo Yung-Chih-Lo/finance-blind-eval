@@ -72,6 +72,24 @@ assert.ok(
   "issue message mentions apiBaseUrl",
 )
 
+const badChatSuffixMultiSlash = validateProviderSettings(
+  baseSettings({ apiBaseUrl: "https://x/v1/chat/completions///" }),
+)
+assert.equal(
+  badChatSuffixMultiSlash.ok,
+  false,
+  "reject base ending /chat/completions with multiple trailing slashes",
+)
+
+const badCompletionsSuffix = validateProviderSettings(
+  baseSettings({ apiBaseUrl: "https://x/v1/completions/" }),
+)
+assert.equal(
+  badCompletionsSuffix.ok,
+  false,
+  "reject base ending /completions (legacy OpenAI path)",
+)
+
 const badQuery = validateProviderSettings(baseSettings({ apiBaseUrl: "https://x/v1?foo=1" }))
 assert.equal(badQuery.ok, false, "reject base with query string")
 

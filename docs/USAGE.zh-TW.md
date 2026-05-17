@@ -119,7 +119,7 @@ Server 用 constant-time 比對 `ADMIN_LINK_TOKEN_SHA256`，設 `admin_session` 
 | `participants` | 每個 token 一列：背景、金融熟悉度、LLM 經驗、完成狀態、完成題數 / 上限 |
 | `models` | Leaderboard + 各 facet 的 best/worst/net 比較表 + worst-flag 統計 |
 | `invites` | 邀請碼用量摘要 + 新增邀請碼 |
-| `provider` | 可編輯：API base URL、可選 models endpoint override、從 `/v1/models` 挑模型、system prompt、user prompt template、temperature、max tokens；附「測試呼叫」**不會** 寫紀錄 |
+| `provider` | 可編輯：API base URL、可選 models endpoint override、從預設 `${base}/models`（可由 `OPENAI_COMPAT_MODELS_ENDPOINT` 覆寫）挑模型、system prompt、user prompt template、temperature、max tokens；附「測試呼叫」**不會** 寫紀錄 |
 | `study-copy` | 可編輯受測者端文案：開頭信、prompt 類別、範例題、簽名 metadata、完成頁文字 |
 | `records` | 每題紀錄表（token · # · 題型 · best · worst · latency）；點任一列 → 側邊抽屜顯示完整題目、facet 選擇、worst-answer flags、隱藏對應表、理由文字 |
 

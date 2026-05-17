@@ -38,7 +38,7 @@ ADMIN_SESSION_SECRET=replace-with-random-session-secret
 ADMIN_PASSWORD=replace-with-admin-password-before-public-deploy
 ```
 
-`OPENAI_COMPAT_API_BASE_URL` is the OpenAI-compatible gateway **base URL** (do not include `/chat/completions`). The server derives both `${base}/chat/completions` and `${base}/models` from it. The base URL is validated: trailing `/chat/completions`, query strings, and fragments are rejected.
+`OPENAI_COMPAT_API_BASE_URL` is the OpenAI-compatible gateway **base URL** (do not include `/chat/completions`). The server derives both `${base}/chat/completions` and `${base}/models` from it. The base URL is validated: trailing `/chat/completions` or `/completions`, query strings, and fragments are rejected.
 
 Do not use `NEXT_PUBLIC_` for gateway API keys. The browser only calls Next.js API routes.
 

@@ -218,7 +218,10 @@ function validateApiBaseUrlSemantics(value: string, issues: string[]) {
   } catch {
     return
   }
-  if (/\/(chat\/completions|completions)\/?$/.test(url.pathname)) {
+  // Normalize first: `stripTrailingSlash` collapses any number of trailing
+  // slashes, so values like `…/chat/completions///` cannot bypass the check.
+  const normalizedPath = stripTrailingSlash(url.pathname)
+  if (/\/(chat\/completions|completions)$/.test(normalizedPath)) {
     issues.push(
       "provider.apiBaseUrl should be a base URL (e.g. https://gateway.example.com/v1), not the chat completions URL.",
     )
