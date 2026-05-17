@@ -119,3 +119,15 @@ Triggered by `/opsxp-verify` round 1: multi-agent review found docs miss + UX/ha
 - [x] 12.6 SUGGESTION: `resolveChatCompletionsUrl` / `resolveModelsEndpoint` throw on empty `apiBaseUrl` (override still wins for models). RED proved via verify script; GREEN passes.
 - [x] 12.7 SUGGESTION: Verify script now asserts multi-slash collapse, empty-base throw, whitespace-only throw, override-with-empty-base
 - [x] 12.8 All gates green: typecheck, lint, verify:provider-url (10/10), next build (17 routes), `openspec validate --strict`
+
+## 13. Round-2 verify follow-up
+
+Triggered by `/opsxp-verify` round 2: maintainer agent caught `.env.example` miss; QA agent flagged dead-code + assertion looseness; future-maintainer flagged legacy-schema coverage gap.
+
+- [x] 13.1 CRITICAL: `web/.env.example` rewritten — `OPENAI_COMPAT_API_BASE_URL=http://127.0.0.1:8080/v1` with helper comment; `OPENAI_COMPAT_MODELS_ENDPOINT` is now empty (optional override) with comment explaining derive-from-base semantics
+- [x] 13.2 WARNING: `web/scripts/.verify-loader.mjs:1-4` header now names both `verify-study-copy.ts` and `verify-provider-url-resolution.ts` and explains the contract (alias map + `server-only` stub + JSON inline)
+- [x] 13.3 WARNING: Extracted `detectLegacyProviderSchema(rawProvider)` as a small public helper in `platform-settings.ts`; `normalizeEnvelope` now calls it. Verify script adds 6 assertions (single legacy key, both keys, new schema, null, non-object). RED proved (helper missing) → GREEN passes.
+- [x] 13.4 SUGGESTION: Dropped dead `if (!endpoint)` guard from `discoverProviderModels` — the resolver throws on empty base now
+- [x] 13.5 SUGGESTION: Verify-script throw assertions tightened from `/apiBaseUrl/` to `/apiBaseUrl is empty/` (3 assertions)
+- [x] 13.6 SUGGESTION: Added symmetric assertion — `resolveChatCompletionsUrl` ignores `modelsEndpointOverride` and still throws on empty base
+- [x] 13.7 All gates green: typecheck, lint, verify:provider-url (17/17 assertions), build, `openspec validate --strict`

@@ -142,9 +142,6 @@ export async function discoverProviderModels(settings: ProviderSettings): Promis
     requireApiKeyConfigured: true,
   })
   const endpoint = resolveModelsEndpoint(readySettings)
-  if (!endpoint) {
-    throw new Error("Models endpoint is not configured.")
-  }
 
   const response = await fetch(endpoint, {
     headers: getAuthHeaders(readySettings),

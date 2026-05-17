@@ -5,6 +5,7 @@
 import { strict as assert } from "node:assert"
 
 import type { ProviderSettings } from "@/lib/evaluation/types"
+import { detectLegacyProviderSchema } from "@/lib/server/platform-settings"
 import {
   getDefaultProviderSettings,
   resolveChatCompletionsUrl,
@@ -91,23 +92,65 @@ assert.equal(
 
 assert.throws(
   () => resolveChatCompletionsUrl(baseSettings({ apiBaseUrl: "" })),
-  /apiBaseUrl/,
+  /apiBaseUrl is empty/,
   "resolveChatCompletionsUrl throws on empty base",
 )
 assert.throws(
   () => resolveChatCompletionsUrl(baseSettings({ apiBaseUrl: "   " })),
-  /apiBaseUrl/,
+  /apiBaseUrl is empty/,
   "resolveChatCompletionsUrl throws on whitespace-only base",
 )
 assert.throws(
   () => resolveModelsEndpoint(baseSettings({ apiBaseUrl: "" })),
-  /apiBaseUrl/,
+  /apiBaseUrl is empty/,
   "resolveModelsEndpoint throws on empty base without override",
 )
 assert.equal(
   resolveModelsEndpoint(baseSettings({ apiBaseUrl: "", modelsEndpointOverride: "https://other/m" })),
   "https://other/m",
   "resolveModelsEndpoint returns override even when base is empty",
+)
+assert.throws(
+  () =>
+    resolveChatCompletionsUrl(
+      baseSettings({ apiBaseUrl: "", modelsEndpointOverride: "https://other/m" }),
+    ),
+  /apiBaseUrl is empty/,
+  "resolveChatCompletionsUrl ignores modelsEndpointOverride (override must not rescue chat resolution)",
+)
+
+assert.deepEqual(
+  detectLegacyProviderSchema({ chatCompletionsEndpoint: "https://x/v1/chat/completions" }),
+  ["chatCompletionsEndpoint"],
+  "detects legacy chatCompletionsEndpoint",
+)
+assert.deepEqual(
+  detectLegacyProviderSchema({ modelsEndpoint: "https://x/v1/models" }),
+  ["modelsEndpoint"],
+  "detects legacy modelsEndpoint",
+)
+assert.deepEqual(
+  detectLegacyProviderSchema({
+    chatCompletionsEndpoint: "https://x/v1/chat/completions",
+    modelsEndpoint: "",
+  }),
+  ["chatCompletionsEndpoint", "modelsEndpoint"],
+  "detects both legacy keys (even when value is empty string)",
+)
+assert.deepEqual(
+  detectLegacyProviderSchema({ apiBaseUrl: "https://x/v1" }),
+  [],
+  "returns empty for the new schema",
+)
+assert.deepEqual(
+  detectLegacyProviderSchema(null),
+  [],
+  "returns empty for null input",
+)
+assert.deepEqual(
+  detectLegacyProviderSchema("not an object"),
+  [],
+  "returns empty for non-object input",
 )
 
 console.log("verify-provider-url-resolution: all assertions passed")
