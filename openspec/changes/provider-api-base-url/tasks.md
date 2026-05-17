@@ -13,8 +13,8 @@
 
 ## 1. Branch + baseline guardrails
 
-- [ ] 1.1 Confirm cwd is repo root, branch is `change/provider-api-base-url`, working tree clean (`git status -b`)
-- [ ] 1.2 Run baseline `npm run typecheck` and `npm run lint` in `web/`; capture they pass before refactor begins
+- [x] 1.1 Confirm cwd is repo root, branch is `change/provider-api-base-url`, working tree clean (`git status -b`)
+- [x] 1.2 Run baseline `npm run typecheck` and `npm run lint` in `web/`; capture they pass before refactor begins
 
 ## 2. Test scaffolding (RED-equivalent)
 
