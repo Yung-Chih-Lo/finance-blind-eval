@@ -53,3 +53,11 @@
 - [x] 5.1 Re-read `proposal.md`, `design.md`, `specs/blind-evaluation-app/spec.md`, `tasks.md` — confirm each spec scenario maps to at least one task. Mapping: reset-success scenario → 1.3 + 2.1–2.5 + 3.1–3.5; reset-failure scenario → 3.3; owner-delete scenario → 1.3 + 2.4; delete-without-session → 2.2; cross-participant-delete → 1.3 + 2.4; unknown-id-delete (idempotent 204) → 1.3 + 2.4.
 - [x] 5.2 Grep `web/` for residual `"This question is already pending judgment."` matches — only the POST 409 path (`web/app/api/evaluation/answers/route.ts:98`) references it. Reset path no longer triggers this string.
 - [x] 5.3 Run `openspec validate fix-reset-pending-question --strict` — output: `Change 'fix-reset-pending-question' is valid`.
+
+## 6. Verify-driven follow-ups (post `/opsxp-verify`)
+
+- [x] 6.1 Fix token normalization asymmetry in `deletePendingQuestion` (`web/lib/server/evaluation-storage.ts:262`) — compare normalized to normalized so the row can still be deleted if a future writer stores a non-uppercase token.
+- [x] 6.2 Add lowercase-token coverage to `verify-reset-pending.ts` (new case `1.10 normalize`) so the normalize branch is locked in against regressions.
+- [x] 6.3 Comment the implicit `record.id === pending.id` contract on `saveEvaluationRecord` (`web/lib/server/evaluation-storage.ts:277`) so a future record-id refactor won't silently leak pending rows.
+- [x] 6.4 Comment the `not_found → 204` idempotency collapse on the DELETE handler (`web/app/api/evaluation/answers/route.ts`) so a future maintainer doesn't "fix" it to 404.
+- [x] 6.5 Comment the `clearQuestionState` extraction rationale in `question-flow.tsx` so the saveJudgment-skips-DELETE shortcut is discoverable from code, not just tasks.md.

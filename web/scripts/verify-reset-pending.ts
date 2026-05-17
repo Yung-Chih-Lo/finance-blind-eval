@@ -34,11 +34,17 @@ function makePending(overrides: Partial<PendingQuestion> & Pick<PendingQuestion,
     gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
     participantProfile: {
       token: overrides.participantToken,
+      ageRange: "20_24",
+      fieldOrWorkDomain: "Finance",
       isBusinessOrFinance: "no",
       gradeOrOccupation: "grad",
       hasTakenFinanceCourse: "no",
+      financeWorkExperience: "none",
+      investmentExperience: "basic",
       financeFamiliarity: 1,
       llmExperience: "weekly",
+      financeLlmUsage: "tried",
+      financeSubdomains: ["stocks"],
       notes: "",
     },
     timestamp: new Date().toISOString(),
@@ -83,6 +89,23 @@ async function main() {
     assert.equal(after[0].id, "q-2")
   }
   console.log("PASS: forbidden path")
+
+  console.log("\n=== 1.10 normalize: owner with lowercased token still authorized ===")
+  await savePendingQuestion(makePending({ id: "q-3", participantToken: OWNER }))
+  const normalized = await deletePendingQuestion("q-3", OWNER.toLowerCase())
+  assert.deepEqual(
+    normalized,
+    { status: "deleted" },
+    "lowercase token from caller should normalize and match stored token",
+  )
+  {
+    const after = await getPendingQuestionsByParticipant(OWNER)
+    assert.ok(
+      after.every((row) => row.id !== "q-3"),
+      "q-3 should be removed after normalized-match delete",
+    )
+  }
+  console.log("PASS: normalize path")
 
   console.log("\nAll reset-pending checks passed.")
 }

@@ -259,7 +259,7 @@ export async function deletePendingQuestion(
     if (!existing) {
       return { status: "not_found" }
     }
-    if (existing.participantToken !== expectedToken) {
+    if (normalizeToken(existing.participantToken) !== expectedToken) {
       return { status: "forbidden" }
     }
     await writeStore({
@@ -274,6 +274,8 @@ export async function saveEvaluationRecord(record: EvaluationRecord): Promise<Ev
   await withStoreMutex(async () => {
     const store = await readStore()
     const existingRecords = store.records.filter((item) => item.id !== record.id)
+    // Pending row shares the same id as the saved record (see POST /api/evaluation/answers).
+    // QuestionFlow's saveJudgment relies on this to skip a redundant DELETE call.
     const pendingQuestions = store.pendingQuestions.filter((item) => item.id !== record.id)
     await writeStore({
       ...store,
@@ -541,11 +543,17 @@ export async function buildExportCsv(): Promise<string> {
     participant_token: record.participantToken,
     settings_version: record.settingsVersion ?? "",
     settings_snapshot_hash: record.settingsSnapshotHash ?? "",
+    age_range: record.participantProfile.ageRange ?? "",
+    field_or_work_domain: record.participantProfile.fieldOrWorkDomain ?? "",
     is_business_or_finance: record.participantProfile.isBusinessOrFinance,
     grade_or_occupation: record.participantProfile.gradeOrOccupation,
     has_taken_finance_course: record.participantProfile.hasTakenFinanceCourse,
+    finance_work_experience: record.participantProfile.financeWorkExperience ?? "",
+    investment_experience: record.participantProfile.investmentExperience ?? "",
     finance_familiarity: record.participantProfile.financeFamiliarity,
     llm_experience: record.participantProfile.llmExperience,
+    finance_llm_usage: record.participantProfile.financeLlmUsage ?? "",
+    finance_subdomains: (record.participantProfile.financeSubdomains ?? []).join("|"),
     question_index: record.questionIndex,
     prompt_category: record.promptCategory,
     user_question: record.userQuestion,

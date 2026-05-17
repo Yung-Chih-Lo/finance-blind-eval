@@ -163,5 +163,6 @@ export async function DELETE(request: Request) {
       { status: 403 },
     )
   }
+  // not_found collapses to 204: reset must be idempotent from the client (e.g. double-click).
   return new NextResponse(null, { status: 204 })
 }

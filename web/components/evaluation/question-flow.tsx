@@ -130,6 +130,8 @@ export function QuestionFlow({
     }
   }
 
+  // Extracted so saveJudgment can skip the DELETE: saveEvaluationRecord already
+  // drops the pending row server-side (it shares the same id).
   function clearQuestionState() {
     setQuestion("")
     setAnswerResponse(null)
