@@ -11,7 +11,11 @@ import type {
   ParticipantProfile,
   ParticipantProfileDraft,
 } from "@/lib/evaluation/types"
-import { migrateLegacyProfile } from "@/lib/evaluation/profile"
+import {
+  isCompleteParticipantProfile,
+  migrateLegacyProfile,
+  validateParticipantProfile,
+} from "@/lib/evaluation/profile"
 
 // Section 2.1: every new required field is set; gradeOrOccupation is optional and omitted here.
 const newShapeProfile: ParticipantProfile = {
@@ -75,3 +79,14 @@ const allBackground: FinanceBackgroundType[] = [
 void allGenders
 void allEducation
 void allBackground
+
+// Section 3.1: validation accepts ParticipantProfileDraft (hasUsedAiForFinance may be null).
+const issuesForDraft: string[] = validateParticipantProfile(draftProfile)
+void issuesForDraft
+
+// isCompleteParticipantProfile narrows draft → ParticipantProfile when validation passes.
+const maybeComplete: ParticipantProfileDraft | null = null
+if (isCompleteParticipantProfile(maybeComplete)) {
+  const narrowed: ParticipantProfile = maybeComplete
+  void narrowed
+}

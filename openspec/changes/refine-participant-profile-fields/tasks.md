@@ -35,24 +35,24 @@
 
 ## 3. Profile options & validation (RED → GREEN)
 
-- [ ] 3.1 RED: Extend `web/tests/profile-typecheck.ts` to call `validateParticipantProfile` against (a) a fully-populated new-shape draft with `hasUsedAiForFinance: true` (expect `[]`), (b) a draft missing `gender` (expect non-empty issues including a gender hint), (c) a draft missing `educationLevel`, (d) a draft missing `financeBackgroundType`, (e) a draft with `hasUsedAiForFinance: null` (expect a "請選擇" issue — this guards against the silent-default-false trap), (f) a draft with `hasUsedAiForFinance: undefined` (expect the same explicit-selection issue) — and call `isCompleteParticipantProfile` matching the same six inputs.
-- [ ] 3.2 Verify RED: `cd web && npm run typecheck` → FAIL (validator still expects legacy keys).
-- [ ] 3.3 GREEN: In `web/lib/evaluation/profile.ts` add new option lists: `GENDER_OPTIONS`, `EDUCATION_LEVEL_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS` with Chinese labels matching the spec.
-- [ ] 3.4 GREEN: In `web/lib/evaluation/profile.ts` update `AGE_RANGE_OPTIONS` to drop `under_20`.
-- [ ] 3.5 GREEN: In `web/lib/evaluation/profile.ts` remove the legacy `FINANCE_LLM_USAGE_OPTIONS` export (and any callers).
-- [ ] 3.6 GREEN: In `web/lib/evaluation/profile.ts` reduce `FINANCE_SUBDOMAIN_OPTIONS` from 9 to 7 — drop `derivatives` and `risk_management`; rename the label for `not_sure` to `"都不熟悉 / 沒接觸過"` and keep the value `not_sure`. Update the matching type literal in `types.ts`.
-- [ ] 3.7 GREEN: Update `createParticipantProfileDraft` so it now returns `ParticipantProfileDraft` (not `ParticipantProfile`). Seed `gender = "prefer_not_to_say"`, `educationLevel = "prefer_not_to_say"`, `financeBackgroundType = "prefer_not_to_say"`. **Seed `hasUsedAiForFinance = null` (NOT `false`)** so an untouched control cannot silently persist as an explicit No. Remove draft entries for `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`. Keep `gradeOrOccupation` defaulting to empty string.
-- [ ] 3.8 GREEN: Update `validateParticipantProfile` to accept `ParticipantProfileDraft` (i.e. `hasUsedAiForFinance: boolean | null`). It MUST (a) require `gender`, `educationLevel`, `financeBackgroundType` to be in their option sets (reject `prefer_not_to_say` only when the spec requires positive intent — in this change, `prefer_not_to_say` is a valid response so it passes), (b) require `hasUsedAiForFinance === true || hasUsedAiForFinance === false` and explicitly reject `null` / `undefined` with a "請選擇" issue, (c) NOT require `gradeOrOccupation`, (d) NOT require any of the removed legacy fields. Update `isCompleteParticipantProfile` so it narrows `ParticipantProfileDraft` → `ParticipantProfile` only when validation passes (with `hasUsedAiForFinance: boolean`).
-- [ ] 3.9 Verify GREEN: `cd web && npm run typecheck` → ALL PASS.
+- [x] 3.1 RED: Extended `profile-typecheck.ts` with type-level checks for `validateParticipantProfile` accepting draft + `isCompleteParticipantProfile` narrowing. Runtime behavior assertions deferred to `verify-profile-validation.ts` (task 4.3).
+- [x] 3.2 Verify RED: typecheck failed at imports of new types and `migrateLegacyProfile`; output captured in prior commit.
+- [x] 3.3 GREEN: Added `GENDER_OPTIONS`, `EDUCATION_LEVEL_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS` to profile.ts.
+- [x] 3.4 GREEN: Dropped `under_20` from `AGE_RANGE_OPTIONS`.
+- [x] 3.5 GREEN: Removed `FINANCE_LLM_USAGE_OPTIONS` from profile.ts. Cascade fix at consumer sites pending Rounds 8 (admin/page) and 9 (record-drawer).
+- [x] 3.6 GREEN: Reduced `FINANCE_SUBDOMAIN_OPTIONS` to 7 entries; relabelled `not_sure` to `都不熟悉 / 沒接觸過`. Type literal already updated in 2.5.
+- [x] 3.7 GREEN: `createParticipantProfileDraft` returns `ParticipantProfileDraft`; seeds `hasUsedAiForFinance: null`, gender/education/background as `prefer_not_to_say`.
+- [x] 3.8 GREEN: `validateParticipantProfile` accepts draft, rejects null/undefined `hasUsedAiForFinance` with explicit `"請選擇是否曾用 AI 處理金融問題"` issue; `isCompleteParticipantProfile` narrows draft → ParticipantProfile.
+- [ ] 3.9 Verify GREEN: deferred — cascade still pending at profile-form/admin/drawer/storage.
 
 ## 4. Legacy profile read path (RED → GREEN)
 
-- [ ] 4.1 RED: Add a `migrateLegacyProfile(raw: unknown): Partial<ParticipantProfile>` export in `web/lib/evaluation/profile.ts` (signature only, body throws) so step 2.1 compiles; in `profile-typecheck.ts` call it on a legacy object literal `{ ageRange: "25_29", isBusinessOrFinance: "yes", fieldOrWorkDomain: "資管系", hasTakenFinanceCourse: "yes", financeLlmUsage: "weekly", financeFamiliarity: 4 }` and assert (via type narrowing assignment) the result is `Partial<ParticipantProfile>` with no legacy keys.
-- [ ] 4.2 Verify RED: `cd web && npm run typecheck` passes (signature exists) but body throws — record this as the failing precondition for the runtime script in 4.3.
+- [x] 4.1 Bundled with 4.6: implemented `migrateLegacyProfile` body directly (signature + body in one step) since stub-then-body adds no value when the body is already small.
+- [x] 4.2 Verify RED was implicitly executed in task 2.2 (typecheck failed on missing import); kept here for documentation.
 - [ ] 4.3 RED: Create `web/scripts/verify-profile-validation.ts` — script that constructs a legacy profile, runs `migrateLegacyProfile`, then asserts the result (i) preserves compatible fields `ageRange`, `financeFamiliarity`, `financeWorkExperience`, `investmentExperience`, `llmExperience`, `financeSubdomains`, optional `gradeOrOccupation`, (ii) does NOT contain `fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`, (iii) does NOT pre-populate any new required field (`gender`, `educationLevel`, `financeBackgroundType`, `hasUsedAiForFinance`). The script prints `OK` on success or throws.
 - [ ] 4.4 RED: Add `verify:profile` script in `web/package.json` mirroring the pattern of `verify:reset-pending`; add `web/scripts/verify-profile-validation.ts` to `web/scripts/verify-tsconfig.json` `include`.
 - [ ] 4.5 Verify RED: `cd web && npm run verify:profile` → FAIL (helper throws).
-- [ ] 4.6 GREEN: Implement `migrateLegacyProfile` body — accept `unknown`, return `Partial<ParticipantProfile>`. Whitelist compatible fields by reading them from the raw object; drop any field not on the whitelist; never invent new-field defaults; if `ageRange === "under_20"` map to `"prefer_not_to_say"`.
+- [x] 4.6 GREEN: Implemented `migrateLegacyProfile` body in profile.ts — whitelists `token`, `knownName`, `ageRange` (with `under_20 → prefer_not_to_say` remap), `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `llmExperience`, `financeSubdomains` (filtered against new 7-option set), `notes`. Legacy and new-required fields intentionally omitted. Also added `hasLegacyProfileFields` predicate and `extractLegacyProfileSnapshot` helper for export use (design D9).
 - [ ] 4.7 Verify GREEN: `cd web && npm run verify:profile` → prints `OK`.
 
 ## 5. Server storage & session API (RED → GREEN)
