@@ -21,6 +21,7 @@ import {
 import type { PendingQuestion } from "@/lib/evaluation/types"
 
 const OWNER = "P-OWNER"
+const OTHER = "P-OTHER"
 
 function makePending(overrides: Partial<PendingQuestion> & Pick<PendingQuestion, "id" | "participantToken">): PendingQuestion {
   return {
@@ -62,6 +63,26 @@ async function main() {
     assert.equal(after.length, 0, "OWNER's pending row should be removed")
   }
   console.log("PASS: deleted path")
+
+  console.log("\n=== 1.7 not_found: deleting the same row again is a no-op ===")
+  const repeat = await deletePendingQuestion("q-1", OWNER)
+  assert.deepEqual(repeat, { status: "not_found" }, "repeat delete should be 'not_found'")
+  {
+    const after = await getPendingQuestionsByParticipant(OWNER)
+    assert.equal(after.length, 0, "still zero pending rows after repeat delete")
+  }
+  console.log("PASS: not_found path")
+
+  console.log("\n=== 1.8 forbidden: non-owner cannot delete another's pending row ===")
+  await savePendingQuestion(makePending({ id: "q-2", participantToken: OWNER }))
+  const forbidden = await deletePendingQuestion("q-2", OTHER)
+  assert.deepEqual(forbidden, { status: "forbidden" }, "non-owner delete should be 'forbidden'")
+  {
+    const after = await getPendingQuestionsByParticipant(OWNER)
+    assert.equal(after.length, 1, "q-2 must still be in storage after forbidden delete")
+    assert.equal(after[0].id, "q-2")
+  }
+  console.log("PASS: forbidden path")
 
   console.log("\nAll reset-pending checks passed.")
 }

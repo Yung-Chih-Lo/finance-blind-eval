@@ -16,9 +16,9 @@
 - [x] 1.4 Add `verify:reset-pending` script to `web/package.json` (mirror `verify:provider-url` pattern: `tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-reset-pending.js`).
 - [x] 1.5 Update `web/scripts/verify-tsconfig.json` `include` to add `verify-reset-pending.ts` and `../lib/server/evaluation-storage.ts`.
 - [x] 1.6 Verify GREEN: `cd web && npm run verify:reset-pending` → PASS for the deleted-row case.
-- [ ] 1.7 Extend the verify script with the `not_found` case: after the first delete, call `deletePendingQuestion("q-1", "P-OWNER")` again, assert `{ status: "not_found" }` and zero pending rows.
-- [ ] 1.8 Extend with `forbidden` case: seed `q-2` for `P-OWNER`, call `deletePendingQuestion("q-2", "P-OTHER")`, assert `{ status: "forbidden" }` and that `q-2` is still in storage.
-- [ ] 1.9 Run `npm run verify:reset-pending` → all three cases PASS.
+- [x] 1.7 Extend the verify script with the `not_found` case: after the first delete, call `deletePendingQuestion("q-1", "P-OWNER")` again, assert `{ status: "not_found" }` and zero pending rows.
+- [x] 1.8 Extend with `forbidden` case: seed `q-2` for `P-OWNER`, call `deletePendingQuestion("q-2", "P-OTHER")`, assert `{ status: "forbidden" }` and that `q-2` is still in storage.
+- [x] 1.9 Run `npm run verify:reset-pending` → all three cases PASS.
 
 ## 2. DELETE route handler
 
