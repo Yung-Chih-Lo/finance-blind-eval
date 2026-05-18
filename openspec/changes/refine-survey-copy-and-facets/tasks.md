@@ -58,3 +58,12 @@
 - [x] 6.2 Re-grep the codebase for any stray reference to `reasoning` (in `web/` excluding `.next/`, `node_modules/`, `verify-out/`, and `.data/`) — if any non-`reasoning`-the-word matches remain (e.g., comments), evaluate keep vs delete
 - [x] 6.3 Re-grep for `high_school_or_below` in `web/` source — must be zero matches
 - [x] 6.4 Re-grep for `金融正確性最好` and `金融推理` in `web/` source — must be zero matches (config + UI copy fully updated)
+
+## 7. Verify-driven fix: broaden admin settings banner catch
+
+Discovered by Adversarial QA agent review: removing `reasoning` from `EVALUATION_FACET_IDS` makes any persisted runtime `platform-settings.json` (saved before this change with 4-facet evaluationFacets) fail `validateChoiceSet` on next boot. `normalizeEnvelope` throws `PlatformSettingsError("Runtime platform settings validation failed.")` but `admin/page.tsx` only rescues `"Legacy provider schema"` — so admin returns 500 with no in-app reset path. Zeabur deploys with a stored runtime config would brick.
+
+- [x] 7.1 RED: covered by inspection — the existing catch condition `error.message.startsWith("Legacy provider schema")` literally cannot match the new message; no automated test needed beyond grep
+- [x] 7.2 GREEN — `web/components/evaluation/admin-legacy-settings-banner.tsx`: add `kind?: "legacy-provider" | "validation-failed"` prop, default `"legacy-provider"`. Render conditional title and intro paragraph; reset button + endpoint unchanged
+- [x] 7.3 GREEN — `web/app/admin/page.tsx`: when `error instanceof PlatformSettingsError`, branch on `error.message.startsWith("Runtime platform settings validation failed.") || error.message.startsWith("Platform settings validation failed.")` to render banner with `kind="validation-failed"`; keep legacy-provider branch intact; everything else still re-throws
+- [x] 7.4 Run `npm run typecheck` + `npm run lint` + `npm run build` to confirm no regression
