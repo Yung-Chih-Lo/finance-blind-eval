@@ -48,13 +48,13 @@
 
 ## 5. Correctness facet label rename + tasks copy update
 
-- [ ] 5.1 In `evaluation.config.json` change `evaluationFacets[0].label` from `金融正確性最好` to `正確性最好`
-- [ ] 5.2 In `evaluation.config.json` change `study.intro.tasks[3]` from `依金融正確性、金融推理、完整性與可讀性選出各面向較佳的回答。` to `依正確性、完整性與可讀性選出各面向較佳的回答。`
-- [ ] 5.3 In `evaluation.config.json` change `study.intro.paragraphs[0]` — drop the `、金融推理` substring so the line reads `…並依正確性、完整性與可讀性進行比較…`
+- [x] 5.1 In `evaluation.config.json` change `evaluationFacets[0].label` from `金融正確性最好` to `正確性最好`
+- [x] 5.2 In `evaluation.config.json` change `study.intro.tasks[3]` from `依金融正確性、金融推理、完整性與可讀性選出各面向較佳的回答。` to `依正確性、完整性與可讀性選出各面向較佳的回答。`
+- [x] 5.3 In `evaluation.config.json` change `study.intro.paragraphs[0]` — drop the `、金融推理` substring so the line reads `…並依正確性、完整性與可讀性進行比較…`
 
 ## 6. Self-review and strict validation
 
-- [ ] 6.1 Run `openspec validate refine-survey-copy-and-facets --type change --strict` and confirm exit 0
-- [ ] 6.2 Re-grep the codebase for any stray reference to `reasoning` (in `web/` excluding `.next/`, `node_modules/`, `verify-out/`, and `.data/`) — if any non-`reasoning`-the-word matches remain (e.g., comments), evaluate keep vs delete
-- [ ] 6.3 Re-grep for `high_school_or_below` in `web/` source — must be zero matches
-- [ ] 6.4 Re-grep for `金融正確性最好` and `金融推理` in `web/` source — must be zero matches (config + UI copy fully updated)
+- [x] 6.1 Run `openspec validate refine-survey-copy-and-facets --type change --strict` and confirm exit 0
+- [x] 6.2 Re-grep the codebase for any stray reference to `reasoning` (in `web/` excluding `.next/`, `node_modules/`, `verify-out/`, and `.data/`) — if any non-`reasoning`-the-word matches remain (e.g., comments), evaluate keep vs delete
+- [x] 6.3 Re-grep for `high_school_or_below` in `web/` source — must be zero matches
+- [x] 6.4 Re-grep for `金融正確性最好` and `金融推理` in `web/` source — must be zero matches (config + UI copy fully updated)
