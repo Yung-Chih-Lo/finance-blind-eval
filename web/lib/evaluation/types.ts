@@ -1,7 +1,7 @@
 export type ModelId = "H1-best" | "H2-best" | "TAIDE-baseline"
 export type AnswerLabel = "A" | "B" | "C"
 export type CompletionStatus = "profile_started" | "in_progress" | "completed"
-export type EvaluationFacetId = "correctness" | "reasoning" | "completeness" | "readability"
+export type EvaluationFacetId = "correctness" | "completeness" | "readability"
 export type PlatformSettingsSource = "default" | "runtime"
 
 export interface ProviderSettings {
@@ -118,7 +118,6 @@ export interface PlatformSettingsValidationResult {
 export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
 export type Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"
 export type EducationLevel =
-  | "high_school_or_below"
   | "undergrad_in_progress"
   | "undergrad_completed"
   | "grad_or_above"
@@ -218,7 +217,6 @@ export interface ModelComparisonCounts {
   overallWorst: number
   net: number
   correctness: number
-  reasoning: number
   completeness: number
   readability: number
 }

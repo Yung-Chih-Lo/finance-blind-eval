@@ -63,7 +63,6 @@ void migrated
 // Enum exhaustiveness — if any literal is renamed or removed, this errors.
 const allGenders: Gender[] = ["female", "male", "non_binary_or_other", "prefer_not_to_say"]
 const allEducation: EducationLevel[] = [
-  "high_school_or_below",
   "undergrad_in_progress",
   "undergrad_completed",
   "grad_or_above",

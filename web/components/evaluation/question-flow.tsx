@@ -183,7 +183,7 @@ export function QuestionFlow({
       return
     }
     if (Object.values(facetSelections).some((selection) => !selection)) {
-      toast.info("請完成四個面向的 A / B / C 比較。")
+      toast.info("請完成所有面向的 A / B / C 比較。")
       return
     }
     if (!bestReason.trim() && !worstReason.trim()) {

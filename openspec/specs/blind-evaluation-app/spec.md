@@ -145,7 +145,7 @@ The system SHALL keep the mapping between A/B/C labels and real model IDs server
 - **THEN** the system can show the hidden mapping for research analysis
 
 ### Requirement: Required blind comparison judgments
-The system SHALL require participants to submit explicit comparative judgments whose target is an answer label, including overall best, overall worst, best by correctness, best by financial reasoning, best by completeness, best by readability, and at least one free-text reason before saving a question judgment.
+The system SHALL require participants to submit explicit comparative judgments whose target is an answer label, including overall best, overall worst, best by correctness, best by completeness, best by readability, and at least one free-text reason before saving a question judgment. The system SHALL NOT require or accept a `best by financial reasoning` selection.
 
 #### Scenario: Best or worst selection missing
 - **WHEN** the participant attempts to save a judgment without selecting both overall best and overall worst answers
@@ -156,19 +156,25 @@ The system SHALL require participants to submit explicit comparative judgments w
 - **THEN** the system rejects the save and displays a validation message
 
 #### Scenario: Facet selection missing
-- **WHEN** the participant attempts to save a judgment without selecting an answer for correctness, financial reasoning, completeness, or readability
+- **WHEN** the participant attempts to save a judgment without selecting an answer for correctness, completeness, or readability
 - **THEN** the system rejects the save and displays a validation message
+
+#### Scenario: Reasoning facet not collected
+- **WHEN** the question judgment screen renders
+- **THEN** the facet comparison list contains exactly three entries — correctness, completeness, and readability
+- **AND** no `reasoning` facet input is rendered
 
 #### Scenario: Reason missing
 - **WHEN** the participant attempts to save a judgment with no best reason and no worst reason
 - **THEN** the system rejects the save and displays a validation message
 
 ### Requirement: Evaluation record storage
-The system SHALL store each answered question with participant token, participant profile including expanded non-identifying background fields, question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, financial reasoning, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status.
+The system SHALL store each answered question with participant token, participant profile including expanded non-identifying background fields, question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status. The system SHALL NOT require a `reasoning` facet-best label on newly stored records.
 
 #### Scenario: Question judgment saved
 - **WHEN** the participant saves a valid comparative judgment after completing the expanded profile
 - **THEN** the system persists a complete evaluation record through a server API route including the participant profile snapshot
+- **AND** the persisted record's `facetSelections` keys are exactly `correctness`, `completeness`, and `readability` (any historical `reasoning` key on pre-existing records is preserved verbatim but no new record SHALL emit one)
 
 ### Requirement: Admin evaluation dashboard
 The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, and a finance-background breakdown derived from finance background type. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.

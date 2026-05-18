@@ -399,7 +399,6 @@ function emptyModelComparisonCounts(): ModelComparisonCounts {
     overallWorst: 0,
     net: 0,
     correctness: 0,
-    reasoning: 0,
     completeness: 0,
     readability: 0,
   }
@@ -706,9 +705,6 @@ export async function buildExportCsv(): Promise<string> {
     best_by_correctness_label: record.facetSelections?.correctness ?? "",
     best_by_correctness_model: resolveModel(record, record.facetSelections?.correctness),
     best_by_correctness_gateway_model: resolveGatewayModel(record, record.facetSelections?.correctness),
-    best_by_reasoning_label: record.facetSelections?.reasoning ?? "",
-    best_by_reasoning_model: resolveModel(record, record.facetSelections?.reasoning),
-    best_by_reasoning_gateway_model: resolveGatewayModel(record, record.facetSelections?.reasoning),
     best_by_completeness_label: record.facetSelections?.completeness ?? "",
     best_by_completeness_model: resolveModel(record, record.facetSelections?.completeness),
     best_by_completeness_gateway_model: resolveGatewayModel(record, record.facetSelections?.completeness),

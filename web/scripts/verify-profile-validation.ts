@@ -13,6 +13,7 @@ const sandbox = mkdtempSync(join(tmpdir(), "profile-validation-"))
 process.chdir(sandbox)
 
 import {
+  EDUCATION_LEVEL_OPTIONS,
   createParticipantProfileDraft,
   extractLegacyProfileSnapshot,
   isCompleteParticipantProfile,
@@ -31,6 +32,8 @@ import {
   upsertParticipantStatus,
   upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
+import { EVALUATION_FACET_IDS } from "@/lib/server/platform-settings"
+import studyConfig from "@/config/evaluation.config.json"
 import type { EvaluationRecord, ParticipantProfile, ParticipantProfileDraft, PendingQuestion } from "@/lib/evaluation/types"
 
 function buildLegacyProfile(token: string): ParticipantProfile {
@@ -460,11 +463,78 @@ async function testCsvLegacyRowEmitsEmptyForUndefined() {
   console.log("PASS: legacy CSV row has empty active cells (not 'undefined') + populated legacy_* columns")
 }
 
+function testEducationOptionsExcludeHighSchool() {
+  console.log("\n=== EDUCATION_LEVEL_OPTIONS excludes high_school_or_below ===")
+  // The recruited age range starts at 20, so the high-school bucket is unreachable
+  // and was removed as part of refine-survey-copy-and-facets.
+  const hs = (EDUCATION_LEVEL_OPTIONS as ReadonlyArray<{ value: string; label: string }>).find(
+    (option) => option.value === "high_school_or_below",
+  )
+  assert.equal(hs, undefined, "high_school_or_below must NOT appear in EDUCATION_LEVEL_OPTIONS")
+
+  // Validation must also reject a stored profile that still carries the removed value.
+  const completeDraft: ParticipantProfileDraft = {
+    token: "P-EDU",
+    ageRange: "20_24",
+    gender: "female",
+    educationLevel: "undergrad_in_progress",
+    financeBackgroundType: "student_finance_related",
+    financeWorkExperience: "none",
+    investmentExperience: "none",
+    financeFamiliarity: 3,
+    llmExperience: "weekly",
+    hasUsedAiForFinance: false,
+    financeSubdomains: ["stocks"],
+    notes: "",
+  }
+  const withRemovedValue = {
+    ...completeDraft,
+    educationLevel: "high_school_or_below" as unknown as ParticipantProfileDraft["educationLevel"],
+  }
+  const issues = validateParticipantProfile(withRemovedValue)
+  assert.ok(
+    issues.some((i) => i.includes("學歷")),
+    `stored profile with removed high_school_or_below must fail validation with 學歷 issue; got ${JSON.stringify(issues)}`,
+  )
+  console.log("PASS: high_school_or_below removed from options and rejected by validation")
+}
+
+function testFacetsExcludeReasoning() {
+  console.log("\n=== reasoning facet removed across config / platform-settings / CSV ===")
+  // (a) JSON config evaluationFacets must not contain the reasoning entry.
+  const reasoningEntry = (studyConfig.evaluationFacets as Array<{ id: string }>).find(
+    (facet) => facet.id === "reasoning",
+  )
+  assert.equal(reasoningEntry, undefined, "config.evaluationFacets must not contain id='reasoning'")
+
+  // (b) platform-settings' validation whitelist must not include reasoning.
+  assert.ok(
+    !(EVALUATION_FACET_IDS as readonly string[]).includes("reasoning"),
+    `EVALUATION_FACET_IDS must not include 'reasoning'; got ${JSON.stringify(EVALUATION_FACET_IDS)}`,
+  )
+
+  // (c) CSV export header must not declare any best_by_reasoning_* column.
+  // We sniff the header line directly to avoid coupling to internal row shape.
+  // Build a minimal CSV scope by exporting from an empty store — we still get the header.
+  // Call out: this assertion fires synchronously off the header string, not record rows.
+  return (async () => {
+    await resetEvaluationData()
+    const csv = await buildExportCsv()
+    const header = csv.split(/\r?\n/)[0] ?? ""
+    for (const col of ["best_by_reasoning_label", "best_by_reasoning_model", "best_by_reasoning_gateway_model"]) {
+      assert.ok(!header.includes(col), `CSV header must NOT contain '${col}'; header was: ${header}`)
+    }
+    console.log("PASS: reasoning gone from config, platform-settings, and CSV export header")
+  })()
+}
+
 async function main() {
   testMigrateLegacyProfile()
   testValidate()
   testDraftSeedsNullForRequiredEnums()
   testExtractLegacyHandlesNonString()
+  testEducationOptionsExcludeHighSchool()
+  await testFacetsExcludeReasoning()
   await testStorageBackwardCompatRead()
   await testClearPendingOnLegacyResubmit()
   await testJsonExportMigratesAndAttachesLegacy()

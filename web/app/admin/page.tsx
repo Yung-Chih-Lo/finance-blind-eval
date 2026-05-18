@@ -51,9 +51,8 @@ function pickTab(value: string | string[] | undefined): string {
   return value ?? "overview"
 }
 
-const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "reasoning" | "completeness" | "readability">; label: string }[] = [
+const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "completeness" | "readability">; label: string }[] = [
   { key: "correctness", label: "Correctness" },
-  { key: "reasoning", label: "Reasoning" },
   { key: "completeness", label: "Complete" },
   { key: "readability", label: "Readability" },
 ]
@@ -65,12 +64,24 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   try {
     settings = await getActivePlatformSettings()
   } catch (error) {
-    if (error instanceof PlatformSettingsError && error.message.startsWith("Legacy provider schema")) {
-      return (
-        <main className="admin-shell admin-tokens">
-          <AdminLegacySettingsBanner issues={error.issues} />
-        </main>
-      )
+    if (error instanceof PlatformSettingsError) {
+      if (error.message.startsWith("Legacy provider schema")) {
+        return (
+          <main className="admin-shell admin-tokens">
+            <AdminLegacySettingsBanner issues={error.issues} kind="legacy-provider" />
+          </main>
+        )
+      }
+      if (
+        error.message.startsWith("Runtime platform settings validation failed.") ||
+        error.message.startsWith("Platform settings validation failed.")
+      ) {
+        return (
+          <main className="admin-shell admin-tokens">
+            <AdminLegacySettingsBanner issues={error.issues} kind="validation-failed" />
+          </main>
+        )
+      }
     }
     throw error
   }
