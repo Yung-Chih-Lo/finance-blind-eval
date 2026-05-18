@@ -101,14 +101,6 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
       </header>
 
       <form className="form-panel" onSubmit={submitProfile}>
-        <section className="form-intro" aria-label="背景資料用途">
-          <h2>正式作答前，先補齊非識別性背景資料</h2>
-          <p>
-            本研究不收集姓名、公司、帳號或精確年齡；若不方便回答，可選擇不願透露或不確定。
-            為了讓資料分析準確，請務必每一題都明確選擇後再送出。
-          </p>
-        </section>
-
         <fieldset>
           <legend>基本分層</legend>
           <label>
