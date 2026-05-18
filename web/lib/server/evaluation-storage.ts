@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
 import { EVALUATION_FACETS, MODEL_IDS, WORST_ANSWER_FLAGS } from "@/lib/evaluation/config"
+import { extractLegacyProfileSnapshot, migrateLegacyProfile } from "@/lib/evaluation/profile"
 import type {
   AdminAttentionItems,
   AdminFunnelStages,
@@ -15,6 +16,7 @@ import type {
   EvaluationStore,
   ModelComparisonCounts,
   ModelId,
+  ParticipantProfile,
   ParticipantStatus,
   PendingQuestion,
   PlatformSettingsSnapshot,
@@ -206,13 +208,74 @@ export async function touchSession(sessionId: string): Promise<void> {
   })
 }
 
+// On read we strip legacy profile fields so consumers only see the current schema.
+// migrateLegacyProfile returns Partial<ParticipantProfile>; we cast back to ParticipantProfile
+// to match the established convention (storage type is permissive — UIs already handle
+// undefined optional fields via `?? "-"`). The "missing new required fields" condition
+// is what the legacy-shape→form-prefill scenario keys off of (see spec).
+function migrateParticipantProfile(profile: ParticipantStatus["profile"]): ParticipantStatus["profile"] {
+  if (!profile) return profile
+  const migrated = migrateLegacyProfile(profile)
+  return migrated as ParticipantProfile
+}
+
+function migrateParticipantStatus(status: ParticipantStatus): ParticipantStatus {
+  return { ...status, profile: migrateParticipantProfile(status.profile) }
+}
+
 export async function getParticipantStatuses(): Promise<ParticipantStatus[]> {
-  return (await readStore()).participants
+  return (await readStore()).participants.map(migrateParticipantStatus)
 }
 
 export async function getParticipantStatus(token: string): Promise<ParticipantStatus | undefined> {
   const normalizedToken = normalizeToken(token)
-  return (await readStore()).participants.find((participant) => participant.token === normalizedToken)
+  const match = (await readStore()).participants.find((participant) => participant.token === normalizedToken)
+  return match ? migrateParticipantStatus(match) : undefined
+}
+
+export async function clearPendingQuestionsForParticipant(token: string): Promise<void> {
+  const normalizedToken = normalizeToken(token)
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const next = store.pendingQuestions.filter(
+      (question) => normalizeToken(question.participantToken) !== normalizedToken,
+    )
+    if (next.length === store.pendingQuestions.length) {
+      return
+    }
+    await writeStore({
+      ...store,
+      pendingQuestions: next,
+    })
+  })
+}
+
+// Atomic combination of upsert + pending-clear used by the session route on the
+// legacy → new-shape profile transition. Calling the two helpers separately would
+// leave a window where a concurrent answer-generation POST could re-insert a pending
+// question between the upsert mutex release and the clear mutex acquisition — that
+// new pending would then be nuked by the late clear, recreating the F2 deadlock.
+export async function upsertParticipantStatusAndClearPending(
+  status: ParticipantStatus,
+): Promise<ParticipantStatus> {
+  const normalizedStatus: ParticipantStatus = {
+    ...status,
+    token: normalizeToken(status.token),
+    profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
+  }
+  const normalizedToken = normalizedStatus.token
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedToken)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+      pendingQuestions: store.pendingQuestions.filter(
+        (question) => normalizeToken(question.participantToken) !== normalizedToken,
+      ),
+    })
+  })
+  return normalizedStatus
 }
 
 export async function upsertParticipantStatus(status: ParticipantStatus): Promise<ParticipantStatus> {
@@ -503,34 +566,93 @@ function computeAttentionItems(
 
 export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnapshot> {
   const store = await readStore()
+  // Migrate participant profiles at the snapshot boundary so UI consumers only see the
+  // current schema; raw legacy fields stay in store.records for export use (D9).
+  const participants = store.participants.map(migrateParticipantStatus)
   const worstFlagCounts = countWorstFlags(store.records, config)
   const latencyP95 = computeLatencyP95(store.records)
+
+  // financeBackgroundType drives the four mutually-exclusive KPI buckets. Legacy
+  // records that lack the field fall into unknownBackgroundCount. The switch's never
+  // fallthrough is a compile-time exhaustiveness check: adding a new arm to the
+  // FinanceBackgroundType union without updating this switch becomes a type error.
+  let financeBackgroundCount = 0
+  let nonFinanceBackgroundCount = 0
+  let refusalBackgroundCount = 0
+  let unknownBackgroundCount = 0
+  for (const participant of participants) {
+    const bg = participant.profile?.financeBackgroundType
+    if (!bg) {
+      unknownBackgroundCount += 1
+      continue
+    }
+    switch (bg) {
+      case "student_finance_related":
+      case "working_finance_related":
+        financeBackgroundCount += 1
+        break
+      case "student_other":
+      case "working_other":
+        nonFinanceBackgroundCount += 1
+        break
+      case "prefer_not_to_say":
+        refusalBackgroundCount += 1
+        break
+      default: {
+        const exhaustive: never = bg
+        void exhaustive
+        unknownBackgroundCount += 1
+      }
+    }
+  }
+
   return {
-    participants: store.participants,
+    participants,
     records: store.records,
     modelCounts: countModelSelections(store.records, config),
     comparativeCounts: countComparativeSelections(store.records, config),
     worstFlagCounts,
-    completedCount: store.participants.filter((participant) => participant.completionStatus === "completed").length,
-    financeBackgroundCount: store.participants.filter(
-      (participant) => participant.profile?.isBusinessOrFinance === "yes",
-    ).length,
-    nonFinanceBackgroundCount: store.participants.filter(
-      (participant) => participant.profile?.isBusinessOrFinance === "no",
-    ).length,
-    funnelStages: computeFunnelStages(store.participants, store.records),
-    attentionItems: computeAttentionItems(store.participants, store.records, worstFlagCounts, latencyP95, config),
+    completedCount: participants.filter((participant) => participant.completionStatus === "completed").length,
+    financeBackgroundCount,
+    nonFinanceBackgroundCount,
+    refusalBackgroundCount,
+    unknownBackgroundCount,
+    funnelStages: computeFunnelStages(participants, store.records),
+    attentionItems: computeAttentionItems(participants, store.records, worstFlagCounts, latencyP95, config),
   }
 }
 
 export async function buildExportJson(settings?: PlatformSettingsSnapshot): Promise<string> {
   const store = await readStore()
+  // For every record / participant we:
+  //   1. Extract the legacy field snapshot from the ORIGINAL stored profile (must
+  //      happen before migration, since migrate drops the legacy keys).
+  //   2. Migrate the active profile so its serialized form matches the new schema
+  //      (legacy keys stripped) — satisfies design D6 "server consumers see only the
+  //      new shape".
+  //   3. Attach the legacyProfile block only when the snapshot is non-empty.
+  // Together this ensures the JSON export shows a clean active profile plus a nested
+  // legacyProfile pocket for legacy-cohort identification — see design D9.
+  const records = store.records.map((record) => {
+    const legacyProfile = extractLegacyProfileSnapshot(record.participantProfile)
+    const migrated = migrateLegacyProfile(record.participantProfile) as ParticipantProfile
+    return legacyProfile
+      ? { ...record, participantProfile: migrated, legacyProfile }
+      : { ...record, participantProfile: migrated }
+  })
+  const participants = store.participants.map((participant) => {
+    const legacyProfile = extractLegacyProfileSnapshot(participant.profile)
+    const migrated = participant.profile ? (migrateLegacyProfile(participant.profile) as ParticipantProfile) : undefined
+    return legacyProfile
+      ? { ...participant, profile: migrated, legacyProfile }
+      : { ...participant, profile: migrated }
+  })
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
       settings,
-      participants: store.participants,
-      records: store.records,
+      participants,
+      records,
     },
     null,
     2,
@@ -539,21 +661,30 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
 
 export async function buildExportCsv(): Promise<string> {
   const records = await getEvaluationRecords()
-  const rows = records.map((record) => ({
+  const rows = records.map((record) => {
+    // record.participantProfile is the original immutable snapshot saved when the
+    // participant submitted judgment — getEvaluationRecords() does NOT migrate it.
+    // We extract the legacy fields directly from the snapshot (only legacy records
+    // have non-empty extraction). The active-profile columns below read the same
+    // snapshot under its typed view; legacy records will surface undefined for the
+    // new fields (CSV emits `""`) and that's the signal of "legacy cohort row".
+    const legacy = extractLegacyProfileSnapshot(record.participantProfile)
+    const profile = record.participantProfile
+    return {
     participant_token: record.participantToken,
     settings_version: record.settingsVersion ?? "",
     settings_snapshot_hash: record.settingsSnapshotHash ?? "",
-    age_range: record.participantProfile.ageRange ?? "",
-    field_or_work_domain: record.participantProfile.fieldOrWorkDomain ?? "",
-    is_business_or_finance: record.participantProfile.isBusinessOrFinance,
-    grade_or_occupation: record.participantProfile.gradeOrOccupation,
-    has_taken_finance_course: record.participantProfile.hasTakenFinanceCourse,
-    finance_work_experience: record.participantProfile.financeWorkExperience ?? "",
-    investment_experience: record.participantProfile.investmentExperience ?? "",
-    finance_familiarity: record.participantProfile.financeFamiliarity,
-    llm_experience: record.participantProfile.llmExperience,
-    finance_llm_usage: record.participantProfile.financeLlmUsage ?? "",
-    finance_subdomains: (record.participantProfile.financeSubdomains ?? []).join("|"),
+    age_range: profile.ageRange ?? "",
+    gender: profile.gender ?? "",
+    education_level: profile.educationLevel ?? "",
+    finance_background_type: profile.financeBackgroundType ?? "",
+    grade_or_occupation: profile.gradeOrOccupation ?? "",
+    finance_work_experience: profile.financeWorkExperience ?? "",
+    investment_experience: profile.investmentExperience ?? "",
+    finance_familiarity: profile.financeFamiliarity,
+    llm_experience: profile.llmExperience,
+    has_used_ai_for_finance: profile.hasUsedAiForFinance === true ? "Y" : profile.hasUsedAiForFinance === false ? "N" : "",
+    finance_subdomains: (profile.financeSubdomains ?? []).join("|"),
     question_index: record.questionIndex,
     prompt_category: record.promptCategory,
     user_question: record.userQuestion,
@@ -595,7 +726,15 @@ export async function buildExportCsv(): Promise<string> {
     timestamp: record.timestamp,
     response_latency_ms: record.responseLatencyMs,
     completion_status: record.completionStatus,
-  }))
+    // legacy_* trailing columns: always emitted (header schema is deterministic).
+    // New-shape records produce empty cells here; legacy-shape records emit their
+    // original values verbatim. See design D9.
+    legacy_field_or_work_domain: legacy?.fieldOrWorkDomain ?? "",
+    legacy_is_business_or_finance: legacy?.isBusinessOrFinance ?? "",
+    legacy_has_taken_finance_course: legacy?.hasTakenFinanceCourse ?? "",
+    legacy_finance_llm_usage: legacy?.financeLlmUsage ?? "",
+    }
+  })
 
   const headers = Object.keys(
     rows[0] ?? {

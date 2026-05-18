@@ -1,20 +1,62 @@
 import { NextResponse } from "next/server"
 
 import { SEEDED_PARTICIPANTS } from "@/lib/evaluation/config"
-import { validateParticipantProfile } from "@/lib/evaluation/profile"
-import type { ParticipantProfile, ParticipantStatus } from "@/lib/evaluation/types"
+import { isCompleteParticipantProfile, validateParticipantProfile } from "@/lib/evaluation/profile"
+import type { ParticipantProfile, ParticipantProfileDraft, ParticipantStatus } from "@/lib/evaluation/types"
 import {
   getEvaluationRecordsByParticipant,
   getParticipantStatus,
   getPendingQuestionsByParticipant,
   normalizeToken,
   upsertParticipantStatus,
+  upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
 import { requireEvaluationSession } from "@/lib/server/session"
 
 interface SessionRequest {
   token?: string
-  profile?: ParticipantProfile
+  profile?: ParticipantProfileDraft
+}
+
+function buildPersistedProfile(
+  token: string,
+  raw: ParticipantProfile,
+  existingKnownName?: string,
+): ParticipantProfile {
+  // Explicitly project to the new schema so any rogue legacy keys (fieldOrWorkDomain,
+  // isBusinessOrFinance, hasTakenFinanceCourse, financeLlmUsage) that an old client
+  // might still send are silently dropped before persist (spec scenario 5.4).
+  const grade = raw.gradeOrOccupation?.trim()
+  return {
+    token,
+    knownName: raw.knownName || existingKnownName || SEEDED_PARTICIPANTS[token]?.name,
+    ageRange: raw.ageRange,
+    gender: raw.gender,
+    educationLevel: raw.educationLevel,
+    financeBackgroundType: raw.financeBackgroundType,
+    gradeOrOccupation: grade ? grade : undefined,
+    financeWorkExperience: raw.financeWorkExperience,
+    investmentExperience: raw.investmentExperience,
+    financeFamiliarity: raw.financeFamiliarity,
+    llmExperience: raw.llmExperience,
+    hasUsedAiForFinance: raw.hasUsedAiForFinance,
+    financeSubdomains: raw.financeSubdomains,
+    notes: raw.notes?.trim() ?? "",
+  }
+}
+
+// A pre-write profile counts as "legacy shape" when it lacks any of the new required
+// fields — typically because migrateLegacyProfile stripped legacy keys and could not
+// infer the new ones. We trigger pending-clear only on this legacy → new transition
+// (design D6) so a routine re-submit of the same new-shape profile is a no-op.
+function isLegacyShape(profile: ParticipantStatus["profile"]): boolean {
+  if (!profile) return false
+  return (
+    !profile.gender ||
+    !profile.educationLevel ||
+    !profile.financeBackgroundType ||
+    typeof profile.hasUsedAiForFinance !== "boolean"
+  )
 }
 
 function publicPendingQuestion(pendingQuestion: Awaited<ReturnType<typeof getPendingQuestionsByParticipant>>[number]) {
@@ -41,24 +83,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing participant token." }, { status: 400 })
   }
 
+  // Type predicate narrows body.profile from ParticipantProfileDraft to ParticipantProfile
+  // when validation passes. We capture the narrowed value in a typed local so the
+  // assignment downstream doesn't need an `as ParticipantProfile` cast.
+  let validatedProfile: ParticipantProfile | undefined
   if (body?.profile) {
-    const issues = validateParticipantProfile(body.profile)
-    if (issues.length > 0) {
+    if (!isCompleteParticipantProfile(body.profile)) {
+      const issues = validateParticipantProfile(body.profile)
       return NextResponse.json({ error: "Incomplete participant profile.", issues }, { status: 400 })
     }
+    validatedProfile = body.profile
   }
 
   const now = new Date().toISOString()
   const existing = await getParticipantStatus(token)
-  const profile = body?.profile
-    ? {
-        ...body.profile,
-        token,
-        knownName: body.profile.knownName || SEEDED_PARTICIPANTS[token]?.name,
-        gradeOrOccupation: body.profile.gradeOrOccupation.trim(),
-        fieldOrWorkDomain: body.profile.fieldOrWorkDomain.trim(),
-        notes: body.profile.notes.trim(),
-      }
+  const wasLegacy = isLegacyShape(existing?.profile)
+  const profile = validatedProfile
+    ? buildPersistedProfile(token, validatedProfile, existing?.profile?.knownName)
     : existing?.profile
 
   const status: ParticipantStatus = {
@@ -70,7 +111,16 @@ export async function POST(request: Request) {
     completedAt: existing?.completedAt,
   }
 
-  const participant = await upsertParticipantStatus(status)
+  // Legacy → new-shape transition: pending questions carry a legacy participantProfile
+  // snapshot and would otherwise leak into the saved evaluation record, or block
+  // regeneration via 409. We run upsert + clear in a SINGLE mutex window (combined
+  // helper) so a concurrent answer-generation POST can't insert a fresh pending row
+  // between the two writes that the late clear would then nuke.
+  const participant =
+    validatedProfile && wasLegacy
+      ? await upsertParticipantStatusAndClearPending(status)
+      : await upsertParticipantStatus(status)
+
   const answeredCount = (await getEvaluationRecordsByParticipant(participant.token)).length
   const [pendingQuestion] = await getPendingQuestionsByParticipant(participant.token)
   return NextResponse.json({

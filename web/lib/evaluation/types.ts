@@ -115,36 +115,63 @@ export interface PlatformSettingsValidationResult {
   issues: string[]
 }
 
-export type AgeRange = "under_20" | "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
+export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
+export type Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"
+export type EducationLevel =
+  | "high_school_or_below"
+  | "undergrad_in_progress"
+  | "undergrad_completed"
+  | "grad_or_above"
+  | "prefer_not_to_say"
+export type FinanceBackgroundType =
+  | "student_finance_related"
+  | "student_other"
+  | "working_finance_related"
+  | "working_other"
+  | "prefer_not_to_say"
 export type FinanceWorkExperience = "none" | "course_project" | "internship" | "professional" | "prefer_not_to_say"
 export type InvestmentExperience = "none" | "basic" | "regular" | "advanced" | "prefer_not_to_say"
-export type FinanceLlmUsage = "never" | "tried" | "monthly" | "weekly" | "daily"
 export type FinanceSubdomain =
   | "accounting"
   | "stocks"
   | "funds_etf"
   | "bonds_rates"
   | "macro_fx"
-  | "derivatives"
   | "personal_finance"
-  | "risk_management"
   | "not_sure"
 
 export interface ParticipantProfile {
   token: string
   knownName?: string
   ageRange: AgeRange
-  fieldOrWorkDomain: string
-  isBusinessOrFinance: "yes" | "no" | "unsure"
-  gradeOrOccupation: string
-  hasTakenFinanceCourse: "yes" | "no" | "in_progress"
+  gender: Gender
+  educationLevel: EducationLevel
+  financeBackgroundType: FinanceBackgroundType
+  gradeOrOccupation?: string
   financeWorkExperience: FinanceWorkExperience
   investmentExperience: InvestmentExperience
   financeFamiliarity: number
   llmExperience: "none" | "rare" | "monthly" | "weekly" | "daily"
-  financeLlmUsage: FinanceLlmUsage
+  hasUsedAiForFinance: boolean
   financeSubdomains: FinanceSubdomain[]
   notes: string
+}
+
+// Form-state representation of a participant profile in progress.
+// Every required field starts as null until the participant explicitly picks; validation
+// rejects null so no field can silently default. The Y/N field uses tri-state (D3); the
+// five enum fields use null-sentinel (extends D3 to the primary stratifier and siblings,
+// caught by verify-perspective review).
+export type ParticipantProfileDraft = Omit<
+  ParticipantProfile,
+  "hasUsedAiForFinance" | "gender" | "educationLevel" | "financeBackgroundType" | "financeWorkExperience" | "investmentExperience"
+> & {
+  hasUsedAiForFinance: boolean | null
+  gender: Gender | null
+  educationLevel: EducationLevel | null
+  financeBackgroundType: FinanceBackgroundType | null
+  financeWorkExperience: FinanceWorkExperience | null
+  investmentExperience: InvestmentExperience | null
 }
 
 export interface ParticipantStatus {
@@ -272,8 +299,13 @@ export interface AdminSnapshot {
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
+  // Four mutually-exclusive buckets derived from financeBackgroundType (see spec
+  // scenario "KPI bar reports finance-background breakdown"). Legacy records that
+  // lack financeBackgroundType count under unknownBackgroundCount.
   financeBackgroundCount: number
   nonFinanceBackgroundCount: number
+  refusalBackgroundCount: number
+  unknownBackgroundCount: number
   funnelStages: AdminFunnelStages
   attentionItems: AdminAttentionItems
 }
