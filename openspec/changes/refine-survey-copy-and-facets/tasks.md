@@ -26,10 +26,10 @@
 
 ## 3. hasUsedAiForFinance radio → select swap
 
-- [ ] 3.1 Replace the `<div className="field-group">…<div className="radio-row">…</div>…</div>` block (profile-form.tsx ~L308-331) with a `<label>` containing a `<select>` whose options are: disabled placeholder `請選擇` (value `""`), `是` (value `"true"`), `否` (value `"false"`)
-- [ ] 3.2 In the `onChange` handler, branch on `event.target.value`: `""` → `null`, `"true"` → `true`, `"false"` → `false`. Cast: `hasUsedAiForFinance: value === "" ? null : value === "true"`
-- [ ] 3.3 Run `cd web && npm run typecheck` — confirm the boolean / null tri-state still types
-- [ ] 3.4 Run `cd web && npm run lint`
+- [x] 3.1 Replace the `<div className="field-group">…<div className="radio-row">…</div>…</div>` block (profile-form.tsx ~L308-331) with a `<label>` containing a `<select>` whose options are: disabled placeholder `請選擇` (value `""`), `是` (value `"true"`), `否` (value `"false"`)
+- [x] 3.2 In the `onChange` handler, branch on `event.target.value`: `""` → `null`, `"true"` → `true`, `"false"` → `false`. Cast: `hasUsedAiForFinance: value === "" ? null : value === "true"`
+- [x] 3.3 Run `cd web && npm run typecheck` — confirm the boolean / null tri-state still types
+- [x] 3.4 Run `cd web && npm run lint`
 - [ ] 3.5 Manual UI smoke: profile-form renders the select, validation rejects placeholder, both Yes and No submit and persist correctly (deferred — visual check before merge)
 
 ## 4. Reasoning facet removal (schema-wide)

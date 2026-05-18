@@ -297,30 +297,26 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
             </select>
             <span className="field-hint">請用最近一個月的平均使用頻率作答。</span>
           </label>
-          <div className="field-group">
-            <span className="field-label">是否曾用 AI / ChatGPT 處理金融、投資、財報、課業或工作相關問題？ *</span>
-            <div className="radio-row">
-              <label className="check-option">
-                <input
-                  checked={profile.hasUsedAiForFinance === true}
-                  name="hasUsedAiForFinance"
-                  type="radio"
-                  onChange={() => setProfile({ ...profile, hasUsedAiForFinance: true })}
-                />
-                是
-              </label>
-              <label className="check-option">
-                <input
-                  checked={profile.hasUsedAiForFinance === false}
-                  name="hasUsedAiForFinance"
-                  type="radio"
-                  onChange={() => setProfile({ ...profile, hasUsedAiForFinance: false })}
-                />
-                否
-              </label>
-            </div>
+          <label>
+            是否曾用 AI / ChatGPT 處理金融、投資、財報、課業或工作相關問題？ *
+            <select
+              value={profile.hasUsedAiForFinance === null ? "" : String(profile.hasUsedAiForFinance)}
+              onChange={(event) => {
+                const value = event.target.value
+                setProfile({
+                  ...profile,
+                  hasUsedAiForFinance: value === "" ? null : value === "true",
+                })
+              }}
+            >
+              <option value="" disabled>
+                請選擇
+              </option>
+              <option value="true">是</option>
+              <option value="false">否</option>
+            </select>
             <span className="field-hint">請依實際情況選擇一項。</span>
-          </div>
+          </label>
           <label>
             其他背景備註
             <textarea
