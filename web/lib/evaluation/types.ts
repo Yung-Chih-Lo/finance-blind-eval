@@ -118,7 +118,6 @@ export interface PlatformSettingsValidationResult {
 export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
 export type Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"
 export type EducationLevel =
-  | "high_school_or_below"
   | "undergrad_in_progress"
   | "undergrad_completed"
   | "grad_or_above"

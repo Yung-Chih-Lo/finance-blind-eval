@@ -18,11 +18,11 @@
 
 ## 2. Education option narrowing
 
-- [ ] 2.1 RED: add `testEducationOptionsExcludeHighSchool` to `verify-profile-validation.ts` asserting `EDUCATION_LEVEL_OPTIONS.find(o => o.value === "high_school_or_below")` is `undefined`, and that `validateParticipantProfile({...completeDraft, educationLevel: "high_school_or_below"})` includes an issue mentioning 學歷
-- [ ] 2.2 Verify RED: `cd web && npm run verify:reset-pending` — confirm the new test fails (option still present)
-- [ ] 2.3 GREEN: in `EducationLevel` (types.ts) remove the `"high_school_or_below"` arm; in `EDUCATION_LEVEL_OPTIONS` (profile.ts) remove the first entry
-- [ ] 2.4 Verify GREEN: re-run the verify script — the new test must pass and all 9 prior tests must still pass
-- [ ] 2.5 Run `cd web && npm run typecheck` — ensure no residual reference to `"high_school_or_below"` (the literal type is gone, references would surface)
+- [x] 2.1 RED: add `testEducationOptionsExcludeHighSchool` to `verify-profile-validation.ts` asserting `EDUCATION_LEVEL_OPTIONS.find(o => o.value === "high_school_or_below")` is `undefined`, and that `validateParticipantProfile({...completeDraft, educationLevel: "high_school_or_below"})` includes an issue mentioning 學歷
+- [x] 2.2 Verify RED: `cd web && npm run verify:profile` — confirm the new test fails (option still present)
+- [x] 2.3 GREEN: in `EducationLevel` (types.ts) remove the `"high_school_or_below"` arm; in `EDUCATION_LEVEL_OPTIONS` (profile.ts) remove the first entry
+- [x] 2.4 Verify GREEN: re-run the verify script — the new test must pass and all 9 prior tests must still pass
+- [x] 2.5 Run `cd web && npm run typecheck` — ensure no residual reference to `"high_school_or_below"` (the literal type is gone, references would surface)
 
 ## 3. hasUsedAiForFinance radio → select swap
 
@@ -35,13 +35,13 @@
 ## 4. Reasoning facet removal (schema-wide)
 
 - [ ] 4.1 RED: add `testFacetsExcludeReasoning` to `verify-profile-validation.ts` asserting (a) the config's `evaluationFacets` does NOT contain an entry with `id === "reasoning"`, (b) `EVALUATION_FACET_IDS` from platform-settings does NOT include `"reasoning"`, (c) the CSV-export row builder output keys do NOT include `best_by_reasoning_label`
-- [ ] 4.2 Verify RED: `npm run verify:reset-pending` — confirm the new test fails on all three assertions
+- [ ] 4.2 Verify RED: `npm run verify:profile` — confirm the new test fails on all three assertions
 - [ ] 4.3 GREEN — types.ts: drop `"reasoning"` from `EvaluationFacetId` union; drop `reasoning: number` field from `ModelComparisonCounts` interface
 - [ ] 4.4 GREEN — config: remove the `{ "id": "reasoning", "label": "金融推理最清楚", "helper": "..." }` object from `evaluationFacets`
 - [ ] 4.5 GREEN — platform-settings.ts: remove `"reasoning"` from `EVALUATION_FACET_IDS` literal array
 - [ ] 4.6 GREEN — evaluation-storage.ts: remove `reasoning: 0` from the counter-init at L402; remove the three `best_by_reasoning_*` keys from the CSV row at L709-711
 - [ ] 4.7 GREEN — admin/page.tsx: remove `{ key: "reasoning", label: "Reasoning" }` from `FACET_COLUMNS`
-- [ ] 4.8 Verify GREEN: re-run `npm run verify:reset-pending` — new test must pass, prior 9 tests must still pass
+- [ ] 4.8 Verify GREEN: re-run `npm run verify:profile` — new test must pass, prior 9 tests must still pass
 - [ ] 4.9 Run `npm run typecheck` — confirm no `reasoning` literal type / property remains anywhere
 - [ ] 4.10 Run `npm run lint`
 - [ ] 4.11 Run `npm run build` — confirm Next.js production build succeeds with the reduced facet schema

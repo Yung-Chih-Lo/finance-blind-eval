@@ -26,7 +26,6 @@ export const GENDER_OPTIONS: Array<{ value: Gender; label: string }> = [
 ]
 
 export const EDUCATION_LEVEL_OPTIONS: Array<{ value: EducationLevel; label: string }> = [
-  { value: "high_school_or_below", label: "高中或以下" },
   { value: "undergrad_in_progress", label: "大學在學" },
   { value: "undergrad_completed", label: "大學畢業" },
   { value: "grad_or_above", label: "研究所在學或以上" },
