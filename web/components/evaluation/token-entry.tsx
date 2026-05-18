@@ -81,7 +81,7 @@ export function TokenEntry({
             </div>
             <div>
               <dt>題數</dt>
-              <dd>{config.limits.maxQuestionsPerParticipant} 題金融問題</dd>
+              <dd>{config.limits.maxQuestionsPerParticipant} 題開放問題</dd>
             </div>
             <div>
               <dt>比較方式</dt>
