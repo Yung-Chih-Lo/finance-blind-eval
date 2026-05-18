@@ -34,17 +34,17 @@
 
 ## 4. Reasoning facet removal (schema-wide)
 
-- [ ] 4.1 RED: add `testFacetsExcludeReasoning` to `verify-profile-validation.ts` asserting (a) the config's `evaluationFacets` does NOT contain an entry with `id === "reasoning"`, (b) `EVALUATION_FACET_IDS` from platform-settings does NOT include `"reasoning"`, (c) the CSV-export row builder output keys do NOT include `best_by_reasoning_label`
-- [ ] 4.2 Verify RED: `npm run verify:profile` — confirm the new test fails on all three assertions
-- [ ] 4.3 GREEN — types.ts: drop `"reasoning"` from `EvaluationFacetId` union; drop `reasoning: number` field from `ModelComparisonCounts` interface
-- [ ] 4.4 GREEN — config: remove the `{ "id": "reasoning", "label": "金融推理最清楚", "helper": "..." }` object from `evaluationFacets`
-- [ ] 4.5 GREEN — platform-settings.ts: remove `"reasoning"` from `EVALUATION_FACET_IDS` literal array
-- [ ] 4.6 GREEN — evaluation-storage.ts: remove `reasoning: 0` from the counter-init at L402; remove the three `best_by_reasoning_*` keys from the CSV row at L709-711
-- [ ] 4.7 GREEN — admin/page.tsx: remove `{ key: "reasoning", label: "Reasoning" }` from `FACET_COLUMNS`
-- [ ] 4.8 Verify GREEN: re-run `npm run verify:profile` — new test must pass, prior 9 tests must still pass
-- [ ] 4.9 Run `npm run typecheck` — confirm no `reasoning` literal type / property remains anywhere
-- [ ] 4.10 Run `npm run lint`
-- [ ] 4.11 Run `npm run build` — confirm Next.js production build succeeds with the reduced facet schema
+- [x] 4.1 RED: add `testFacetsExcludeReasoning` to `verify-profile-validation.ts` asserting (a) the config's `evaluationFacets` does NOT contain an entry with `id === "reasoning"`, (b) `EVALUATION_FACET_IDS` from platform-settings does NOT include `"reasoning"`, (c) the CSV-export row builder output keys do NOT include `best_by_reasoning_label`
+- [x] 4.2 Verify RED: `npm run verify:profile` — confirm the new test fails on all three assertions
+- [x] 4.3 GREEN — types.ts: drop `"reasoning"` from `EvaluationFacetId` union; drop `reasoning: number` field from `ModelComparisonCounts` interface
+- [x] 4.4 GREEN — config: remove the `{ "id": "reasoning", "label": "金融推理最清楚", "helper": "..." }` object from `evaluationFacets`
+- [x] 4.5 GREEN — platform-settings.ts: remove `"reasoning"` from `EVALUATION_FACET_IDS` literal array
+- [x] 4.6 GREEN — evaluation-storage.ts: remove `reasoning: 0` from the counter-init at L402; remove the three `best_by_reasoning_*` keys from the CSV row at L709-711
+- [x] 4.7 GREEN — admin/page.tsx: remove `{ key: "reasoning", label: "Reasoning" }` from `FACET_COLUMNS`
+- [x] 4.8 Verify GREEN: re-run `npm run verify:profile` — new test must pass, prior 9 tests must still pass
+- [x] 4.9 Run `npm run typecheck` — confirm no `reasoning` literal type / property remains anywhere
+- [x] 4.10 Run `npm run lint`
+- [x] 4.11 Run `npm run build` — confirm Next.js production build succeeds with the reduced facet schema
 
 ## 5. Correctness facet label rename + tasks copy update
 

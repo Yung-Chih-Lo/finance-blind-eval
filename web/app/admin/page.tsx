@@ -51,9 +51,8 @@ function pickTab(value: string | string[] | undefined): string {
   return value ?? "overview"
 }
 
-const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "reasoning" | "completeness" | "readability">; label: string }[] = [
+const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "completeness" | "readability">; label: string }[] = [
   { key: "correctness", label: "Correctness" },
-  { key: "reasoning", label: "Reasoning" },
   { key: "completeness", label: "Complete" },
   { key: "readability", label: "Readability" },
 ]

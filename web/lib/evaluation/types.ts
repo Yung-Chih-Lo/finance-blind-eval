@@ -1,7 +1,7 @@
 export type ModelId = "H1-best" | "H2-best" | "TAIDE-baseline"
 export type AnswerLabel = "A" | "B" | "C"
 export type CompletionStatus = "profile_started" | "in_progress" | "completed"
-export type EvaluationFacetId = "correctness" | "reasoning" | "completeness" | "readability"
+export type EvaluationFacetId = "correctness" | "completeness" | "readability"
 export type PlatformSettingsSource = "default" | "runtime"
 
 export interface ProviderSettings {
@@ -217,7 +217,6 @@ export interface ModelComparisonCounts {
   overallWorst: number
   net: number
   correctness: number
-  reasoning: number
   completeness: number
   readability: number
 }

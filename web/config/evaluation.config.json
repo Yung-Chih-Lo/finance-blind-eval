@@ -114,8 +114,7 @@
     }
   ],
   "evaluationFacets": [
-    { "id": "correctness", "label": "金融正確性最好", "helper": "金融概念、數字判斷或事實最可靠" },
-    { "id": "reasoning", "label": "金融推理最清楚", "helper": "能說明機制、條件與判斷脈絡" },
+    { "id": "correctness", "label": "正確性最好", "helper": "金融概念、數字判斷或事實最可靠" },
     { "id": "completeness", "label": "回答完整性最高", "helper": "涵蓋必要面向、限制與補充資訊" },
     { "id": "readability", "label": "可讀性最好", "helper": "最容易閱讀、比較與理解" }
   ],

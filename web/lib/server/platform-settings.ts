@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS_VERSION = 2
 
 const ANSWER_LABELS: AnswerLabel[] = ["A", "B", "C"]
 const MODEL_IDS: ModelId[] = ["H1-best", "H2-best", "TAIDE-baseline"]
-export const EVALUATION_FACET_IDS: EvaluationFacetId[] = ["correctness", "reasoning", "completeness", "readability"]
+export const EVALUATION_FACET_IDS: EvaluationFacetId[] = ["correctness", "completeness", "readability"]
 
 export class PlatformSettingsError extends Error {
   constructor(
