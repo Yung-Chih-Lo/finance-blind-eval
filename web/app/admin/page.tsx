@@ -22,9 +22,9 @@ import {
 } from "@/components/ui/table"
 import {
   AGE_RANGE_OPTIONS,
+  AI_USAGE_FREQUENCY_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
-  FINANCE_BACKGROUND_TYPE_OPTIONS,
-  GENDER_OPTIONS,
+  MAIN_DOMAIN_OPTIONS,
   formatProfileChoice,
 } from "@/lib/evaluation/profile"
 import type { ModelComparisonCounts } from "@/lib/evaluation/types"
@@ -136,12 +136,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Token</TableHead>
-              <TableHead>性別</TableHead>
               <TableHead>年齡</TableHead>
               <TableHead>學歷</TableHead>
-              <TableHead>金融背景</TableHead>
-              <TableHead className="text-right">金融熟悉度</TableHead>
-              <TableHead>曾用 AI 處理金融</TableHead>
+              <TableHead>目前主要領域</TableHead>
+              <TableHead>AI 使用頻率</TableHead>
+              <TableHead>曾用 AI 處理金融?</TableHead>
               <TableHead>狀態</TableHead>
               <TableHead className="text-right">完成題數</TableHead>
             </TableRow>
@@ -149,7 +148,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <TableBody>
             {snapshot.participants.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-[var(--admin-muted)]">
+                <TableCell colSpan={8} className="text-center text-[var(--admin-muted)]">
                   尚無受測者紀錄。
                 </TableCell>
               </TableRow>
@@ -160,11 +159,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 return (
                   <TableRow key={participant.token}>
                     <TableCell className="font-mono text-xs">{participant.token}</TableCell>
-                    <TableCell>{formatProfileChoice(GENDER_OPTIONS, participant.profile?.gender)}</TableCell>
                     <TableCell>{formatProfileChoice(AGE_RANGE_OPTIONS, participant.profile?.ageRange)}</TableCell>
                     <TableCell>{formatProfileChoice(EDUCATION_LEVEL_OPTIONS, participant.profile?.educationLevel)}</TableCell>
-                    <TableCell>{formatProfileChoice(FINANCE_BACKGROUND_TYPE_OPTIONS, participant.profile?.financeBackgroundType)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{participant.profile?.financeFamiliarity ?? "-"}</TableCell>
+                    <TableCell>{formatProfileChoice(MAIN_DOMAIN_OPTIONS, participant.profile?.mainDomain)}</TableCell>
+                    <TableCell>{formatProfileChoice(AI_USAGE_FREQUENCY_OPTIONS, participant.profile?.aiUsageFrequency)}</TableCell>
                     <TableCell>{hasUsedAi === true ? "Y" : hasUsedAi === false ? "N" : "-"}</TableCell>
                     <TableCell>{participant.completionStatus}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -335,8 +333,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <SidebarMetric label="題目紀錄" value={recordCount} />
       <SidebarMetric label="完成率" value={completionRate} />
       <SidebarMetric
-        label="金融 / 非金融 / 不願透露 / 未知"
-        value={`${snapshot.financeBackgroundCount} / ${snapshot.nonFinanceBackgroundCount} / ${snapshot.refusalBackgroundCount} / ${snapshot.unknownBackgroundCount}`}
+        label="財經類 / 商學非財經 / 其他"
+        value={`${snapshot.financeRelatedCount} / ${snapshot.businessNonFinanceCount} / ${snapshot.otherCount}`}
       />
     </div>
   )

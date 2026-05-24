@@ -85,13 +85,13 @@
 
 ## 7. GREEN: admin/page.tsx — KPI bar + participant table + drawer
 
-- [ ] 7.1 In `web/app/admin/page.tsx`, locate the KPI bar value-template line (≈339) that reads `${snapshot.financeBackgroundCount} / ${snapshot.nonFinanceBackgroundCount} / ${snapshot.refusalBackgroundCount} / ${snapshot.unknownBackgroundCount}`; replace with `${snapshot.financeRelatedCount} / ${snapshot.businessNonFinanceCount} / ${snapshot.otherCount}`
-- [ ] 7.2 Update the KPI bar label/caption that names the buckets — search for the Chinese label string (likely `財經 / 非財經 / 不願透露 / 未填` or similar) and replace with `財經類 / 商學非財經 / 其他`
-- [ ] 7.3 In the `受測者` tab participant table, drop columns: `gender`, `educationLevel` rename to label-based display, `financeBackgroundType` rename to `mainDomain`-based label display, `financeFamiliarity`, `hasUsedAiForFinance` keep as Y/N; ensure the final column order is Token / 年齡 / 學歷 / 目前主要領域 / AI 使用頻率 / 曾用 AI 處理金融? / 完成狀態 / 已答/總題數
-- [ ] 7.4 Update column header labels to match the new fields in Chinese: `Token`, `年齡`, `學歷`, `目前主要領域`, `AI 使用頻率`, `曾用 AI 處理金融?`, `完成狀態`, `已答/總題數`
-- [ ] 7.5 In the record drawer rendering block, drop the legacy section (any block that conditionally renders fields prefixed with `legacy` or that displays the 4 removed legacy fields); also drop display of `gender`, `gradeOrOccupation`, `financeFamiliarity`, `financeWorkExperience`, `investmentExperience`, `financeSubdomains`, `notes`, `knownName` if any remain
-- [ ] 7.6 Update the drawer profile-section labels to show only the 5 new fields with `formatProfileChoice(MAIN_DOMAIN_OPTIONS, profile.mainDomain)` etc.
-- [ ] 7.7 Verify: `cd web && npm run typecheck` — expect clean across the whole web/ tree
+- [x] 7.1 In `web/app/admin/page.tsx`, locate the KPI bar value-template line (≈339) that reads `${snapshot.financeBackgroundCount} / ${snapshot.nonFinanceBackgroundCount} / ${snapshot.refusalBackgroundCount} / ${snapshot.unknownBackgroundCount}`; replace with `${snapshot.financeRelatedCount} / ${snapshot.businessNonFinanceCount} / ${snapshot.otherCount}`
+- [x] 7.2 Update the KPI bar label/caption that names the buckets — search for the Chinese label string (likely `財經 / 非財經 / 不願透露 / 未填` or similar) and replace with `財經類 / 商學非財經 / 其他`
+- [x] 7.3 In the `受測者` tab participant table, drop columns: `gender`, `educationLevel` rename to label-based display, `financeBackgroundType` rename to `mainDomain`-based label display, `financeFamiliarity`, `hasUsedAiForFinance` keep as Y/N; ensure the final column order is Token / 年齡 / 學歷 / 目前主要領域 / AI 使用頻率 / 曾用 AI 處理金融? / 完成狀態 / 已答/總題數
+- [x] 7.4 Update column header labels to match the new fields in Chinese: `Token`, `年齡`, `學歷`, `目前主要領域`, `AI 使用頻率`, `曾用 AI 處理金融?`, `完成狀態`, `已答/總題數`
+- [x] 7.5 In the record drawer rendering block, drop the legacy section (any block that conditionally renders fields prefixed with `legacy` or that displays the 4 removed legacy fields); also drop display of `gender`, `gradeOrOccupation`, `financeFamiliarity`, `financeWorkExperience`, `investmentExperience`, `financeSubdomains`, `notes`, `knownName` if any remain
+- [x] 7.6 Update the drawer profile-section labels to show only the 5 new fields with `formatProfileChoice(MAIN_DOMAIN_OPTIONS, profile.mainDomain)` etc.
+- [x] 7.7 Verify: `cd web && npm run typecheck` — expect clean across the whole web/ tree
 
 ## 8. Cleanup — delete obsolete file, wipe data store
 
