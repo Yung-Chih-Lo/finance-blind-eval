@@ -38,9 +38,9 @@
   - `"verify:intro-copy": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-intro-copy.js"`
   - `"verify:system-prompt": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-system-prompt-defaults.js"`
   - `"verify:completion-gate": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-completion-gate.js"`
-- [ ] 1.6 Run `cd web && npm run verify:intro-copy` — expect FAIL (current paragraphs contain `大型語言模型` and thesisTitle contains `Augmentative Residual Adapter`).
-- [ ] 1.7 Run `cd web && npm run verify:system-prompt` — expect FAIL (current `DEFAULT_SYSTEM_PROMPT` is one neutral sentence with none of the required keywords).
-- [ ] 1.8 Run `cd web && npm run verify:completion-gate` — expect PASS for the formula itself BUT the production handler at `records/route.ts:112` still uses `pending.questionIndex >= config.promptCategories.length` — note this as a documentation gap; the verify script tests the new formula, the actual handler change is task 4.1.
+- [x] 1.6 Run `cd web && npm run verify:intro-copy` — expect FAIL (current paragraphs contain `大型語言模型` and thesisTitle contains `Augmentative Residual Adapter`).
+- [x] 1.7 Run `cd web && npm run verify:system-prompt` — expect FAIL (current `DEFAULT_SYSTEM_PROMPT` is one neutral sentence with none of the required keywords).
+- [x] 1.8 Run `cd web && npm run verify:completion-gate` — expect PASS for the formula itself BUT the production handler at `records/route.ts:112` still uses `pending.questionIndex >= config.promptCategories.length` — note this as a documentation gap; the verify script tests the new formula, the actual handler change is task 4.1.
 
 ## 2. Intro copy and signature title (TDD GREEN)
 
