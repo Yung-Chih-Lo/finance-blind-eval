@@ -95,9 +95,9 @@
 
 ## 8. Cleanup — delete obsolete file, wipe data store
 
-- [ ] 8.1 Delete `web/tests/profile-typecheck.ts` (every type assertion in it references the removed legacy machinery — `migrateLegacyProfile`, removed `Gender`/`FinanceBackgroundType`/`FinanceWorkExperience`/`InvestmentExperience`/`FinanceSubdomain` enums)
-- [ ] 8.2 Overwrite `web/.data/evaluation-store.json` with `{"participants":[],"sessions":[],"pendingQuestions":[],"records":[]}` (empty shape); the production deploy step also requires a Zeabur volume wipe (tracked in section 10)
-- [ ] 8.3 Verify: `cd web && npm run typecheck` — must be clean (the deleted file should leave no orphan import)
+- [x] 8.1 Delete `web/tests/profile-typecheck.ts` (every type assertion in it references the removed legacy machinery — `migrateLegacyProfile`, removed `Gender`/`FinanceBackgroundType`/`FinanceWorkExperience`/`InvestmentExperience`/`FinanceSubdomain` enums)
+- [x] 8.2 Overwrite `web/.data/evaluation-store.json` with `{"participants":[],"sessions":[],"pendingQuestions":[],"records":[]}` (empty shape); the production deploy step also requires a Zeabur volume wipe (tracked in section 10)
+- [x] 8.3 Verify: `cd web && npm run typecheck` — must be clean (the deleted file should leave no orphan import)
 
 ## 9. Verify GREEN — full test + lint + build
 
