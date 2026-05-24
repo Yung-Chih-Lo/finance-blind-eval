@@ -71,17 +71,17 @@
 
 ## 6. GREEN: evaluation-storage.ts — drop legacy paths, rewrite snapshot + CSV
 
-- [ ] 6.1 In `web/lib/server/evaluation-storage.ts`, delete the `extractLegacyProfileSnapshot` and `migrateLegacyProfile` imports (line ~8)
-- [ ] 6.2 Delete the `migrateParticipantProfile` function (lines ~211-219) and every callsite (search for `migrateParticipantProfile(`); the helper applied legacy stripping on read which no longer exists
-- [ ] 6.3 In the function that builds per-participant read results (`getParticipantStatus` etc., line ~222), remove the `migrateParticipantProfile(status.profile)` call and return the raw status profile
-- [ ] 6.4 In `buildExportJson`, delete the records-loop legacy-attach path: replace `extractLegacyProfileSnapshot(record.participantProfile)` + `migrateLegacyProfile(record.participantProfile)` + conditional `{ ...record, participantProfile: migrated, legacyProfile }` with a plain `{ ...record }` return (the profile snapshot is already in the new shape)
-- [ ] 6.5 In `buildExportJson`, delete the participants-loop legacy-attach path with the same simplification: return `{ ...participant }` with no `legacyProfile`
-- [ ] 6.6 In `buildExportCsv` row construction (line ~660-680), drop the `legacy = extractLegacyProfileSnapshot(record.participantProfile)` line and replace the active-profile column block with the 6-field set: `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, `has_used_ai_for_finance` (`Y` / `N` / empty); delete `gender`, `grade_or_occupation`, `finance_work_experience`, `investment_experience`, `finance_familiarity`, `finance_subdomains`, `llm_experience` from the row record
-- [ ] 6.7 In `buildExportCsv` trailing columns block (line ~725-731), delete the 4 `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, `legacy_finance_llm_usage` entries entirely
-- [ ] 6.8 Update the CSV header construction to match — delete the 4 `legacy_*` column header strings + the 7 dropped active-profile column header strings
-- [ ] 6.9 In the admin snapshot bucket-counting block (line ~575-618), rewrite to count `mainDomain` directly: `financeRelatedCount += profile?.mainDomain === "finance_related" ? 1 : 0` (and same for `business_non_finance`, `other`); delete the 4-bucket switch with the `prefer_not_to_say` + unknown branches; the returned snapshot field names update to match `AdminSnapshot` from task 2.8
-- [ ] 6.10 Delete the `upsertParticipantStatusAndClearPending` export and its implementation entirely (only callsite was the deleted `wasLegacy` branch in `session/route.ts`)
-- [ ] 6.11 Verify: `cd web && npm run typecheck` — expect storage clean; remaining errors should be in `admin/page.tsx`
+- [x] 6.1 In `web/lib/server/evaluation-storage.ts`, delete the `extractLegacyProfileSnapshot` and `migrateLegacyProfile` imports (line ~8)
+- [x] 6.2 Delete the `migrateParticipantProfile` function (lines ~211-219) and every callsite (search for `migrateParticipantProfile(`); the helper applied legacy stripping on read which no longer exists
+- [x] 6.3 In the function that builds per-participant read results (`getParticipantStatus` etc., line ~222), remove the `migrateParticipantProfile(status.profile)` call and return the raw status profile
+- [x] 6.4 In `buildExportJson`, delete the records-loop legacy-attach path: replace `extractLegacyProfileSnapshot(record.participantProfile)` + `migrateLegacyProfile(record.participantProfile)` + conditional `{ ...record, participantProfile: migrated, legacyProfile }` with a plain `{ ...record }` return (the profile snapshot is already in the new shape)
+- [x] 6.5 In `buildExportJson`, delete the participants-loop legacy-attach path with the same simplification: return `{ ...participant }` with no `legacyProfile`
+- [x] 6.6 In `buildExportCsv` row construction (line ~660-680), drop the `legacy = extractLegacyProfileSnapshot(record.participantProfile)` line and replace the active-profile column block with the 6-field set: `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, `has_used_ai_for_finance` (`Y` / `N` / empty); delete `gender`, `grade_or_occupation`, `finance_work_experience`, `investment_experience`, `finance_familiarity`, `finance_subdomains`, `llm_experience` from the row record
+- [x] 6.7 In `buildExportCsv` trailing columns block (line ~725-731), delete the 4 `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, `legacy_finance_llm_usage` entries entirely
+- [x] 6.8 Update the CSV header construction to match — delete the 4 `legacy_*` column header strings + the 7 dropped active-profile column header strings
+- [x] 6.9 In the admin snapshot bucket-counting block (line ~575-618), rewrite to count `mainDomain` directly: `financeRelatedCount += profile?.mainDomain === "finance_related" ? 1 : 0` (and same for `business_non_finance`, `other`); delete the 4-bucket switch with the `prefer_not_to_say` + unknown branches; the returned snapshot field names update to match `AdminSnapshot` from task 2.8
+- [x] 6.10 Delete the `upsertParticipantStatusAndClearPending` export and its implementation entirely (only callsite was the deleted `wasLegacy` branch in `session/route.ts`)
+- [x] 6.11 Verify: `cd web && npm run typecheck` — expect storage clean; remaining errors should be in `admin/page.tsx`
 
 ## 7. GREEN: admin/page.tsx — KPI bar + participant table + drawer
 
