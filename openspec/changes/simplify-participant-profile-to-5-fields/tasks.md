@@ -51,14 +51,14 @@
 
 ## 4. GREEN: profile-form.tsx — rewrite as 5-field form
 
-- [ ] 4.1 In `web/components/evaluation/profile-form.tsx`, replace the entire imports block: drop `GENDER_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS`, `FINANCE_SUBDOMAIN_OPTIONS`, `FINANCE_WORK_EXPERIENCE_OPTIONS`, `INVESTMENT_EXPERIENCE_OPTIONS`; add `MAIN_DOMAIN_OPTIONS`, `AI_USAGE_FREQUENCY_OPTIONS`; drop `ScaleInput` import; drop `FinanceSubdomain` type import
-- [ ] 4.2 Delete the `toggleSubdomain` helper and the multi-checkbox `financeSubdomains` fieldset
-- [ ] 4.3 Rewrite the `submitProfile` function body to drop `gradeOrOccupation.trim()` and `notes.trim()` projections — the new draft has no string fields needing trim
-- [ ] 4.4 Rewrite the JSX form body with 5 `<label>` blocks, each a `<select>`: 年齡 / 學歷 / 目前主要領域 / AI 使用頻率 / 是否曾用 AI 工具處理金融問題?; each select binds to its draft field and `setProfile` updates the `null`-or-value form-state
-- [ ] 4.5 Use the participant-facing Chinese label for the AI-for-finance field including the scope phrase: `是否曾用 AI 工具處理金融問題？（曾用 ChatGPT、Claude、Gemini 等 AI 工具，查詢、討論或解答金融、投資、財務、會計、總經相關問題）`
-- [ ] 4.6 Drop the `<fieldset>` grouping legends (`基本分層 / 金融背景與經驗 / AI 使用經驗`) — with only 5 fields, group them under one fieldset (`<legend>背景資料</legend>`) or omit grouping entirely
-- [ ] 4.7 Update the submit button text to `開始 5 題盲測問卷` if not already (verify; per 2A it should already be the case)
-- [ ] 4.8 Verify: `cd web && npm run typecheck` for `profile-form.tsx` — expect form.tsx clean; remaining errors should be in storage/admin/session
+- [x] 4.1 In `web/components/evaluation/profile-form.tsx`, replace the entire imports block: drop `GENDER_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS`, `FINANCE_SUBDOMAIN_OPTIONS`, `FINANCE_WORK_EXPERIENCE_OPTIONS`, `INVESTMENT_EXPERIENCE_OPTIONS`; add `MAIN_DOMAIN_OPTIONS`, `AI_USAGE_FREQUENCY_OPTIONS`; drop `ScaleInput` import; drop `FinanceSubdomain` type import
+- [x] 4.2 Delete the `toggleSubdomain` helper and the multi-checkbox `financeSubdomains` fieldset
+- [x] 4.3 Rewrite the `submitProfile` function body to drop `gradeOrOccupation.trim()` and `notes.trim()` projections — the new draft has no string fields needing trim
+- [x] 4.4 Rewrite the JSX form body with 5 `<label>` blocks, each a `<select>`: 年齡 / 學歷 / 目前主要領域 / AI 使用頻率 / 是否曾用 AI 工具處理金融問題?; each select binds to its draft field and `setProfile` updates the `null`-or-value form-state
+- [x] 4.5 Use the participant-facing Chinese label for the AI-for-finance field including the scope phrase: `是否曾用 AI 工具處理金融問題？（曾用 ChatGPT、Claude、Gemini 等 AI 工具，查詢、討論或解答金融、投資、財務、會計、總經相關問題）`
+- [x] 4.6 Drop the `<fieldset>` grouping legends (`基本分層 / 金融背景與經驗 / AI 使用經驗`) — with only 5 fields, group them under one fieldset (`<legend>背景資料</legend>`) or omit grouping entirely
+- [x] 4.7 Update the submit button text to `開始 5 題盲測問卷` if not already (verify; per 2A it should already be the case)
+- [x] 4.8 Verify: `cd web && npm run typecheck` for `profile-form.tsx` — expect form.tsx clean; remaining errors should be in storage/admin/session
 
 ## 5. GREEN: session/route.ts — drop legacy branch
 
