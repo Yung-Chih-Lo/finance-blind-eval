@@ -19,7 +19,7 @@
   - The concatenated paragraphs contain at least one occurrence of `金融語言模型` (or `金融腦` — either satisfies the scope)
   - `study.signature.thesisTitle` matches the regex `/^(?!.*(Augmentative|Residual|Adapter|APT)).+$/`
   - Exit code 1 on any failure with a structured `[FAIL]` line listing which assertion broke; exit 0 with `[OK]` lines on success.
-- [ ] 1.3 Create `web/scripts/verify-system-prompt-defaults.ts` that calls `getDefaultProviderSettings()` from `web/lib/server/provider-settings.ts` after `delete process.env.OPENAI_COMPAT_SYSTEM_PROMPT` and asserts the returned `systemPrompt`:
+- [x] 1.3 Create `web/scripts/verify-system-prompt-defaults.ts` that calls `getDefaultProviderSettings()` from `web/lib/server/provider-settings.ts` after `delete process.env.OPENAI_COMPAT_SYSTEM_PROMPT` and asserts the returned `systemPrompt`:
   - Contains at least one of `金融腦` or `金融語言模型`
   - Contains all of: `金融`, `投資`, `財務`, `會計`, `總經`, `市場` (topical scope listing)
   - Contains a string indicating refusal of non-finance questions (must match the regex `/不|無法|拒|範圍|無法回答/`)
@@ -27,14 +27,14 @@
   - Contains the string `繁體中文`
   - Does NOT contain any of: `A/B/C`, `盲測`, `model`, `H1`, `H2`, `TAIDE`
   - Exit code 1 on any failure with `[FAIL]` per broken assertion; exit 0 with `[OK]` on success.
-- [ ] 1.4 Create `web/scripts/verify-completion-gate.ts` that exercises the completion-derivation logic by reproducing the snippet from `web/app/api/evaluation/records/route.ts:112` inline (since the route handler is not directly callable from a script):
+- [x] 1.4 Create `web/scripts/verify-completion-gate.ts` that exercises the completion-derivation logic by reproducing the snippet from `web/app/api/evaluation/records/route.ts:112` inline (since the route handler is not directly callable from a script):
   - Imports `getActivePlatformSettings` from `@/lib/server/platform-settings` and reads `config.limits.maxQuestionsPerParticipant` (asserts it equals 5).
   - For `answeredCount` in `[1, 2, 3, 4]`: computes `isCompleted = answeredCount >= config.limits.maxQuestionsPerParticipant` and asserts `isCompleted === false`.
   - For `answeredCount === 5`: asserts `isCompleted === true`.
   - For `answeredCount === 6`: asserts `isCompleted === true` (defensive — sixth would never legitimately reach the gate; see scenario `Sixth record write is impossible`).
   - Does NOT directly invoke the route handler (avoids needing Next.js runtime stub) — it tests the formula that the handler uses.
   - Exit code 1 on mismatch; exit 0 on success.
-- [ ] 1.5 Edit `web/package.json` to add three scripts under `scripts`, modeled on the existing `verify:profile`:
+- [x] 1.5 Edit `web/package.json` (also updated `web/scripts/verify-tsconfig.json` include list — plan addendum) to add three scripts under `scripts`, modeled on the existing `verify:profile`:
   - `"verify:intro-copy": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-intro-copy.js"`
   - `"verify:system-prompt": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-system-prompt-defaults.js"`
   - `"verify:completion-gate": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-completion-gate.js"`
