@@ -115,6 +115,21 @@ export interface PlatformSettingsValidationResult {
   issues: string[]
 }
 
+// Schema v2 (2026-05-24): replaced the 13-field profile from refine-survey-copy-and-facets
+// with the 5-field stratification axes the advisor approved on 2026-05-20. The legacy
+// compatibility layer (migrateLegacyProfile, extractLegacyProfileSnapshot, isLegacyShape,
+// upsertParticipantStatusAndClearPending, legacy_* CSV columns, legacyProfile JSON block)
+// was deleted in the same change. Do NOT re-introduce a migration shim — if the schema
+// changes again, wipe the store on deploy. See archived openspec change:
+// `openspec/changes/archive/<date>-simplify-participant-profile-to-5-fields/design.md`
+// (decisions D1 and D5).
+//
+// Field rename history (2026-05-24 simplify-participant-profile-to-5-fields):
+//   financeBackgroundType (5-value) → MainDomain (3-value)
+//   llmExperience          (5-value) → AiUsageFrequency (4-value)
+// `ageRange` and `educationLevel` kept their names but lost their `prefer_not_to_say` arm.
+// `gender`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`,
+// `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName` were dropped entirely.
 export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus"
 export type EducationLevel = "undergrad_in_progress" | "undergrad_completed" | "grad_or_above"
 export type MainDomain = "finance_related" | "business_non_finance" | "other"
