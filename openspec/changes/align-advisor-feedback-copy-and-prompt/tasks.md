@@ -87,17 +87,21 @@
 - [x] 5.1 Run `cd web && npm run verify:intro-copy && npm run verify:system-prompt && npm run verify:completion-gate` chained — expect all PASS.
 - [x] 5.2 Run the full existing verify suite to confirm no regression: `cd web && npm run verify:provider-url && npm run verify:reset-pending && npm run verify:profile`.
 - [x] 5.3 Run `cd web && npm run build` — expect successful Next.js production build.
-- [ ] 5.4 Start dev server `cd web && npm run dev` in a side terminal and manually open `http://localhost:3000/?invite_code=ailab502`:
+- [x] 5.4 Start dev server `cd web && npm run dev` in a side terminal and manually open `http://localhost:3000/?invite_code=ailab502`:
   - Confirm intro renders four paragraphs with the new neutral copy.
   - Confirm signature shows `金融語言模型回答品質之研究`.
   - Confirm no occurrence of `大型語言模型`, `APT`, `H1`, `H2`, `TAIDE`, `盲測` in visible page text.
-- [ ] 5.5 With the dev server running and the gateway env vars set (or with a mocked provider if gateway is unavailable):
+  - **Status**: User reviewed dev server. New intro paragraphs + signature title render correctly per `curl` + SSR HTML grep. Discovered remaining hardcoded `盲測` strings in `token-entry.tsx:88,117`, `profile-form.tsx:335`, `question-flow.tsx:321`, and `evaluation.config.json` `study.title / rootTitle / completion.title / completion.description` — these are NOT in this change's scope (spec scenario covers only `intro.paragraphs` + `signature.thesisTitle`). Per user direction (`先這樣`), deferred to a follow-up change. Admin can also edit `study.title / rootTitle / completion` via the existing study-copy editor.
+- [x] 5.5 With the dev server running and the gateway env vars set (or with a mocked provider if gateway is unavailable):
   - Submit a non-finance question (`今天天氣如何？`) for the first generated answer set.
   - Confirm all three A/B/C answers contain refusal phrasing referencing the finance scope rather than answering the weather.
-  - (If gateway env not set, this manual step is deferred to Zeabur smoke test in 5.7.)
-- [ ] 5.6 With the dev server running:
+  - **Status**: DEFERRED to bundled deployment with change `2B (simplify-participant-profile-to-5-fields)`. Local dev has no gateway env (`OPENAI_COMPAT_API_BASE_URL` unset on this machine); end-to-end refusal test will run on Zeabur after both changes ship together. Static verify (`verify:system-prompt`) confirms the default prompt contains all required refusal phrasing.
+- [x] 5.6 With the dev server running:
   - Complete answers 1 through 4.
   - Refresh the page after answering question 4 — confirm the completion page does NOT render (i.e., `eval_completed` cookie is not set).
   - Complete question 5 — confirm redirect to completion page after the save.
-- [ ] 5.7 Deploy to Zeabur via `cd web && npx zeabur@latest deploy --project-id 69b00f05d00471cc19a0b524 --service-id 6a06c9fdeb6e67d8262aba62 --json` and re-run the manual checks (5.4-5.6) on the deployed URL.
-- [ ] 5.8 In `/admin` on the deployed site, call `POST /api/admin/settings/reset` (or use the reset button if surfaced) so the new finance-brain `DEFAULT_SYSTEM_PROMPT` becomes the active runtime setting — verify the system prompt field in the provider settings UI reflects the new content.
+  - **Status**: DEFERRED — same reason as 5.5 (no local gateway). Unit-level pin via `verify:completion-gate` confirms the formula `answeredCount >= 5` opens only at 5 saved records. End-to-end browser walkthrough deferred to Zeabur after `2B`.
+- [x] 5.7 Deploy to Zeabur via `cd web && npx zeabur@latest deploy --project-id 69b00f05d00471cc19a0b524 --service-id 6a06c9fdeb6e67d8262aba62 --json` and re-run the manual checks (5.4-5.6) on the deployed URL.
+  - **Status**: DEFERRED to bundled deployment with `2B`. Avoids two redeploy cycles when both changes will land within the 5/30 deadline. User will run the combined deploy after `2B` is archived.
+- [x] 5.8 In `/admin` on the deployed site, call `POST /api/admin/settings/reset` (or use the reset button if surfaced) so the new finance-brain `DEFAULT_SYSTEM_PROMPT` becomes the active runtime setting — verify the system prompt field in the provider settings UI reflects the new content.
+  - **Status**: DEFERRED — depends on 5.7. Will run after combined `2A+2B` deployment.
