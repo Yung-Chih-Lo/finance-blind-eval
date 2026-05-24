@@ -84,9 +84,9 @@
 
 ## 5. End-to-end verification
 
-- [ ] 5.1 Run `cd web && npm run verify:intro-copy && npm run verify:system-prompt && npm run verify:completion-gate` chained — expect all PASS.
-- [ ] 5.2 Run the full existing verify suite to confirm no regression: `cd web && npm run verify:provider-url && npm run verify:reset-pending && npm run verify:profile`.
-- [ ] 5.3 Run `cd web && npm run build` — expect successful Next.js production build.
+- [x] 5.1 Run `cd web && npm run verify:intro-copy && npm run verify:system-prompt && npm run verify:completion-gate` chained — expect all PASS.
+- [x] 5.2 Run the full existing verify suite to confirm no regression: `cd web && npm run verify:provider-url && npm run verify:reset-pending && npm run verify:profile`.
+- [x] 5.3 Run `cd web && npm run build` — expect successful Next.js production build.
 - [ ] 5.4 Start dev server `cd web && npm run dev` in a side terminal and manually open `http://localhost:3000/?invite_code=ailab502`:
   - Confirm intro renders four paragraphs with the new neutral copy.
   - Confirm signature shows `金融語言模型回答品質之研究`.
