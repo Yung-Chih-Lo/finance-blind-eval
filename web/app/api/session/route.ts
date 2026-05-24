@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 
-import { SEEDED_PARTICIPANTS } from "@/lib/evaluation/config"
 import { isCompleteParticipantProfile, validateParticipantProfile } from "@/lib/evaluation/profile"
 import type { ParticipantProfile, ParticipantProfileDraft, ParticipantStatus } from "@/lib/evaluation/types"
 import {
@@ -9,7 +8,6 @@ import {
   getPendingQuestionsByParticipant,
   normalizeToken,
   upsertParticipantStatus,
-  upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
 import { requireEvaluationSession } from "@/lib/server/session"
 
@@ -18,45 +16,19 @@ interface SessionRequest {
   profile?: ParticipantProfileDraft
 }
 
-function buildPersistedProfile(
-  token: string,
-  raw: ParticipantProfile,
-  existingKnownName?: string,
-): ParticipantProfile {
-  // Explicitly project to the new schema so any rogue legacy keys (fieldOrWorkDomain,
-  // isBusinessOrFinance, hasTakenFinanceCourse, financeLlmUsage) that an old client
-  // might still send are silently dropped before persist (spec scenario 5.4).
-  const grade = raw.gradeOrOccupation?.trim()
+function buildPersistedProfile(token: string, raw: ParticipantProfile): ParticipantProfile {
+  // Project explicitly to the 6-key shape so any rogue legacy keys (gender,
+  // financeBackgroundType, llmExperience, financeFamiliarity, etc.) an old client
+  // might still send are silently dropped before persist (see spec scenario
+  // "Removed legacy fields are rejected on submit").
   return {
     token,
-    knownName: raw.knownName || existingKnownName || SEEDED_PARTICIPANTS[token]?.name,
     ageRange: raw.ageRange,
-    gender: raw.gender,
     educationLevel: raw.educationLevel,
-    financeBackgroundType: raw.financeBackgroundType,
-    gradeOrOccupation: grade ? grade : undefined,
-    financeWorkExperience: raw.financeWorkExperience,
-    investmentExperience: raw.investmentExperience,
-    financeFamiliarity: raw.financeFamiliarity,
-    llmExperience: raw.llmExperience,
+    mainDomain: raw.mainDomain,
+    aiUsageFrequency: raw.aiUsageFrequency,
     hasUsedAiForFinance: raw.hasUsedAiForFinance,
-    financeSubdomains: raw.financeSubdomains,
-    notes: raw.notes?.trim() ?? "",
   }
-}
-
-// A pre-write profile counts as "legacy shape" when it lacks any of the new required
-// fields — typically because migrateLegacyProfile stripped legacy keys and could not
-// infer the new ones. We trigger pending-clear only on this legacy → new transition
-// (design D6) so a routine re-submit of the same new-shape profile is a no-op.
-function isLegacyShape(profile: ParticipantStatus["profile"]): boolean {
-  if (!profile) return false
-  return (
-    !profile.gender ||
-    !profile.educationLevel ||
-    !profile.financeBackgroundType ||
-    typeof profile.hasUsedAiForFinance !== "boolean"
-  )
 }
 
 function publicPendingQuestion(pendingQuestion: Awaited<ReturnType<typeof getPendingQuestionsByParticipant>>[number]) {
@@ -97,10 +69,7 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString()
   const existing = await getParticipantStatus(token)
-  const wasLegacy = isLegacyShape(existing?.profile)
-  const profile = validatedProfile
-    ? buildPersistedProfile(token, validatedProfile, existing?.profile?.knownName)
-    : existing?.profile
+  const profile = validatedProfile ? buildPersistedProfile(token, validatedProfile) : existing?.profile
 
   const status: ParticipantStatus = {
     token,
@@ -111,15 +80,7 @@ export async function POST(request: Request) {
     completedAt: existing?.completedAt,
   }
 
-  // Legacy → new-shape transition: pending questions carry a legacy participantProfile
-  // snapshot and would otherwise leak into the saved evaluation record, or block
-  // regeneration via 409. We run upsert + clear in a SINGLE mutex window (combined
-  // helper) so a concurrent answer-generation POST can't insert a fresh pending row
-  // between the two writes that the late clear would then nuke.
-  const participant =
-    validatedProfile && wasLegacy
-      ? await upsertParticipantStatusAndClearPending(status)
-      : await upsertParticipantStatus(status)
+  const participant = await upsertParticipantStatus(status)
 
   const answeredCount = (await getEvaluationRecordsByParticipant(participant.token)).length
   const [pendingQuestion] = await getPendingQuestionsByParticipant(participant.token)

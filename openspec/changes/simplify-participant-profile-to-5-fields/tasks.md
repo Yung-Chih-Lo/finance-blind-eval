@@ -62,12 +62,12 @@
 
 ## 5. GREEN: session/route.ts — drop legacy branch
 
-- [ ] 5.1 In `web/app/api/session/route.ts`, delete the `isLegacyShape` function (lines ~52-60)
-- [ ] 5.2 Delete the `wasLegacy` declaration + the `validatedProfile && wasLegacy` conditional that calls `upsertParticipantStatusAndClearPending`; replace with a plain `await upsertParticipantStatus(status)` call
-- [ ] 5.3 Rewrite `buildPersistedProfile(token, raw, existingKnownName?)` to project only the 6 new keys; delete the `grade`/`knownName`/`gradeOrOccupation`/`notes` handling and the `existingKnownName` parameter; rename to `buildPersistedProfile(token, raw)`
-- [ ] 5.4 Delete the unused `SEEDED_PARTICIPANTS` import (used only by old `knownName` fallback)
-- [ ] 5.5 Delete the `upsertParticipantStatusAndClearPending` import (no callsite remains)
-- [ ] 5.6 Verify: `cd web && npm run typecheck` for `session/route.ts` — expect this file clean; remaining errors should be in storage/admin
+- [x] 5.1 In `web/app/api/session/route.ts`, delete the `isLegacyShape` function (lines ~52-60)
+- [x] 5.2 Delete the `wasLegacy` declaration + the `validatedProfile && wasLegacy` conditional that calls `upsertParticipantStatusAndClearPending`; replace with a plain `await upsertParticipantStatus(status)` call
+- [x] 5.3 Rewrite `buildPersistedProfile(token, raw, existingKnownName?)` to project only the 6 new keys; delete the `grade`/`knownName`/`gradeOrOccupation`/`notes` handling and the `existingKnownName` parameter; rename to `buildPersistedProfile(token, raw)`
+- [x] 5.4 Delete the unused `SEEDED_PARTICIPANTS` import (used only by old `knownName` fallback)
+- [x] 5.5 Delete the `upsertParticipantStatusAndClearPending` import (no callsite remains)
+- [x] 5.6 Verify: `cd web && npm run typecheck` for `session/route.ts` — expect this file clean; remaining errors should be in storage/admin
 
 ## 6. GREEN: evaluation-storage.ts — drop legacy paths, rewrite snapshot + CSV
 
