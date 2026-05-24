@@ -36,18 +36,18 @@
 
 ## 3. GREEN: profile.ts — rewrite validation + option arrays, drop legacy
 
-- [ ] 3.1 In `web/lib/evaluation/profile.ts`, delete `extractLegacyProfileSnapshot`, `LegacyProfileSnapshot` type export, `LEGACY_FIELDS` constant, `migrateLegacyProfile` function
-- [ ] 3.2 Delete unused option exports: `GENDER_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS`, `FINANCE_WORK_EXPERIENCE_OPTIONS`, `INVESTMENT_EXPERIENCE_OPTIONS`, `FINANCE_SUBDOMAIN_OPTIONS`; delete matching `*_VALUES` Set constants
-- [ ] 3.3 Rewrite `AGE_RANGE_OPTIONS` to 4 entries (drop `prefer_not_to_say`): `20-24 歲`, `25-29 歲`, `30-39 歲`, `40 歲以上`
-- [ ] 3.4 Rewrite `EDUCATION_LEVEL_OPTIONS` to 3 entries (drop `prefer_not_to_say`): `大學在學`, `大學畢業`, `研究所在學或以上`
-- [ ] 3.5 Add `MAIN_DOMAIN_OPTIONS: Array<{ value: MainDomain; label: string }>` with: `finance_related → "財經類學系或工作（金融/財管/經濟/會計/保險）"`, `business_non_finance → "商學或管理類但非財經（企管/資管/行銷/統計/國貿）"`, `other → "其他領域（文/理/工/法/社科/藝術等）"`
-- [ ] 3.6 Add `AI_USAGE_FREQUENCY_OPTIONS: Array<{ value: AiUsageFrequency; label: string }>` with: `never → "從未"`, `occasional → "偶爾（每月幾次以下）"`, `frequent → "經常（每週幾次）"`, `daily → "每天"`
-- [ ] 3.7 Rewrite `createParticipantProfileDraft(token, initialProfile?)` to construct a draft with `token`, and `ageRange / educationLevel / mainDomain / aiUsageFrequency / hasUsedAiForFinance` all `null` (or carry through `initialProfile` value if it passes the matching `hasChoice` set check); delete `knownName`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `financeSubdomains`, `notes` from the draft
-- [ ] 3.8 Rewrite `validateParticipantProfile(profile)` to issue 5 Chinese-language errors when any of `ageRange / educationLevel / mainDomain / aiUsageFrequency` is null or off-list, and to reject `hasUsedAiForFinance` when not strictly `true` or `false`; delete all 8 legacy-field validation branches
-- [ ] 3.9 Rewrite `isCompleteParticipantProfile` as `(draft) => validateParticipantProfile(draft).length === 0` keeping the type-predicate return so the narrowed type is `ParticipantProfile`
-- [ ] 3.10 Keep `formatProfileChoice` (still used by admin display for select-option labels) but verify imports are clean
-- [ ] 3.11 Update the `LLM_EXPERIENCE_VALUES` set (used by `hasChoice` for `llmExperience`) to instead validate `aiUsageFrequency` against the new 4-value set `AI_USAGE_FREQUENCY_VALUES`
-- [ ] 3.12 Run `cd web && npm run typecheck` and post the output — expect compile errors across `profile-form.tsx`, `session/route.ts`, `evaluation-storage.ts`, `admin/page.tsx` (which is the next 4 task groups)
+- [x] 3.1 In `web/lib/evaluation/profile.ts`, delete `extractLegacyProfileSnapshot`, `LegacyProfileSnapshot` type export, `LEGACY_FIELDS` constant, `migrateLegacyProfile` function
+- [x] 3.2 Delete unused option exports: `GENDER_OPTIONS`, `FINANCE_BACKGROUND_TYPE_OPTIONS`, `FINANCE_WORK_EXPERIENCE_OPTIONS`, `INVESTMENT_EXPERIENCE_OPTIONS`, `FINANCE_SUBDOMAIN_OPTIONS`; delete matching `*_VALUES` Set constants
+- [x] 3.3 Rewrite `AGE_RANGE_OPTIONS` to 4 entries (drop `prefer_not_to_say`): `20-24 歲`, `25-29 歲`, `30-39 歲`, `40 歲以上`
+- [x] 3.4 Rewrite `EDUCATION_LEVEL_OPTIONS` to 3 entries (drop `prefer_not_to_say`): `大學在學`, `大學畢業`, `研究所在學或以上`
+- [x] 3.5 Add `MAIN_DOMAIN_OPTIONS: Array<{ value: MainDomain; label: string }>` with: `finance_related → "財經類學系或工作（金融/財管/經濟/會計/保險）"`, `business_non_finance → "商學或管理類但非財經（企管/資管/行銷/統計/國貿）"`, `other → "其他領域（文/理/工/法/社科/藝術等）"`
+- [x] 3.6 Add `AI_USAGE_FREQUENCY_OPTIONS: Array<{ value: AiUsageFrequency; label: string }>` with: `never → "從未"`, `occasional → "偶爾（每月幾次以下）"`, `frequent → "經常（每週幾次）"`, `daily → "每天"`
+- [x] 3.7 Rewrite `createParticipantProfileDraft(token, initialProfile?)` to construct a draft with `token`, and `ageRange / educationLevel / mainDomain / aiUsageFrequency / hasUsedAiForFinance` all `null` (or carry through `initialProfile` value if it passes the matching `hasChoice` set check); delete `knownName`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `financeSubdomains`, `notes` from the draft
+- [x] 3.8 Rewrite `validateParticipantProfile(profile)` to issue 5 Chinese-language errors when any of `ageRange / educationLevel / mainDomain / aiUsageFrequency` is null or off-list, and to reject `hasUsedAiForFinance` when not strictly `true` or `false`; delete all 8 legacy-field validation branches
+- [x] 3.9 Rewrite `isCompleteParticipantProfile` as `(draft) => validateParticipantProfile(draft).length === 0` keeping the type-predicate return so the narrowed type is `ParticipantProfile`
+- [x] 3.10 Keep `formatProfileChoice` (still used by admin display for select-option labels) but verify imports are clean
+- [x] 3.11 Update the `LLM_EXPERIENCE_VALUES` set (used by `hasChoice` for `llmExperience`) to instead validate `aiUsageFrequency` against the new 4-value set `AI_USAGE_FREQUENCY_VALUES`
+- [x] 3.12 Run `cd web && npm run typecheck` and post the output — expect compile errors across `profile-form.tsx`, `session/route.ts`, `evaluation-storage.ts`, `admin/page.tsx` (which is the next 4 task groups)
 
 ## 4. GREEN: profile-form.tsx — rewrite as 5-field form
 
