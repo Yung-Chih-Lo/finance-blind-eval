@@ -33,8 +33,11 @@ export function ProfileForm({ token, initialProfile, onSubmit }: ProfileFormProp
 
     // isCompleteParticipantProfile narrows the draft to ParticipantProfile only when
     // every required field is non-null — so silent defaults are caught before submit.
+    // Surface ALL missing-field issues in one toast so the participant fixes them in
+    // a single pass instead of N round-trips.
     if (!isCompleteParticipantProfile(profile)) {
-      toast.info(validateParticipantProfile(profile)[0])
+      const issues = validateParticipantProfile(profile)
+      toast.info(issues.length > 1 ? `請完成以下欄位：${issues.join(" / ")}` : issues[0])
       return
     }
     const nextProfile: ParticipantProfile = profile
