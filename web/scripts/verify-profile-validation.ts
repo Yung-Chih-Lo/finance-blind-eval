@@ -23,7 +23,9 @@ import {
   AI_USAGE_FREQUENCY_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
   MAIN_DOMAIN_OPTIONS,
+  buildPersistedProfile,
   createParticipantProfileDraft,
+  formatProfileChoice,
   isCompleteParticipantProfile,
   validateParticipantProfile,
 } from "@/lib/evaluation/profile"
@@ -360,12 +362,127 @@ function testCompleteDraftPassesValidation() {
   console.log("PASS: validation accepts a fully populated new-schema draft")
 }
 
+function testBuildPersistedProfileDropsRogueKeys() {
+  console.log("\n=== buildPersistedProfile drops rogue legacy keys before persist ===")
+  // Simulate an old/malicious client POSTing a profile body that still carries every
+  // dropped legacy key. The server-side projection must surface ONLY the 6 current
+  // keys; everything else is silently stripped (spec scenario
+  // "Removed legacy fields are rejected on submit").
+  const rogue = {
+    token: "P-OLD-CLIENT",
+    ageRange: "25_29",
+    educationLevel: "undergrad_completed",
+    mainDomain: "finance_related",
+    aiUsageFrequency: "frequent",
+    hasUsedAiForFinance: true,
+    // ↓ legacy / dropped fields the projection must not let through
+    gender: "female",
+    gradeOrOccupation: "碩二",
+    financeWorkExperience: "internship",
+    investmentExperience: "basic",
+    financeFamiliarity: 4,
+    financeSubdomains: ["stocks"],
+    notes: "rogue",
+    knownName: "Alice",
+    llmExperience: "weekly",
+    financeBackgroundType: "student_finance_related",
+    fieldOrWorkDomain: "資管系",
+    isBusinessOrFinance: "yes",
+    hasTakenFinanceCourse: "yes",
+    financeLlmUsage: "weekly",
+  } as unknown as ParticipantProfile
+
+  const projected = buildPersistedProfile("P-SERVER-TOKEN", rogue)
+  const keys = Object.keys(projected).sort()
+  assert.deepEqual(
+    keys,
+    [
+      "ageRange",
+      "aiUsageFrequency",
+      "educationLevel",
+      "hasUsedAiForFinance",
+      "mainDomain",
+      "token",
+    ],
+    `projection must surface exactly the 6 current keys; got ${JSON.stringify(keys)}`,
+  )
+  assert.equal(projected.token, "P-SERVER-TOKEN", "projection uses the server-issued token, not the client's")
+  console.log("PASS: buildPersistedProfile strips 14 rogue keys and binds server token")
+}
+
+function testValidationRejectsMissingToken() {
+  console.log("\n=== validateParticipantProfile rejects missing / empty token ===")
+  // The type predicate narrowing to ParticipantProfile depends on token being a
+  // non-empty string — earlier the validator skipped this check and the predicate
+  // lied to the type system on token-less drafts.
+  const baseDraft: ParticipantProfileDraft = {
+    token: "P-OK",
+    ageRange: "20_24",
+    educationLevel: "undergrad_in_progress",
+    mainDomain: "other",
+    aiUsageFrequency: "never",
+    hasUsedAiForFinance: false,
+  }
+
+  for (const badToken of ["", "   "]) {
+    const issues = validateParticipantProfile({ ...baseDraft, token: badToken })
+    assert.ok(
+      issues.some((i) => i.includes("token")),
+      `token=${JSON.stringify(badToken)} must produce a token-mentioning issue; got ${JSON.stringify(issues)}`,
+    )
+  }
+
+  const noTokenDraft = { ...baseDraft } as Partial<ParticipantProfileDraft>
+  delete noTokenDraft.token
+  assert.ok(
+    validateParticipantProfile(noTokenDraft).some((i) => i.includes("token")),
+    "missing token must produce a token-mentioning issue",
+  )
+  assert.equal(
+    isCompleteParticipantProfile(noTokenDraft),
+    false,
+    "draft without token must NOT be considered complete",
+  )
+  console.log("PASS: empty / missing token rejected by validation across draft variants")
+}
+
+function testFormatProfileChoiceNeverLeaksRawEnum() {
+  console.log("\n=== formatProfileChoice falls back to '-' for unknown legacy literal ===")
+  // A row carrying a removed legacy enum literal (e.g. an admin replaying old data,
+  // or a future regression that re-introduces a stale value) must NOT surface the
+  // raw token string in the admin UI — that would expose internal enum names to
+  // researchers. Always coerce to "-".
+  // Cast through `never` because the legacy literal is not a member of MainDomain;
+  // we want to exercise the runtime fallback path exactly as a stale on-disk row would.
+  const rendered = formatProfileChoice(MAIN_DOMAIN_OPTIONS, "student_finance_related" as never)
+  assert.equal(
+    rendered,
+    "-",
+    `unknown enum literal must render as '-'; got ${JSON.stringify(rendered)}`,
+  )
+  assert.equal(
+    formatProfileChoice(MAIN_DOMAIN_OPTIONS, undefined),
+    "-",
+    "undefined must render as '-'",
+  )
+  // Sanity: a real current value still renders its label
+  assert.equal(
+    formatProfileChoice(MAIN_DOMAIN_OPTIONS, "finance_related"),
+    "財經類學系或工作（金融/財管/經濟/會計/保險）",
+    "current enum literal must still render its label",
+  )
+  console.log("PASS: formatProfileChoice coerces unknown values to '-' and renders current labels")
+}
+
 async function main() {
   testProfileShapeStrict()
   testDraftSeedsNullForFiveRequiredFields()
   testNewEnumValuesOnly()
   testRejectsOldEnumLiterals()
   testCompleteDraftPassesValidation()
+  testValidationRejectsMissingToken()
+  testBuildPersistedProfileDropsRogueKeys()
+  testFormatProfileChoiceNeverLeaksRawEnum()
   await testCsvHeaderHasOnlyFiveActiveFields()
   await testJsonExportHasNoLegacyBlock()
   await testStorageRoundtripPreservesFiveFieldShape()

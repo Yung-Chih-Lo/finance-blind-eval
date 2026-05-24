@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 
-import { isCompleteParticipantProfile, validateParticipantProfile } from "@/lib/evaluation/profile"
+import {
+  buildPersistedProfile,
+  isCompleteParticipantProfile,
+  validateParticipantProfile,
+} from "@/lib/evaluation/profile"
 import type { ParticipantProfile, ParticipantProfileDraft, ParticipantStatus } from "@/lib/evaluation/types"
 import {
   getEvaluationRecordsByParticipant,
@@ -14,21 +18,6 @@ import { requireEvaluationSession } from "@/lib/server/session"
 interface SessionRequest {
   token?: string
   profile?: ParticipantProfileDraft
-}
-
-function buildPersistedProfile(token: string, raw: ParticipantProfile): ParticipantProfile {
-  // Project explicitly to the 6-key shape so any rogue legacy keys (gender,
-  // financeBackgroundType, llmExperience, financeFamiliarity, etc.) an old client
-  // might still send are silently dropped before persist (see spec scenario
-  // "Removed legacy fields are rejected on submit").
-  return {
-    token,
-    ageRange: raw.ageRange,
-    educationLevel: raw.educationLevel,
-    mainDomain: raw.mainDomain,
-    aiUsageFrequency: raw.aiUsageFrequency,
-    hasUsedAiForFinance: raw.hasUsedAiForFinance,
-  }
 }
 
 function publicPendingQuestion(pendingQuestion: Awaited<ReturnType<typeof getPendingQuestionsByParticipant>>[number]) {

@@ -80,6 +80,12 @@ export function validateParticipantProfile(
   if (!profile) {
     return ["請填寫背景資料。"]
   }
+  // token is server-issued and required for the type predicate to soundly narrow to
+  // ParticipantProfile. A draft without a non-empty token slipped through earlier
+  // because `validateParticipantProfile` only checked the 5 enum/boolean fields.
+  if (typeof profile.token !== "string" || profile.token.trim() === "") {
+    issues.push("缺少 participant token。")
+  }
   if (!hasChoice(profile.ageRange, AGE_RANGE_VALUES)) {
     issues.push("請選擇年齡區間。")
   }
@@ -104,9 +110,29 @@ export function isCompleteParticipantProfile(
   return validateParticipantProfile(profile).length === 0
 }
 
+// Server-side projection from a validated draft to the exact 6-key persisted shape.
+// The only line of defense against an old / malicious client POSTing rogue keys
+// (gender, financeBackgroundType, llmExperience, financeFamiliarity, etc.) and
+// having them silently leak into the store. Lifted out of `app/api/session/route.ts`
+// so it can be unit-tested by the verify harness — see verify-profile-validation.ts
+// `testBuildPersistedProfileDropsRogueKeys`.
+export function buildPersistedProfile(token: string, raw: ParticipantProfile): ParticipantProfile {
+  return {
+    token,
+    ageRange: raw.ageRange,
+    educationLevel: raw.educationLevel,
+    mainDomain: raw.mainDomain,
+    aiUsageFrequency: raw.aiUsageFrequency,
+    hasUsedAiForFinance: raw.hasUsedAiForFinance,
+  }
+}
+
 export function formatProfileChoice<T extends string>(
   options: Array<{ value: T; label: string }>,
   value: T | undefined,
 ) {
-  return options.find((option) => option.value === value)?.label ?? value ?? "-"
+  // Fall back to "-" rather than `value ?? "-"` so a stored row carrying a removed
+  // legacy enum literal (e.g. mainDomain = "student_finance_related" left over from
+  // the schema v1 era) renders as "-" instead of leaking the raw token into admin UI.
+  return options.find((option) => option.value === value)?.label ?? "-"
 }
