@@ -113,8 +113,8 @@
 
 ## 10. Deferred to deployment (bundled with 2A's 5.5-5.8)
 
-- [ ] 10.1 (deferred to deploy) `cd web && npx zeabur@latest deploy --project-id 69b00f05d00471cc19a0b524 --service-id 6a06c9fdeb6e67d8262aba62 --json`
-- [ ] 10.2 (deferred to deploy) On Zeabur volume `/src/.data`, delete `evaluation-store.json` (or write empty-shape JSON) so the new code starts with a clean store; leave `platform-settings.json` untouched so 2A's intro copy + system prompt remain effective
-- [ ] 10.3 (deferred to deploy) Open `/admin` on the live URL; if a banner about settings format incompatibility appears, hit `POST /api/admin/settings/reset` to drop legacy keys (carried over from 2A deploy notes)
-- [ ] 10.4 (deferred to deploy) Browser smoke-test: redeem invite → 5-field background form renders with only 5 fields and no `prefer_not_to_say` options → submit → reach question 1 of 5 → answer all 5 → reach completion screen (also validates 2A's 5-question gate end-to-end)
-- [ ] 10.5 (deferred to deploy) Browser smoke-test: ask one non-finance question (e.g. `今天台北天氣`) and confirm the system prompt enforces 2A's finance-brain refusal
+- [x] 10.1 (deferred to deploy) `cd web && npx zeabur@latest deploy --project-id 69b00f05d00471cc19a0b524 --service-id 6a06c9fdeb6e67d8262aba62 --json`
+- [x] 10.2 (deferred to deploy) On Zeabur volume `/src/.data`, delete `evaluation-store.json` (or write empty-shape JSON) so the new code starts with a clean store; leave `platform-settings.json` untouched so 2A's intro copy + system prompt remain effective
+- [x] 10.3 (deferred to deploy) Open `/admin` on the live URL; if a banner about settings format incompatibility appears, hit `POST /api/admin/settings/reset` to drop legacy keys (carried over from 2A deploy notes)
+- [x] 10.4 (deferred to deploy) Browser smoke-test: redeem invite → 5-field background form renders with only 5 fields and no `prefer_not_to_say` options → submit → reach question 1 of 5 → answer all 5 → reach completion screen (also validates 2A's 5-question gate end-to-end)
+- [x] 10.5 (deferred to deploy) Browser smoke-test: ask one non-finance question (e.g. `今天台北天氣`) and confirm the system prompt enforces 2A's finance-brain refusal
