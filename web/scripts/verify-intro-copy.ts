@@ -6,8 +6,6 @@
 // (align-advisor-feedback-copy-and-prompt). Does NOT touch .data — pure
 // static-content check on the repository default StudyConfig.
 
-import { strict as assert } from "node:assert"
-
 import studyConfig from "@/config/evaluation.config.json"
 
 // Strings that the advisor explicitly forbade from participant-visible copy

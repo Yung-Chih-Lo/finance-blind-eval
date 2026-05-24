@@ -44,21 +44,21 @@
 
 ## 2. Intro copy and signature title (TDD GREEN)
 
-- [ ] 2.1 Open `web/config/evaluation.config.json` and replace `study.intro.greeting` with `"您好，"`.
-- [ ] 2.2 Replace `study.intro.paragraphs` with the four neutral paragraphs (verified against advisor transcript and Codex review):
+- [x] 2.1 Open `web/config/evaluation.config.json` and replace `study.intro.greeting` with `"您好，"`.
+- [x] 2.2 Replace `study.intro.paragraphs` with the four neutral paragraphs (verified against advisor transcript and Codex review):
   - Paragraph 1: thank-you + finance language model study purpose + different-background users subjective evaluation framing.
   - Paragraph 2: 5 questions × 3 anonymous answers + select the one you find better + rate correctness / completeness / readability.
   - Paragraph 3: 8-12 minutes duration + background data + 5 finance Q&A comparison content scope.
   - Paragraph 4: data use scope (academic research, aggregate) + sensitive-data prohibition (name, ID, account, holdings, internal info) + non-investment-advice disclaimer.
   - NO mention of `大型語言模型`, `主要分層變項`, `預先指定為金融工作或實習經驗`, `金融熟悉度作為次要連續變項`.
-- [ ] 2.3 Replace `study.intro.tasks` with exactly three task strings:
+- [x] 2.3 Replace `study.intro.tasks` with exactly three task strings:
   - `"輸入一個金融相關的問題。"`
   - `"閱讀並比較三個匿名回答。"`
   - `"選出您認為整體較好的回答，並就正確性、完整性、可讀性三個面向給出評估與理由。"`
-- [ ] 2.4 Replace `study.signature.thesisTitle` from `"The Augmentative Residual Adapter Approach to Pre-training"` to `"金融語言模型回答品質之研究"`.
-- [ ] 2.5 Run `cd web && npm run verify:intro-copy` — expect PASS.
-- [ ] 2.6 Run `cd web && npm run lint` — expect PASS (config-only change, lint should not regress).
-- [ ] 2.7 Run `cd web && npm run typecheck` — expect PASS.
+- [x] 2.4 Replace `study.signature.thesisTitle` from `"The Augmentative Residual Adapter Approach to Pre-training"` to `"金融語言模型回答品質之研究"`.
+- [x] 2.5 Run `cd web && npm run verify:intro-copy` — expect PASS.
+- [x] 2.6 Run `cd web && npm run lint` — expect PASS (config-only change, lint should not regress).
+- [x] 2.7 Run `cd web && npm run typecheck` — expect PASS.
 
 ## 3. Provider default system prompt (TDD GREEN)
 

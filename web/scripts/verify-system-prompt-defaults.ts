@@ -7,8 +7,6 @@
 // `getDefaultProviderSettings()` so the assertion target is the in-code default,
 // not whatever the local shell happens to export.
 
-import { strict as assert } from "node:assert"
-
 // Clear env override BEFORE the dynamic import so module-level constants resolve
 // against the hardcoded default. Required because provider-settings.ts reads env
 // only inside `getDefaultProviderSettings()`, not at import time — but other

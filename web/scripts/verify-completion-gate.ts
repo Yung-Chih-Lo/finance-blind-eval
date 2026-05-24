@@ -8,7 +8,6 @@
 // asserts the question limit is 5, and reproduces the formula the handler at
 // web/app/api/evaluation/records/route.ts:112 must use.
 
-import { strict as assert } from "node:assert"
 import { mkdtempSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
