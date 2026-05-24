@@ -115,62 +115,32 @@ export interface PlatformSettingsValidationResult {
   issues: string[]
 }
 
-export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus" | "prefer_not_to_say"
-export type Gender = "female" | "male" | "non_binary_or_other" | "prefer_not_to_say"
-export type EducationLevel =
-  | "undergrad_in_progress"
-  | "undergrad_completed"
-  | "grad_or_above"
-  | "prefer_not_to_say"
-export type FinanceBackgroundType =
-  | "student_finance_related"
-  | "student_other"
-  | "working_finance_related"
-  | "working_other"
-  | "prefer_not_to_say"
-export type FinanceWorkExperience = "none" | "course_project" | "internship" | "professional" | "prefer_not_to_say"
-export type InvestmentExperience = "none" | "basic" | "regular" | "advanced" | "prefer_not_to_say"
-export type FinanceSubdomain =
-  | "accounting"
-  | "stocks"
-  | "funds_etf"
-  | "bonds_rates"
-  | "macro_fx"
-  | "personal_finance"
-  | "not_sure"
+export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus"
+export type EducationLevel = "undergrad_in_progress" | "undergrad_completed" | "grad_or_above"
+export type MainDomain = "finance_related" | "business_non_finance" | "other"
+export type AiUsageFrequency = "never" | "occasional" | "frequent" | "daily"
 
 export interface ParticipantProfile {
   token: string
-  knownName?: string
   ageRange: AgeRange
-  gender: Gender
   educationLevel: EducationLevel
-  financeBackgroundType: FinanceBackgroundType
-  gradeOrOccupation?: string
-  financeWorkExperience: FinanceWorkExperience
-  investmentExperience: InvestmentExperience
-  financeFamiliarity: number
-  llmExperience: "none" | "rare" | "monthly" | "weekly" | "daily"
+  mainDomain: MainDomain
+  aiUsageFrequency: AiUsageFrequency
   hasUsedAiForFinance: boolean
-  financeSubdomains: FinanceSubdomain[]
-  notes: string
 }
 
 // Form-state representation of a participant profile in progress.
-// Every required field starts as null until the participant explicitly picks; validation
-// rejects null so no field can silently default. The Y/N field uses tri-state (D3); the
-// five enum fields use null-sentinel (extends D3 to the primary stratifier and siblings,
-// caught by verify-perspective review).
-export type ParticipantProfileDraft = Omit<
-  ParticipantProfile,
-  "hasUsedAiForFinance" | "gender" | "educationLevel" | "financeBackgroundType" | "financeWorkExperience" | "investmentExperience"
-> & {
-  hasUsedAiForFinance: boolean | null
-  gender: Gender | null
+// All 5 stratification fields start as null until the participant explicitly picks;
+// validation rejects null so the participant cannot accidentally submit a default.
+// The Y/N field uses tri-state (same pattern as the four enum fields) to prevent
+// false from being silently chosen on behalf of the participant.
+export type ParticipantProfileDraft = {
+  token: string
+  ageRange: AgeRange | null
   educationLevel: EducationLevel | null
-  financeBackgroundType: FinanceBackgroundType | null
-  financeWorkExperience: FinanceWorkExperience | null
-  investmentExperience: InvestmentExperience | null
+  mainDomain: MainDomain | null
+  aiUsageFrequency: AiUsageFrequency | null
+  hasUsedAiForFinance: boolean | null
 }
 
 export interface ParticipantStatus {
@@ -297,13 +267,13 @@ export interface AdminSnapshot {
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
-  // Four mutually-exclusive buckets derived from financeBackgroundType (see spec
-  // scenario "KPI bar reports finance-background breakdown"). Legacy records that
-  // lack financeBackgroundType count under unknownBackgroundCount.
-  financeBackgroundCount: number
-  nonFinanceBackgroundCount: number
-  refusalBackgroundCount: number
-  unknownBackgroundCount: number
+  // Three mutually-exclusive buckets derived from mainDomain (see spec scenario
+  // "KPI bar reports main-domain breakdown"). No unknown bucket: validation rejects
+  // null mainDomain at submit time, and the legacy compatibility layer that could
+  // produce profile-without-mainDomain rows has been removed.
+  financeRelatedCount: number
+  businessNonFinanceCount: number
+  otherCount: number
   funnelStages: AdminFunnelStages
   attentionItems: AdminAttentionItems
 }

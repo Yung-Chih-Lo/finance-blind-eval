@@ -25,14 +25,14 @@
 
 ## 2. GREEN: types.ts — replace ParticipantProfile shape and enums
 
-- [ ] 2.1 In `web/lib/evaluation/types.ts`, redefine `AgeRange` to the 4-value union `"20_24" | "25_29" | "30_39" | "40_plus"` (drop `prefer_not_to_say`)
-- [ ] 2.2 Redefine `EducationLevel` to the 3-value union `"undergrad_in_progress" | "undergrad_completed" | "grad_or_above"` (drop `prefer_not_to_say`)
-- [ ] 2.3 Add `export type MainDomain = "finance_related" | "business_non_finance" | "other"`
-- [ ] 2.4 Add `export type AiUsageFrequency = "never" | "occasional" | "frequent" | "daily"`
-- [ ] 2.5 Delete the 5 unused enum exports: `Gender`, `FinanceBackgroundType`, `FinanceWorkExperience`, `InvestmentExperience`, `FinanceSubdomain`
-- [ ] 2.6 Rewrite `ParticipantProfile` interface to exactly 6 keys: `token: string`, `ageRange: AgeRange`, `educationLevel: EducationLevel`, `mainDomain: MainDomain`, `aiUsageFrequency: AiUsageFrequency`, `hasUsedAiForFinance: boolean`
-- [ ] 2.7 Rewrite `ParticipantProfileDraft` to the same 6 keys but with `ageRange | null`, `educationLevel | null`, `mainDomain | null`, `aiUsageFrequency | null`, `hasUsedAiForFinance: boolean | null` — token stays non-null; delete the old `Omit + intersection` shape
-- [ ] 2.8 In `AdminSnapshot`, replace `financeBackgroundCount`, `nonFinanceBackgroundCount`, `refusalBackgroundCount`, `unknownBackgroundCount` with `financeRelatedCount: number`, `businessNonFinanceCount: number`, `otherCount: number`; update the inline comment to reference `mainDomain` instead of `financeBackgroundType`
+- [x] 2.1 In `web/lib/evaluation/types.ts`, redefine `AgeRange` to the 4-value union `"20_24" | "25_29" | "30_39" | "40_plus"` (drop `prefer_not_to_say`)
+- [x] 2.2 Redefine `EducationLevel` to the 3-value union `"undergrad_in_progress" | "undergrad_completed" | "grad_or_above"` (drop `prefer_not_to_say`)
+- [x] 2.3 Add `export type MainDomain = "finance_related" | "business_non_finance" | "other"`
+- [x] 2.4 Add `export type AiUsageFrequency = "never" | "occasional" | "frequent" | "daily"`
+- [x] 2.5 Delete the 5 unused enum exports: `Gender`, `FinanceBackgroundType`, `FinanceWorkExperience`, `InvestmentExperience`, `FinanceSubdomain`
+- [x] 2.6 Rewrite `ParticipantProfile` interface to exactly 6 keys: `token: string`, `ageRange: AgeRange`, `educationLevel: EducationLevel`, `mainDomain: MainDomain`, `aiUsageFrequency: AiUsageFrequency`, `hasUsedAiForFinance: boolean`
+- [x] 2.7 Rewrite `ParticipantProfileDraft` to the same 6 keys but with `ageRange | null`, `educationLevel | null`, `mainDomain | null`, `aiUsageFrequency | null`, `hasUsedAiForFinance: boolean | null` — token stays non-null; delete the old `Omit + intersection` shape
+- [x] 2.8 In `AdminSnapshot`, replace `financeBackgroundCount`, `nonFinanceBackgroundCount`, `refusalBackgroundCount`, `unknownBackgroundCount` with `financeRelatedCount: number`, `businessNonFinanceCount: number`, `otherCount: number`; update the inline comment to reference `mainDomain` instead of `financeBackgroundType`
 
 ## 3. GREEN: profile.ts — rewrite validation + option arrays, drop legacy
 
