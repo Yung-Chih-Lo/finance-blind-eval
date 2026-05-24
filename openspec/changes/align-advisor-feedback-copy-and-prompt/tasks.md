@@ -76,11 +76,11 @@
 
 ## 4. Five-question completion gate (TDD GREEN)
 
-- [ ] 4.1 Edit `web/app/api/evaluation/records/route.ts` line 112 from `const isCompleted = pending.questionIndex >= config.promptCategories.length` to `const isCompleted = answeredCount >= config.limits.maxQuestionsPerParticipant`. Confirm `answeredCount` is already in scope at line 108 (it is — `const answeredCount = (await getEvaluationRecordsByParticipant(pending.participantToken)).length`).
-- [ ] 4.2 Sanity-check the same handler at line 125 (`completionStatus: isCompleted ? "completed" : "in_progress"`) — no change needed, it just reads the new `isCompleted`.
-- [ ] 4.3 Run `cd web && npm run verify:completion-gate` — expect PASS.
-- [ ] 4.4 Run `cd web && npm run lint` — expect PASS.
-- [ ] 4.5 Run `cd web && npm run typecheck` — expect PASS.
+- [x] 4.1 Edit `web/app/api/evaluation/records/route.ts` line 112 from `const isCompleted = pending.questionIndex >= config.promptCategories.length` to `const isCompleted = answeredCount >= config.limits.maxQuestionsPerParticipant`. Confirm `answeredCount` is already in scope at line 108 (it is — `const answeredCount = (await getEvaluationRecordsByParticipant(pending.participantToken)).length`).
+- [x] 4.2 Sanity-check the same handler at line 125 (`completionStatus: isCompleted ? "completed" : "in_progress"`) — no change needed, it just reads the new `isCompleted`.
+- [x] 4.3 Run `cd web && npm run verify:completion-gate` — expect PASS.
+- [x] 4.4 Run `cd web && npm run lint` — expect PASS.
+- [x] 4.5 Run `cd web && npm run typecheck` — expect PASS.
 
 ## 5. End-to-end verification
 
