@@ -62,7 +62,7 @@
 
 ## 3. Provider default system prompt (TDD GREEN)
 
-- [ ] 3.1 Open `web/lib/server/provider-settings.ts` and replace the `DEFAULT_SYSTEM_PROMPT` constant (currently a single neutral sentence at lines 7-8) with the finance-brain system prompt. Required content elements:
+- [x] 3.1 Open `web/lib/server/provider-settings.ts` and replace the `DEFAULT_SYSTEM_PROMPT` constant (currently a single neutral sentence at lines 7-8) with the finance-brain system prompt. Required content elements:
   - Opening line declares the assistant as `金融語言模型` / `金融腦` (use one or both).
   - Lists in-scope topics covering at least: `金融`, `投資`, `財務`, `會計`, `總經`, `市場`, `債券`, `利率`, `匯率`, `企業財報`.
   - Refusal rule for non-finance questions with service-scope explanation (e.g., `若使用者詢問非金融問題，請禮貌拒絕並說明本系統僅服務金融、投資、財務、會計、總經、市場相關問題`).
@@ -70,9 +70,9 @@
   - Restriction on investment advice (e.g., `不對個別商品提供具體買賣建議，可以解釋概念、分析框架、風險面向`).
   - Forbids leaking evaluation metadata (e.g., `回答中不要提及模型名稱、盲測流程、A/B/C 標籤`).
   - Requires `繁體中文` output.
-- [ ] 3.2 Run `cd web && npm run verify:system-prompt` — expect PASS.
-- [ ] 3.3 Run `cd web && npm run lint` — expect PASS.
-- [ ] 3.4 Run `cd web && npm run typecheck` — expect PASS.
+- [x] 3.2 Run `cd web && npm run verify:system-prompt` — expect PASS.
+- [x] 3.3 Run `cd web && npm run lint` — expect PASS.
+- [x] 3.4 Run `cd web && npm run typecheck` — expect PASS.
 
 ## 4. Five-question completion gate (TDD GREEN)
 
