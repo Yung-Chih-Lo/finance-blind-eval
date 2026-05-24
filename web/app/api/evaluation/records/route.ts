@@ -109,7 +109,12 @@ export async function POST(request: Request) {
 
   const existingParticipant = await getParticipantStatus(pending.participantToken)
   const now = new Date().toISOString()
-  const isCompleted = pending.questionIndex >= config.promptCategories.length
+  // Completion gate: open only when this save brings answered count up to the
+  // configured limit. Prior formula used `pending.questionIndex >= promptCategories.length`
+  // which could open the gate when a 5th pending question was generated but never
+  // saved (e.g., participant abandoned mid-question). Anchored to actual record
+  // count so the gate matches the "answered exactly 5 questions" spec scenario.
+  const isCompleted = answeredCount >= config.limits.maxQuestionsPerParticipant
   await upsertParticipantStatus({
     token: pending.participantToken,
     profile: pending.participantProfile,
