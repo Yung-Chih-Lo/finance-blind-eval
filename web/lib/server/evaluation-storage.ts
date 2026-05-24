@@ -15,7 +15,6 @@ import type {
   EvaluationStore,
   ModelComparisonCounts,
   ModelId,
-  ParticipantProfile,
   ParticipantStatus,
   PendingQuestion,
   PlatformSettingsSnapshot,

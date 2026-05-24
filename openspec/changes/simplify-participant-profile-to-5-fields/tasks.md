@@ -101,15 +101,15 @@
 
 ## 9. Verify GREEN — full test + lint + build
 
-- [ ] 9.1 Run `cd web && npm run verify:profile` and post output — must show every new-schema assertion PASS and total `OK`
-- [ ] 9.2 Run `cd web && npm run verify:provider-url` — must PASS (orthogonal capability; regression guard)
-- [ ] 9.3 Run `cd web && npm run verify:reset-pending` — must PASS (still touches pending storage which this change modified)
-- [ ] 9.4 Run `cd web && npm run verify:intro-copy` — must PASS (2A capability; regression guard)
-- [ ] 9.5 Run `cd web && npm run verify:system-prompt` — must PASS (2A capability; regression guard)
-- [ ] 9.6 Run `cd web && npm run verify:completion-gate` — must PASS (2A capability; regression guard)
-- [ ] 9.7 Run `cd web && npm run lint` — must be clean
-- [ ] 9.8 Run `cd web && npm run typecheck` — must be clean
-- [ ] 9.9 Run `cd web && npm run build` — must complete without errors; capture last 30 lines of output
+- [x] 9.1 Run `cd web && npm run verify:profile` and post output — must show every new-schema assertion PASS and total `OK`
+- [x] 9.2 Run `cd web && npm run verify:provider-url` — must PASS (orthogonal capability; regression guard)
+- [x] 9.3 Run `cd web && npm run verify:reset-pending` — must PASS (still touches pending storage which this change modified)
+- [x] 9.4 Run `cd web && npm run verify:intro-copy` — must PASS (2A capability; regression guard)
+- [x] 9.5 Run `cd web && npm run verify:system-prompt` — must PASS (2A capability; regression guard)
+- [x] 9.6 Run `cd web && npm run verify:completion-gate` — must PASS (2A capability; regression guard)
+- [x] 9.7 Run `cd web && npm run lint` — must be clean
+- [x] 9.8 Run `cd web && npm run typecheck` — must be clean
+- [x] 9.9 Run `cd web && npm run build` — must complete without errors; capture last 30 lines of output
 
 ## 10. Deferred to deployment (bundled with 2A's 5.5-5.8)
 

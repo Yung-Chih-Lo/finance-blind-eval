@@ -54,8 +54,8 @@ function testProfileShapeStrict() {
   const profile = buildCompleteProfile("P-SHAPE")
   const keys = Object.keys(profile).sort()
   const expected = [
-    "aiUsageFrequency",
     "ageRange",
+    "aiUsageFrequency",
     "educationLevel",
     "hasUsedAiForFinance",
     "mainDomain",
@@ -266,8 +266,8 @@ async function testJsonExportHasNoLegacyBlock() {
   }
 
   const expectedKeys = [
-    "aiUsageFrequency",
     "ageRange",
+    "aiUsageFrequency",
     "educationLevel",
     "hasUsedAiForFinance",
     "mainDomain",
@@ -319,8 +319,8 @@ async function testStorageRoundtripPreservesFiveFieldShape() {
   assert.deepEqual(
     Object.keys(profileObj).sort(),
     [
-      "aiUsageFrequency",
       "ageRange",
+      "aiUsageFrequency",
       "educationLevel",
       "hasUsedAiForFinance",
       "mainDomain",
