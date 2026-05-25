@@ -249,6 +249,38 @@ export async function upsertParticipantStatus(status: ParticipantStatus): Promis
   return normalizedStatus
 }
 
+// Atomic combination of upsert + pending-clear. Used by the session route when a
+// participant resubmits their profile mid-session — pending questions carry the
+// OLD participantProfile snapshot, so a subsequent answer save would persist a
+// record under the stale profile (background-stratification analysis would be
+// wrong). Running upsert and clear in a single mutex window prevents a concurrent
+// answer-generation POST from inserting a fresh pending row between the two
+// writes that the late clear would then nuke. (Originally introduced for the
+// legacy → new-shape schema transition; retained as a general-purpose primitive
+// because the same staleness applies to any profile mutation.)
+export async function upsertParticipantStatusAndClearPending(
+  status: ParticipantStatus,
+): Promise<ParticipantStatus> {
+  const normalizedStatus: ParticipantStatus = {
+    ...status,
+    token: normalizeToken(status.token),
+    profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
+  }
+  const normalizedToken = normalizedStatus.token
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedToken)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+      pendingQuestions: store.pendingQuestions.filter(
+        (question) => normalizeToken(question.participantToken) !== normalizedToken,
+      ),
+    })
+  })
+  return normalizedStatus
+}
+
 export async function savePendingQuestion(question: PendingQuestion): Promise<PendingQuestion> {
   await withStoreMutex(async () => {
     const store = await readStore()
@@ -573,10 +605,25 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
   // gone). Records and participants are serialized verbatim.
   const records = store.records.map((record) => ({ ...record }))
   const participants = store.participants.map((participant) => ({ ...participant }))
+  // Explicitly project to the 5 PlatformSettingsSnapshot fields so a caller that
+  // hands us the full ActivePlatformSettings (admin export route does) doesn't
+  // leak `path` / `envelope` / `provider` / `providerStatus` (server-side details
+  // including the API-key env var name and chat-completions URL) into the
+  // downloaded JSON. TypeScript structural-typing happily widens but JSON.stringify
+  // serializes the actual runtime shape, so we have to project at runtime.
+  const settingsSnapshot: PlatformSettingsSnapshot | undefined = settings
+    ? {
+        source: settings.source,
+        settingsVersion: settings.settingsVersion,
+        settingsSnapshotHash: settings.settingsSnapshotHash,
+        updatedAt: settings.updatedAt,
+        updatedBy: settings.updatedBy,
+      }
+    : undefined
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      settings,
+      settings: settingsSnapshot,
       participants,
       records,
     },

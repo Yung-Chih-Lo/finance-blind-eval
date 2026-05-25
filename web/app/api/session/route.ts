@@ -12,12 +12,30 @@ import {
   getPendingQuestionsByParticipant,
   normalizeToken,
   upsertParticipantStatus,
+  upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
 import { requireEvaluationSession } from "@/lib/server/session"
 
 interface SessionRequest {
   token?: string
   profile?: ParticipantProfileDraft
+}
+
+// Compare the 5 stratification fields + token of two persisted profiles. A pure
+// re-submit of an unchanged profile is an idempotent no-op (the route still calls
+// upsertParticipantStatus to refresh updatedAt); only a real change triggers the
+// pending-clear path. Cheap explicit comparison beats JSON.stringify (would also
+// flag key-order differences) and beats deep-equal libs (one more dep).
+function profilesEqual(a: ParticipantProfile | undefined, b: ParticipantProfile | undefined): boolean {
+  if (!a || !b) return a === b
+  return (
+    a.token === b.token &&
+    a.ageRange === b.ageRange &&
+    a.educationLevel === b.educationLevel &&
+    a.mainDomain === b.mainDomain &&
+    a.aiUsageFrequency === b.aiUsageFrequency &&
+    a.hasUsedAiForFinance === b.hasUsedAiForFinance
+  )
 }
 
 function publicPendingQuestion(pendingQuestion: Awaited<ReturnType<typeof getPendingQuestionsByParticipant>>[number]) {
@@ -58,18 +76,28 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString()
   const existing = await getParticipantStatus(token)
-  const profile = validatedProfile ? buildPersistedProfile(token, validatedProfile) : existing?.profile
+  const nextProfile = validatedProfile ? buildPersistedProfile(token, validatedProfile) : existing?.profile
 
   const status: ParticipantStatus = {
     token,
-    profile,
-    completionStatus: profile ? existing?.completionStatus === "completed" ? "completed" : "in_progress" : "profile_started",
+    profile: nextProfile,
+    completionStatus: nextProfile ? existing?.completionStatus === "completed" ? "completed" : "in_progress" : "profile_started",
     startedAt: existing?.startedAt || now,
     updatedAt: now,
     completedAt: existing?.completedAt,
   }
 
-  const participant = await upsertParticipantStatus(status)
+  // If the participant's profile is being mutated (vs. an idempotent re-submit of
+  // the same shape), any pending question already in the store was generated under
+  // the OLD participantProfile snapshot — saving an answer for it would persist a
+  // record with stale background-stratification fields. Use the atomic upsert+clear
+  // helper to invalidate those pending rows in the same mutex window.
+  const profileChanged =
+    validatedProfile != null &&
+    (!existing?.profile || !profilesEqual(existing.profile, nextProfile))
+  const participant = profileChanged
+    ? await upsertParticipantStatusAndClearPending(status)
+    : await upsertParticipantStatus(status)
 
   const answeredCount = (await getEvaluationRecordsByParticipant(participant.token)).length
   const [pendingQuestion] = await getPendingQuestionsByParticipant(participant.token)

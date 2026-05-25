@@ -198,7 +198,7 @@ The system SHALL allow admin users to export evaluation data as JSON and CSV, in
 
 #### Scenario: CSV export requested
 - **WHEN** an admin requests CSV export
-- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and exactly five active-profile columns covering token, age range, education level, main domain, AI usage frequency, and `hasUsedAiForFinance`
+- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and exactly six active-profile columns covering `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, and `has_used_ai_for_finance`
 - **AND** the CSV header SHALL NOT contain any column named `gender`, `grade_or_occupation`, `finance_work_experience`, `investment_experience`, `finance_familiarity`, `finance_subdomains`, `notes`, `known_name`, `llm_experience`, `finance_background_type`, `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, or `legacy_finance_llm_usage`
 
 #### Scenario: JSON export uses single profile shape

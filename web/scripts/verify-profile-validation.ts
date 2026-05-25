@@ -33,11 +33,19 @@ import {
   buildExportCsv,
   buildExportJson,
   getParticipantStatus,
+  getPendingQuestionsByParticipant,
   resetEvaluationData,
   saveEvaluationRecord,
+  savePendingQuestion,
   upsertParticipantStatus,
+  upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
-import type { EvaluationRecord, ParticipantProfile, ParticipantProfileDraft } from "@/lib/evaluation/types"
+import type {
+  EvaluationRecord,
+  ParticipantProfile,
+  ParticipantProfileDraft,
+  PendingQuestion,
+} from "@/lib/evaluation/types"
 
 // Canonical complete profile for reuse across positive-path tests.
 function buildCompleteProfile(token = "P-COMPLETE"): ParticipantProfile {
@@ -474,6 +482,123 @@ function testFormatProfileChoiceNeverLeaksRawEnum() {
   console.log("PASS: formatProfileChoice coerces unknown values to '-' and renders current labels")
 }
 
+async function testAtomicUpsertClearsStalePending() {
+  console.log("\n=== upsertParticipantStatusAndClearPending atomically invalidates stale pending rows ===")
+  // Scenario CodeRabbit flagged on PR #8: participant submits profile A → answer
+  // generation creates a pending question carrying profile A as its snapshot →
+  // participant resubmits a different profile (B). Without atomic clear, the
+  // pending row still carries A, and saving an answer would persist a record under
+  // the stale profile, contaminating background-stratification analysis.
+  await resetEvaluationData()
+
+  const token = "P-RESUBMIT"
+  const profileA: ParticipantProfile = {
+    token,
+    ageRange: "20_24",
+    educationLevel: "undergrad_in_progress",
+    mainDomain: "other",
+    aiUsageFrequency: "never",
+    hasUsedAiForFinance: false,
+  }
+  await upsertParticipantStatus({
+    token,
+    profile: profileA,
+    completionStatus: "in_progress",
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const stalePending: PendingQuestion = {
+    id: "q-stale",
+    participantToken: token,
+    participantProfile: profileA,
+    questionIndex: 1,
+    promptCategory: "finance-concept",
+    promptCategoryId: "finance-concept",
+    userQuestion: "Q?",
+    answers: { A: "a", B: "b", C: "c" },
+    hiddenModelMapping: { A: "H1-best", B: "H2-best", C: "TAIDE-baseline" },
+    gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
+    timestamp: new Date().toISOString(),
+    responseLatencyMs: 100,
+  }
+  await savePendingQuestion(stalePending)
+  assert.equal(
+    (await getPendingQuestionsByParticipant(token)).length,
+    1,
+    "fixture should seed exactly one pending row before the resubmit",
+  )
+
+  const profileB: ParticipantProfile = {
+    ...profileA,
+    mainDomain: "finance_related",
+    aiUsageFrequency: "daily",
+    hasUsedAiForFinance: true,
+  }
+  await upsertParticipantStatusAndClearPending({
+    token,
+    profile: profileB,
+    completionStatus: "in_progress",
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const pendingAfter = await getPendingQuestionsByParticipant(token)
+  assert.equal(
+    pendingAfter.length,
+    0,
+    `pending must be empty after atomic upsert+clear; got ${pendingAfter.length}`,
+  )
+
+  const status = await getParticipantStatus(token)
+  assert.equal(status?.profile?.mainDomain, "finance_related", "new profile must be persisted")
+  assert.equal(status?.profile?.aiUsageFrequency, "daily", "new profile fields persisted")
+  console.log("PASS: atomic helper drops stale pending rows in the same mutex window as profile upsert")
+}
+
+async function testJsonExportDoesNotLeakActiveSettings() {
+  console.log("\n=== buildExportJson projects settings to PlatformSettingsSnapshot fields only ===")
+  // CodeRabbit caught the admin export route handing the full ActivePlatformSettings
+  // object (which extends PlatformSettingsSnapshot with `path` / `envelope` /
+  // `provider` / `providerStatus`) into buildExportJson. TypeScript's structural
+  // typing widens silently; runtime JSON.stringify serializes whatever is there.
+  // This test passes the full object as `unknown` and asserts only the 5 snapshot
+  // fields survive into the exported JSON.
+  await resetEvaluationData()
+
+  const leakyFullSettings = {
+    source: "runtime",
+    settingsVersion: 3,
+    settingsSnapshotHash: "abc123",
+    updatedAt: new Date().toISOString(),
+    updatedBy: "admin",
+    // ↓ extra fields from ActivePlatformSettings that must NOT leak
+    path: "/src/.data/platform-settings.json",
+    envelope: { someInternal: "stuff" },
+    config: { neverEmit: true },
+    provider: { apiKeyEnvVar: "OPENAI_COMPAT_API_KEY", systemPrompt: "secret" },
+    providerStatus: { apiKeyConfigured: true },
+  } as unknown as Parameters<typeof buildExportJson>[0]
+
+  const json = await buildExportJson(leakyFullSettings)
+  const parsed = JSON.parse(json) as { settings?: Record<string, unknown> }
+
+  assert.ok(parsed.settings, "settings block must be emitted")
+  const settingsKeys = Object.keys(parsed.settings).sort()
+  assert.deepEqual(
+    settingsKeys,
+    ["settingsSnapshotHash", "settingsVersion", "source", "updatedAt", "updatedBy"],
+    `exported settings must contain only the 5 PlatformSettingsSnapshot fields; got ${JSON.stringify(settingsKeys)}`,
+  )
+  for (const leakedKey of ["path", "envelope", "config", "provider", "providerStatus"]) {
+    assert.ok(
+      !(leakedKey in parsed.settings),
+      `exported settings must NOT contain '${leakedKey}' (server-side detail)`,
+    )
+  }
+  console.log("PASS: buildExportJson strips ActivePlatformSettings extras down to 5 snapshot fields")
+}
+
 async function main() {
   testProfileShapeStrict()
   testDraftSeedsNullForFiveRequiredFields()
@@ -485,7 +610,9 @@ async function main() {
   testFormatProfileChoiceNeverLeaksRawEnum()
   await testCsvHeaderHasOnlyFiveActiveFields()
   await testJsonExportHasNoLegacyBlock()
+  await testJsonExportDoesNotLeakActiveSettings()
   await testStorageRoundtripPreservesFiveFieldShape()
+  await testAtomicUpsertClearsStalePending()
   console.log("\nOK")
 }
 
