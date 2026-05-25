@@ -19,29 +19,29 @@
 
 ## 2. GREEN — replace 5 config strings
 
-- [ ] 2.1 Open `web/config/evaluation.config.json`. Change `study.title` from `"金融專業回答盲測"` to `"金融腦回答比較研究"` (line ~4)
-- [ ] 2.2 Change `study.rootTitle` from `"金融專業回答盲測"` to `"金融腦回答比較研究"` (line ~5)
-- [ ] 2.3 Change `study.eyebrow` from `"Blind Model Evaluation"` to `"金融問答比較研究"` (line ~3)
-- [ ] 2.4 Change `study.completion.title` from `"感謝完成本次盲測問卷"` to `"感謝完成本次研究問卷"` (line ~30)
-- [ ] 2.5 Rewrite `study.completion.description` (line ~31) from `"你的回答已記錄。為了維持研究盲測設計，本頁不顯示模型身份、模型排名與比較結果。"` to `"你的回答已記錄。為了避免影響後續研究分析的客觀性，本頁不顯示模型身份、模型排名與比較結果。"`
+- [x] 2.1 Open `web/config/evaluation.config.json`. Change `study.title` from `"金融專業回答盲測"` to `"金融腦回答比較研究"` (line ~4)
+- [x] 2.2 Change `study.rootTitle` from `"金融專業回答盲測"` to `"金融腦回答比較研究"` (line ~5)
+- [x] 2.3 Change `study.eyebrow` from `"Blind Model Evaluation"` to `"金融問答比較研究"` (line ~3)
+- [x] 2.4 Change `study.completion.title` from `"感謝完成本次盲測問卷"` to `"感謝完成本次研究問卷"` (line ~30)
+- [x] 2.5 Rewrite `study.completion.description` (line ~31) from `"你的回答已記錄。為了維持研究盲測設計，本頁不顯示模型身份、模型排名與比較結果。"` to `"你的回答已記錄。為了避免影響後續研究分析的客觀性，本頁不顯示模型身份、模型排名與比較結果。"`
 
 ## 3. GREEN — replace 3 component strings
 
-- [ ] 3.1 In `web/components/evaluation/token-entry.tsx` around line 88, change `<dd>A / B / C 匿名盲測</dd>` to `<dd>A / B / C 匿名回答比較</dd>`
-- [ ] 3.2 In `web/components/evaluation/profile-form.tsx` around line 198, change the submit button label `{isSubmitting ? "儲存中..." : "開始 5 題盲測問卷"}` to `{isSubmitting ? "儲存中..." : "開始 5 題問卷"}`
-- [ ] 3.3 In `web/components/evaluation/question-flow.tsx` around line 321, change `aria-label="盲測回答比較"` to `aria-label="匿名回答比較"`
+- [x] 3.1 In `web/components/evaluation/token-entry.tsx` around line 88, change `<dd>A / B / C 匿名盲測</dd>` to `<dd>A / B / C 匿名回答比較</dd>`
+- [x] 3.2 In `web/components/evaluation/profile-form.tsx` around line 198, change the submit button label `{isSubmitting ? "儲存中..." : "開始 5 題盲測問卷"}` to `{isSubmitting ? "儲存中..." : "開始 5 題問卷"}`
+- [x] 3.3 In `web/components/evaluation/question-flow.tsx` around line 321, change `aria-label="盲測回答比較"` to `aria-label="匿名回答比較"` — **scope expansion**: also changed line 324 `<p className="panel-kicker">Blind Comparison</p>` to `<p className="panel-kicker">回答比較</p>` (spec scenario forbids `Blind` in participant components; visible kicker uses shorter text than the aria-label to avoid screen-reader double-announcement)
 
 ## 4. Verify GREEN — verify-intro-copy goes green
 
-- [ ] 4.1 Run `cd web && npm run verify:intro-copy` and post the output — all assertions PASS including the new `testComponentStringsAvoidJargon()` and the expanded `visibleText` jargon scan
-- [ ] 4.2 Run `cd web && npm run verify:profile` (covers schema strictness) — must PASS as regression
-- [ ] 4.3 Run `cd web && npm run verify:provider-url && npm run verify:reset-pending && npm run verify:system-prompt && npm run verify:completion-gate` — all four regression scripts PASS
+- [x] 4.1 Run `cd web && npm run verify:intro-copy` and post the output — all assertions PASS including the new `testComponentStringsAvoidJargon()` and the expanded `visibleText` jargon scan — **27 OK lines, PASS**
+- [x] 4.2 Run `cd web && npm run verify:profile` (covers schema strictness) — must PASS as regression — **PASS, 13 tests OK**
+- [x] 4.3 Run `cd web && npm run verify:provider-url && npm run verify:reset-pending && npm run verify:system-prompt && npm run verify:completion-gate` — all four regression scripts PASS — **all PASS**
 
 ## 5. Verify GREEN — full project gates
 
-- [ ] 5.1 Run `cd web && npm run lint` — clean (0 errors / 0 warnings)
-- [ ] 5.2 Run `cd web && npm run typecheck` — clean
-- [ ] 5.3 Run `cd web && npm run build` — completes; capture last 10 lines of output showing route table
+- [x] 5.1 Run `cd web && npm run lint` — clean (0 errors / 0 warnings) — **clean**
+- [x] 5.2 Run `cd web && npm run typecheck` — clean — **clean**
+- [x] 5.3 Run `cd web && npm run build` — completes; capture last 10 lines of output showing route table — **17 routes, no errors**
 
 ## 6. Docs sync — CLAUDE.md migration note
 

@@ -85,7 +85,7 @@ export function TokenEntry({
             </div>
             <div>
               <dt>比較方式</dt>
-              <dd>A / B / C 匿名盲測</dd>
+              <dd>A / B / C 匿名回答比較</dd>
             </div>
             <div>
               <dt>資料用途</dt>
