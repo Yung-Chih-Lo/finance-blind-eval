@@ -11,33 +11,38 @@ import path from "node:path"
 
 import studyConfig from "@/config/evaluation.config.json"
 
-// Strings that the advisor explicitly forbade from participant-visible copy
+// Patterns that the advisor explicitly forbade from participant-visible copy
 // (transcript: "受測者不需要了解 H1-base、H2-base、盲測、APT 等技術名詞" +
 // "不要去, 第一個, 大語言模型...你要跟人家講金龍腦").
 //
-// Naming: `_CONFIG_KEYWORDS` is the list scanned against `visibleText` —
-// the join of all participant-visible strings sourced from
+// Naming: `_CONFIG_PATTERNS` is the list tested against `visibleText` — the
+// join of all participant-visible strings sourced from
 // `web/config/evaluation.config.json` (study.title / rootTitle / eyebrow /
 // intro / completion). For source-file scanning (.tsx) see
-// `FORBIDDEN_SOURCE_TOKENS` below.
-const FORBIDDEN_CONFIG_KEYWORDS = [
-  "大型語言模型",
-  "APT",
-  "H1",
-  "H2",
-  "TAIDE",
-  "validation loss",
-  "validation roles",
-  "盲測",
-  "H1-base",
-  "H2-base",
-  "主要分層變項",
-  "預先指定",
-  // Trailing space avoids false positives on Blinded / Blinder; pins the
-  // English caption variant of 盲測 (e.g. legacy `Blind Model Evaluation`).
-  // Both casings checked — pages can use either as a freestanding word.
-  "Blind ",
-  "blind ",
+// `FORBIDDEN_SOURCE_PATTERNS` below.
+//
+// Why regex (not plain substring): the `Blind` token must match the
+// standalone word in any boundary — trailing space, comma, period, EOL,
+// JSX-quoted — while excluding `Blinded` / `Blinder`. Word-boundary regex
+// `\bblind\b/i` handles all of these in a single pattern and covers both
+// casings (e.g. `Blind Model Evaluation` header AND `blind evaluation`
+// lowercase in meta description). For Chinese / acronym tokens, the `u`
+// flag enables Unicode-aware matching and the unbounded form preserves the
+// previous substring semantics (so `H1` still catches `H1-base`).
+const FORBIDDEN_CONFIG_PATTERNS = [
+  /大型語言模型/u,
+  /APT/u,
+  /H1/u,
+  /H2/u,
+  /TAIDE/u,
+  /validation loss/u,
+  /validation roles/u,
+  /盲測/u,
+  /H1-base/u,
+  /H2-base/u,
+  /主要分層變項/u,
+  /預先指定/u,
+  /\bblind\b/i,
 ]
 
 // At least one of these must appear so the participant frames the system as
@@ -66,9 +71,11 @@ const PARTICIPANT_SOURCE_FILES = [
   // root layout, visible on every route in the participant flow.
   "app/layout.tsx",
 ]
-// Trailing space avoids false positives on Blinded / Blinder; both casings
-// checked since metadata.description-style sentences may lowercase the word.
-const FORBIDDEN_SOURCE_TOKENS = ["盲測", "Blind ", "blind "]
+// `\bblind\b/i` covers both casings (`Blind` / `blind`) and all boundaries
+// (trailing space, comma, period, EOL, JSX-quoted) while excluding
+// `Blinded` / `Blinder`. See FORBIDDEN_CONFIG_PATTERNS comment for full
+// rationale.
+const FORBIDDEN_SOURCE_PATTERNS = [/盲測/u, /\bblind\b/i]
 
 const failures: string[] = []
 
@@ -87,10 +94,10 @@ function testSourceFilesAvoidJargon() {
   for (const relPath of PARTICIPANT_SOURCE_FILES) {
     const fullPath = path.resolve(process.cwd(), relPath)
     const contents = fs.readFileSync(fullPath, "utf8")
-    for (const token of FORBIDDEN_SOURCE_TOKENS) {
+    for (const pattern of FORBIDDEN_SOURCE_PATTERNS) {
       check(
-        !contents.includes(token),
-        `${relPath} must not contain forbidden token "${token}"`,
+        !pattern.test(contents),
+        `${relPath} must not match forbidden pattern ${String(pattern)}`,
       )
     }
   }
@@ -130,10 +137,10 @@ function main() {
     completion.description,
     ...completion.notes,
   ].join("\n")
-  for (const forbidden of FORBIDDEN_CONFIG_KEYWORDS) {
+  for (const pattern of FORBIDDEN_CONFIG_PATTERNS) {
     check(
-      !visibleText.includes(forbidden),
-      `participant intro must not contain forbidden term "${forbidden}"`,
+      !pattern.test(visibleText),
+      `participant intro must not match forbidden pattern ${String(pattern)}`,
     )
   }
 
