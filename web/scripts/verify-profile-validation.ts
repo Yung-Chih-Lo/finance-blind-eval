@@ -1,6 +1,12 @@
-// Regression harness for the participant profile schema migration.
+// Regression harness for the 5-field participant profile schema (post simplify-participant-profile-to-5-fields).
 // Run with:
 //   cd web && npm run verify:profile
+//
+// Every assertion targets the NEW schema. No legacy / migration test functions remain;
+// the legacy compatibility layer (migrateLegacyProfile, extractLegacyProfileSnapshot,
+// LegacyProfileSnapshot, LEGACY_FIELDS, legacy_* CSV cols, legacyProfile JSON block,
+// upsertParticipantStatusAndClearPending, wasLegacy branch) is gone — see the design
+// doc for the simplify-participant-profile-to-5-fields change.
 //
 // Chdir's into an OS tmp dir so we never clobber the real .data/ in the repo.
 
@@ -13,17 +19,19 @@ const sandbox = mkdtempSync(join(tmpdir(), "profile-validation-"))
 process.chdir(sandbox)
 
 import {
+  AGE_RANGE_OPTIONS,
+  AI_USAGE_FREQUENCY_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
+  MAIN_DOMAIN_OPTIONS,
+  buildPersistedProfile,
   createParticipantProfileDraft,
-  extractLegacyProfileSnapshot,
+  formatProfileChoice,
   isCompleteParticipantProfile,
-  migrateLegacyProfile,
   validateParticipantProfile,
 } from "@/lib/evaluation/profile"
 import {
   buildExportCsv,
   buildExportJson,
-  clearPendingQuestionsForParticipant,
   getParticipantStatus,
   getPendingQuestionsByParticipant,
   resetEvaluationData,
@@ -32,256 +40,208 @@ import {
   upsertParticipantStatus,
   upsertParticipantStatusAndClearPending,
 } from "@/lib/server/evaluation-storage"
-import { EVALUATION_FACET_IDS } from "@/lib/server/platform-settings"
-import studyConfig from "@/config/evaluation.config.json"
-import type { EvaluationRecord, ParticipantProfile, ParticipantProfileDraft, PendingQuestion } from "@/lib/evaluation/types"
+import type {
+  EvaluationRecord,
+  ParticipantProfile,
+  ParticipantProfileDraft,
+  PendingQuestion,
+} from "@/lib/evaluation/types"
 
-function buildLegacyProfile(token: string): ParticipantProfile {
-  // Real legacy records on disk have fields the new ParticipantProfile type rejects.
-  // We force the type with `as unknown as ParticipantProfile` to mirror what arrives
-  // from storage before migration.
+// Canonical complete profile for reuse across positive-path tests.
+function buildCompleteProfile(token = "P-COMPLETE"): ParticipantProfile {
   return {
     token,
     ageRange: "25_29",
-    fieldOrWorkDomain: "資管系",
-    isBusinessOrFinance: "yes",
-    gradeOrOccupation: "碩二",
-    hasTakenFinanceCourse: "yes",
-    financeWorkExperience: "internship",
-    investmentExperience: "basic",
-    financeFamiliarity: 4,
-    llmExperience: "weekly",
-    financeLlmUsage: "weekly",
-    financeSubdomains: ["stocks"],
-    notes: "",
-  } as unknown as ParticipantProfile
-}
-
-function testMigrateLegacyProfile() {
-  console.log("\n=== migrateLegacyProfile ===")
-  const legacy = {
-    ageRange: "25_29",
-    fieldOrWorkDomain: "資管系",
-    isBusinessOrFinance: "yes",
-    hasTakenFinanceCourse: "yes",
-    financeLlmUsage: "weekly",
-    financeFamiliarity: 4,
-    financeWorkExperience: "internship",
-    investmentExperience: "basic",
-    llmExperience: "weekly",
-    financeSubdomains: ["stocks", "derivatives", "risk_management"],
-    notes: "hello",
-    gradeOrOccupation: "碩二",
-  }
-  const result = migrateLegacyProfile(legacy)
-
-  // (i) compatible fields preserved
-  assert.equal(result.ageRange, "25_29", "ageRange preserved")
-  assert.equal(result.financeFamiliarity, 4, "financeFamiliarity preserved")
-  assert.equal(result.financeWorkExperience, "internship")
-  assert.equal(result.investmentExperience, "basic")
-  assert.equal(result.llmExperience, "weekly")
-  assert.deepEqual(result.financeSubdomains, ["stocks"], "dropped subdomains derivatives/risk_management")
-  assert.equal(result.notes, "hello")
-  assert.equal(result.gradeOrOccupation, "碩二")
-
-  // (ii) legacy keys dropped
-  const resultObj = result as Record<string, unknown>
-  for (const legacyKey of ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"]) {
-    assert.ok(!(legacyKey in resultObj), `legacy key ${legacyKey} must be stripped`)
-  }
-
-  // (iii) new required keys absent — forces form re-prompt
-  for (const newKey of ["gender", "educationLevel", "financeBackgroundType", "hasUsedAiForFinance"]) {
-    assert.ok(!(newKey in resultObj), `new required key ${newKey} must NOT be defaulted by migrate`)
-  }
-
-  // under_20 remap
-  const remapped = migrateLegacyProfile({ ageRange: "under_20", financeSubdomains: [] })
-  assert.equal(remapped.ageRange, "prefer_not_to_say", "under_20 → prefer_not_to_say")
-  console.log("PASS: migrate strips legacy, preserves compatible, omits new, remaps under_20")
-}
-
-function testValidate() {
-  console.log("\n=== validateParticipantProfile ===")
-  const completeDraft: ParticipantProfileDraft = {
-    token: "P-T",
-    ageRange: "25_29",
-    gender: "female",
     educationLevel: "undergrad_in_progress",
-    financeBackgroundType: "student_finance_related",
-    financeWorkExperience: "internship",
-    investmentExperience: "basic",
-    financeFamiliarity: 4,
-    llmExperience: "weekly",
+    mainDomain: "finance_related",
+    aiUsageFrequency: "frequent",
     hasUsedAiForFinance: true,
-    financeSubdomains: ["stocks"],
-    notes: "",
   }
-  assert.deepEqual(validateParticipantProfile(completeDraft), [], "complete draft must validate clean")
-  assert.equal(isCompleteParticipantProfile(completeDraft), true)
-
-  type WithLoosened<K extends keyof ParticipantProfileDraft> = Omit<ParticipantProfileDraft, K> & Record<K, unknown>
-
-  const noGender = { ...completeDraft, gender: undefined } as WithLoosened<"gender">
-  assert.ok(
-    validateParticipantProfile(noGender as Partial<ParticipantProfileDraft>).some((i) => i.includes("性別")),
-    "missing gender must produce an issue mentioning 性別",
-  )
-
-  const noEdu = { ...completeDraft, educationLevel: undefined } as WithLoosened<"educationLevel">
-  assert.ok(
-    validateParticipantProfile(noEdu as Partial<ParticipantProfileDraft>).some((i) => i.includes("學歷")),
-    "missing educationLevel must produce an issue mentioning 學歷",
-  )
-
-  const noBg = { ...completeDraft, financeBackgroundType: undefined } as WithLoosened<"financeBackgroundType">
-  assert.ok(
-    validateParticipantProfile(noBg as Partial<ParticipantProfileDraft>).some((i) => i.includes("金融背景類型")),
-    "missing financeBackgroundType must produce an issue mentioning 金融背景類型",
-  )
-
-  // The critical Codex F1 case: null must NOT be silently treated as false.
-  const nullAi: ParticipantProfileDraft = { ...completeDraft, hasUsedAiForFinance: null }
-  const issuesNullAi = validateParticipantProfile(nullAi)
-  assert.ok(
-    issuesNullAi.some((i) => i.includes("是否曾用 AI 處理金融")),
-    `null hasUsedAiForFinance must produce explicit-selection issue; got ${JSON.stringify(issuesNullAi)}`,
-  )
-  assert.equal(isCompleteParticipantProfile(nullAi), false, "null hasUsedAiForFinance must NOT be considered complete")
-
-  // undefined hasUsedAiForFinance follows the same path.
-  const undefAi = { ...completeDraft } as Partial<ParticipantProfileDraft>
-  delete undefAi.hasUsedAiForFinance
-  assert.ok(
-    validateParticipantProfile(undefAi).some((i) => i.includes("是否曾用 AI 處理金融")),
-    "undefined hasUsedAiForFinance must also produce the explicit-selection issue",
-  )
-
-  console.log("PASS: validation rejects missing required fields and null/undefined hasUsedAiForFinance")
 }
 
-async function testStorageBackwardCompatRead() {
-  console.log("\n=== storage read of legacy profile ===")
-  await resetEvaluationData()
-
-  const token = "P-LEGACY"
-  await upsertParticipantStatus({
-    token,
-    profile: buildLegacyProfile(token),
-    completionStatus: "profile_started",
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
-
-  const result = await getParticipantStatus(token)
-  assert.ok(result?.profile, "participant should be readable")
-  const profileObj = result.profile as unknown as Record<string, unknown>
-
-  for (const legacyKey of ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"]) {
-    assert.ok(!(legacyKey in profileObj), `${legacyKey} must be stripped on read`)
-  }
-  for (const newKey of ["gender", "educationLevel", "financeBackgroundType", "hasUsedAiForFinance"]) {
-    assert.ok(!(newKey in profileObj), `${newKey} must NOT be defaulted on read — form should re-prompt`)
-  }
-  assert.equal(profileObj.ageRange, "25_29", "compatible ageRange survives migration")
-
-  console.log("PASS: getParticipantStatus migrates legacy profile on read")
+function testProfileShapeStrict() {
+  console.log("\n=== ParticipantProfile shape is exactly 6 keys ===")
+  const profile = buildCompleteProfile("P-SHAPE")
+  const keys = Object.keys(profile).sort()
+  const expected = [
+    "ageRange",
+    "aiUsageFrequency",
+    "educationLevel",
+    "hasUsedAiForFinance",
+    "mainDomain",
+    "token",
+  ]
+  assert.deepEqual(
+    keys,
+    expected,
+    `ParticipantProfile must have exactly these 6 keys, got ${JSON.stringify(keys)}`,
+  )
+  console.log("PASS: ParticipantProfile keys are exactly the 6 expected fields")
 }
 
-async function testClearPendingOnLegacyResubmit() {
-  console.log("\n=== clearPendingQuestionsForParticipant on legacy resubmit ===")
-  await resetEvaluationData()
-
-  const token = "P-MID"
-  const legacyProfile = buildLegacyProfile(token)
-
-  await upsertParticipantStatus({
-    token,
-    profile: legacyProfile,
-    completionStatus: "in_progress",
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
-
-  const pending: PendingQuestion = {
-    id: "q-legacy-1",
-    participantToken: token,
-    participantProfile: legacyProfile,
-    questionIndex: 1,
-    promptCategory: "finance-concept",
-    promptCategoryId: "finance-concept",
-    userQuestion: "Q?",
-    answers: { A: "a", B: "b", C: "c" },
-    hiddenModelMapping: { A: "H1-best", B: "H2-best", C: "TAIDE-baseline" },
-    gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
-    timestamp: new Date().toISOString(),
-    responseLatencyMs: 100,
-  }
-  await savePendingQuestion(pending)
-
-  const beforeClear = await getPendingQuestionsByParticipant(token)
-  assert.equal(beforeClear.length, 1, "seed should leave one pending entry")
-
-  await clearPendingQuestionsForParticipant(token)
-
-  const afterClear = await getPendingQuestionsByParticipant(token)
-  assert.equal(afterClear.length, 0, "pending should be empty after clearPendingQuestionsForParticipant")
-  console.log("PASS: clearPendingQuestionsForParticipant removes all entries for that token")
-}
-
-function testDraftSeedsNullForRequiredEnums() {
-  console.log("\n=== createParticipantProfileDraft seeds null for required enums (anti-silent-default) ===")
+function testDraftSeedsNullForFiveRequiredFields() {
+  console.log("\n=== createParticipantProfileDraft seeds null for 5 required fields ===")
   const draft = createParticipantProfileDraft("P-FRESH")
-  // These five fields used to silently default to prefer_not_to_say / "none"; we now
-  // force the participant to explicitly pick.
-  assert.equal(draft.gender, null, "gender must start as null")
+  assert.equal(draft.token, "P-FRESH", "token must be set from arg")
+  assert.equal(draft.ageRange, null, "ageRange must start as null")
   assert.equal(draft.educationLevel, null, "educationLevel must start as null")
-  assert.equal(draft.financeBackgroundType, null, "financeBackgroundType must start as null")
-  assert.equal(draft.financeWorkExperience, null, "financeWorkExperience (primary stratifier) must start as null")
-  assert.equal(draft.investmentExperience, null, "investmentExperience must start as null")
+  assert.equal(draft.mainDomain, null, "mainDomain must start as null")
+  assert.equal(draft.aiUsageFrequency, null, "aiUsageFrequency must start as null")
   assert.equal(draft.hasUsedAiForFinance, null, "hasUsedAiForFinance must start as null")
 
   const issues = validateParticipantProfile(draft)
-  for (const fragment of ["性別", "學歷", "金融背景類型", "金融工作", "投資經驗", "是否曾用 AI 處理金融"]) {
+  for (const fragment of ["年齡", "學歷", "目前主要領域", "AI 使用頻率", "是否曾用 AI 處理金融"]) {
     assert.ok(
       issues.some((i) => i.includes(fragment)),
       `validation must surface an issue containing "${fragment}"; got ${JSON.stringify(issues)}`,
     )
   }
-  assert.equal(isCompleteParticipantProfile(draft), false, "untouched draft must not pass completion")
-  console.log("PASS: null defaults blocked by validation across all six required pick-one fields")
+  assert.equal(
+    isCompleteParticipantProfile(draft),
+    false,
+    "untouched draft must not pass completion",
+  )
+  console.log("PASS: null defaults blocked by validation across all 5 required pick-one fields")
 }
 
-function testExtractLegacyHandlesNonString() {
-  console.log("\n=== extractLegacyProfileSnapshot coerces non-string legacy values ===")
-  const raw = {
-    fieldOrWorkDomain: "資管系",
-    isBusinessOrFinance: true,
-    hasTakenFinanceCourse: 1,
-    financeLlmUsage: "weekly",
+function testNewEnumValuesOnly() {
+  console.log("\n=== Option arrays expose only the new enum values ===")
+  const ageValues = AGE_RANGE_OPTIONS.map((option) => option.value)
+  assert.deepEqual(
+    ageValues,
+    ["20_24", "25_29", "30_39", "40_plus"],
+    `AGE_RANGE_OPTIONS must expose exactly 4 values; got ${JSON.stringify(ageValues)}`,
+  )
+
+  const eduValues = EDUCATION_LEVEL_OPTIONS.map((option) => option.value)
+  assert.deepEqual(
+    eduValues,
+    ["undergrad_in_progress", "undergrad_completed", "grad_or_above"],
+    `EDUCATION_LEVEL_OPTIONS must expose exactly 3 values; got ${JSON.stringify(eduValues)}`,
+  )
+
+  const domainValues = MAIN_DOMAIN_OPTIONS.map((option) => option.value)
+  assert.deepEqual(
+    domainValues,
+    ["finance_related", "business_non_finance", "other"],
+    `MAIN_DOMAIN_OPTIONS must expose exactly 3 values; got ${JSON.stringify(domainValues)}`,
+  )
+
+  const freqValues = AI_USAGE_FREQUENCY_OPTIONS.map((option) => option.value)
+  assert.deepEqual(
+    freqValues,
+    ["never", "occasional", "frequent", "daily"],
+    `AI_USAGE_FREQUENCY_OPTIONS must expose exactly 4 values; got ${JSON.stringify(freqValues)}`,
+  )
+
+  // Defense-in-depth: no option in any array carries the removed prefer_not_to_say.
+  const allOptionValues = [
+    ...ageValues,
+    ...eduValues,
+    ...domainValues,
+    ...freqValues,
+  ]
+  for (const value of allOptionValues) {
+    assert.ok(
+      !String(value).includes("prefer_not_to_say"),
+      `option value '${value}' must not contain prefer_not_to_say`,
+    )
   }
-  const snapshot = extractLegacyProfileSnapshot(raw)
-  assert.ok(snapshot, "snapshot must be defined for mixed-type legacy record")
-  assert.equal(snapshot?.fieldOrWorkDomain, "資管系", "string preserved")
-  assert.equal(snapshot?.isBusinessOrFinance, "true", "boolean coerced to string")
-  assert.equal(snapshot?.hasTakenFinanceCourse, "1", "number coerced to string")
-  assert.equal(snapshot?.financeLlmUsage, "weekly", "string preserved")
-
-  const emptyOnly = extractLegacyProfileSnapshot({ fieldOrWorkDomain: "", isBusinessOrFinance: null })
-  assert.equal(emptyOnly, undefined, "all-empty-or-null inputs return undefined")
-  console.log("PASS: non-string legacy values preserved via String() coercion")
+  console.log("PASS: option arrays match the new schema and exclude prefer_not_to_say")
 }
 
-async function testJsonExportMigratesAndAttachesLegacy() {
-  console.log("\n=== buildExportJson strips legacy keys from active profile + attaches legacyProfile ===")
+function testRejectsOldEnumLiterals() {
+  console.log("\n=== validateParticipantProfile rejects removed legacy enum literals ===")
+  const base = buildCompleteProfile("P-LEGACY-VALUES") as unknown as ParticipantProfileDraft
+
+  // Old prefer_not_to_say ageRange — removed.
+  const oldAge = { ...base, ageRange: "prefer_not_to_say" } as unknown as ParticipantProfileDraft
+  assert.ok(
+    validateParticipantProfile(oldAge).some((i) => i.includes("年齡")),
+    "ageRange=prefer_not_to_say must fail validation",
+  )
+
+  // Old high_school_or_below educationLevel — removed by refine-survey-copy-and-facets, still rejected.
+  const oldEdu = { ...base, educationLevel: "high_school_or_below" } as unknown as ParticipantProfileDraft
+  assert.ok(
+    validateParticipantProfile(oldEdu).some((i) => i.includes("學歷")),
+    "educationLevel=high_school_or_below must fail validation",
+  )
+
+  // Old financeBackgroundType field/value — entire field gone; sneaking it in via the mainDomain
+  // slot with a legacy value must fail.
+  const oldDomain = { ...base, mainDomain: "student_finance_related" } as unknown as ParticipantProfileDraft
+  assert.ok(
+    validateParticipantProfile(oldDomain).some((i) => i.includes("目前主要領域")),
+    "mainDomain with legacy financeBackgroundType literal must fail validation",
+  )
+
+  // Old llmExperience value — 'weekly' is not a member of the new 4-bucket AiUsageFrequency.
+  const oldFreq = { ...base, aiUsageFrequency: "weekly" } as unknown as ParticipantProfileDraft
+  assert.ok(
+    validateParticipantProfile(oldFreq).some((i) => i.includes("AI 使用頻率")),
+    "aiUsageFrequency with legacy llmExperience literal must fail validation",
+  )
+  console.log("PASS: legacy enum literals are rejected across all 4 enum fields")
+}
+
+async function testCsvHeaderHasOnlyFiveActiveFields() {
+  console.log("\n=== CSV header has the 5 active-profile cols and no legacy / removed cols ===")
   await resetEvaluationData()
 
-  const token = "P-LEGACY-RECORD"
-  const legacyProfile = buildLegacyProfile(token)
+  const csv = await buildExportCsv()
+  const header = csv.split(/\r?\n/)[0] ?? ""
+  const cols = header.split(",")
+
+  const required = [
+    "token",
+    "age_range",
+    "education_level",
+    "main_domain",
+    "ai_usage_frequency",
+    "has_used_ai_for_finance",
+  ]
+  for (const col of required) {
+    assert.ok(
+      cols.includes(col),
+      `CSV header must contain column '${col}'; got ${JSON.stringify(cols)}`,
+    )
+  }
+
+  const banned = [
+    "gender",
+    "grade_or_occupation",
+    "finance_work_experience",
+    "investment_experience",
+    "finance_familiarity",
+    "finance_subdomains",
+    "notes",
+    "known_name",
+    "llm_experience",
+    "finance_background_type",
+    "legacy_field_or_work_domain",
+    "legacy_is_business_or_finance",
+    "legacy_has_taken_finance_course",
+    "legacy_finance_llm_usage",
+  ]
+  for (const col of banned) {
+    assert.ok(
+      !cols.includes(col),
+      `CSV header must NOT contain '${col}'; full header was ${JSON.stringify(cols)}`,
+    )
+  }
+  console.log("PASS: CSV header carries the 5 new active-profile cols and rejects all 14 removed cols")
+}
+
+async function testJsonExportHasNoLegacyBlock() {
+  console.log("\n=== JSON export uses single 5-field profile shape, no legacyProfile block ===")
+  await resetEvaluationData()
+
+  const token = "P-JSON-EXPORT"
+  const profile = buildCompleteProfile(token)
   await upsertParticipantStatus({
     token,
-    profile: legacyProfile,
+    profile,
     completionStatus: "completed",
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -289,9 +249,9 @@ async function testJsonExportMigratesAndAttachesLegacy() {
   })
 
   const record: EvaluationRecord = {
-    id: "q-legacy-export",
+    id: "q-json-export",
     participantToken: token,
-    participantProfile: legacyProfile,
+    participantProfile: profile,
     questionIndex: 1,
     promptCategory: "finance-concept",
     promptCategoryId: "finance-concept",
@@ -303,125 +263,255 @@ async function testJsonExportMigratesAndAttachesLegacy() {
     responseLatencyMs: 100,
     selectedBest: "A",
     selectedWorst: "C",
+    facetSelections: { correctness: "A", completeness: "A", readability: "A" },
     bestReason: "best",
     worstReason: "worst",
     completionStatus: "answered",
   }
   await saveEvaluationRecord(record)
 
-  const json = await buildExportJson()
-  const parsed = JSON.parse(json) as {
+  const parsed = JSON.parse(await buildExportJson()) as {
     records: Array<Record<string, unknown>>
     participants: Array<Record<string, unknown>>
   }
-  const exportedRecord = parsed.records.find((r) => r.id === record.id)
-  assert.ok(exportedRecord, "legacy record must appear in export")
-  const exportedRecordProfile = exportedRecord.participantProfile as Record<string, unknown>
-  for (const legacyKey of ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"]) {
-    assert.ok(
-      !(legacyKey in exportedRecordProfile),
-      `record.participantProfile must NOT contain ${legacyKey} after JSON export migration`,
+
+  const expectedKeys = [
+    "ageRange",
+    "aiUsageFrequency",
+    "educationLevel",
+    "hasUsedAiForFinance",
+    "mainDomain",
+    "token",
+  ]
+
+  for (const r of parsed.records) {
+    assert.ok(!("legacyProfile" in r), "record must NOT have legacyProfile key")
+    const profileObj = r.participantProfile as Record<string, unknown>
+    assert.deepEqual(
+      Object.keys(profileObj).sort(),
+      expectedKeys,
+      `record.participantProfile keys must be exactly the 5-field set; got ${JSON.stringify(Object.keys(profileObj))}`,
     )
   }
-  const legacyBlock = exportedRecord.legacyProfile as Record<string, unknown> | undefined
-  assert.ok(legacyBlock, "legacyProfile block must exist on legacy record")
-  assert.equal(legacyBlock?.fieldOrWorkDomain, "資管系")
-  assert.equal(legacyBlock?.isBusinessOrFinance, "yes")
 
-  const exportedParticipant = parsed.participants.find((p) => p.token === token)
-  assert.ok(exportedParticipant, "legacy participant must appear in export")
-  const participantProfile = exportedParticipant.profile as Record<string, unknown>
-  for (const legacyKey of ["fieldOrWorkDomain", "isBusinessOrFinance", "hasTakenFinanceCourse", "financeLlmUsage"]) {
-    assert.ok(!(legacyKey in participantProfile), `participant.profile must NOT contain ${legacyKey} after JSON export migration`)
+  for (const p of parsed.participants) {
+    assert.ok(!("legacyProfile" in p), "participant must NOT have legacyProfile key")
+    if (p.profile != null) {
+      const profileObj = p.profile as Record<string, unknown>
+      assert.deepEqual(
+        Object.keys(profileObj).sort(),
+        expectedKeys,
+        `participant.profile keys must be exactly the 5-field set; got ${JSON.stringify(Object.keys(profileObj))}`,
+      )
+    }
   }
-  assert.ok(exportedParticipant.legacyProfile, "participant must have legacyProfile block")
-  console.log("PASS: JSON export migrates active profile and attaches legacyProfile only for legacy records")
+  console.log("PASS: JSON export carries only the 5-field profile shape with no legacy block")
 }
 
-async function testCombinedUpsertClearsPending() {
-  console.log("\n=== upsertParticipantStatusAndClearPending atomic combined helper ===")
+async function testStorageRoundtripPreservesFiveFieldShape() {
+  console.log("\n=== storage roundtrip preserves the 5-field profile verbatim ===")
   await resetEvaluationData()
 
-  const token = "P-ATOMIC"
-  const legacyProfile = buildLegacyProfile(token)
+  const token = "P-ROUND"
+  const profile = buildCompleteProfile(token)
   await upsertParticipantStatus({
     token,
-    profile: legacyProfile,
-    completionStatus: "in_progress",
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  })
-  await savePendingQuestion({
-    id: "q-atomic-1",
-    participantToken: token,
-    participantProfile: legacyProfile,
-    questionIndex: 1,
-    promptCategory: "finance-concept",
-    promptCategoryId: "finance-concept",
-    userQuestion: "Q?",
-    answers: { A: "a", B: "b", C: "c" },
-    hiddenModelMapping: { A: "H1-best", B: "H2-best", C: "TAIDE-baseline" },
-    gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
-    timestamp: new Date().toISOString(),
-    responseLatencyMs: 100,
-  })
-
-  const newProfile: ParticipantProfile = {
-    token,
-    ageRange: "25_29",
-    gender: "female",
-    educationLevel: "undergrad_completed",
-    financeBackgroundType: "working_finance_related",
-    financeWorkExperience: "professional",
-    investmentExperience: "advanced",
-    financeFamiliarity: 5,
-    llmExperience: "daily",
-    hasUsedAiForFinance: true,
-    financeSubdomains: ["stocks"],
-    notes: "",
-  }
-
-  await upsertParticipantStatusAndClearPending({
-    token,
-    profile: newProfile,
+    profile,
     completionStatus: "in_progress",
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   })
 
-  const pending = await getPendingQuestionsByParticipant(token)
-  assert.equal(pending.length, 0, "pending must be empty after atomic upsert+clear")
-  const status = await getParticipantStatus(token)
-  assert.equal(status?.profile?.financeBackgroundType, "working_finance_related", "new profile must be persisted")
-  console.log("PASS: combined helper writes profile and clears pending in one mutex window")
+  const read = await getParticipantStatus(token)
+  assert.ok(read?.profile, "participant should be readable after upsert")
+
+  const profileObj = read.profile as unknown as Record<string, unknown>
+  assert.deepEqual(
+    Object.keys(profileObj).sort(),
+    [
+      "ageRange",
+      "aiUsageFrequency",
+      "educationLevel",
+      "hasUsedAiForFinance",
+      "mainDomain",
+      "token",
+    ],
+    `read profile keys must equal the 5-field set; got ${JSON.stringify(Object.keys(profileObj))}`,
+  )
+  assert.equal(profileObj.token, token, "token preserved")
+  assert.equal(profileObj.ageRange, "25_29", "ageRange preserved")
+  assert.equal(profileObj.educationLevel, "undergrad_in_progress", "educationLevel preserved")
+  assert.equal(profileObj.mainDomain, "finance_related", "mainDomain preserved")
+  assert.equal(profileObj.aiUsageFrequency, "frequent", "aiUsageFrequency preserved")
+  assert.equal(profileObj.hasUsedAiForFinance, true, "hasUsedAiForFinance preserved")
+  console.log("PASS: storage write/read leaves the 5-field profile unchanged")
 }
 
-async function testCsvLegacyRowEmitsEmptyForUndefined() {
-  console.log("\n=== buildExportCsv legacy-row CSV cells stay empty (not literal 'undefined') ===")
+function testCompleteDraftPassesValidation() {
+  console.log("\n=== validateParticipantProfile accepts a complete 5-field draft ===")
+  const complete: ParticipantProfileDraft = {
+    token: "P-OK",
+    ageRange: "30_39",
+    educationLevel: "grad_or_above",
+    mainDomain: "business_non_finance",
+    aiUsageFrequency: "daily",
+    hasUsedAiForFinance: false,
+  }
+  assert.deepEqual(
+    validateParticipantProfile(complete),
+    [],
+    "complete draft must validate clean",
+  )
+  assert.equal(
+    isCompleteParticipantProfile(complete),
+    true,
+    "isCompleteParticipantProfile must return true for a complete draft",
+  )
+  console.log("PASS: validation accepts a fully populated new-schema draft")
+}
+
+function testBuildPersistedProfileDropsRogueKeys() {
+  console.log("\n=== buildPersistedProfile drops rogue legacy keys before persist ===")
+  // Simulate an old/malicious client POSTing a profile body that still carries every
+  // dropped legacy key. The server-side projection must surface ONLY the 6 current
+  // keys; everything else is silently stripped (spec scenario
+  // "Removed legacy fields are rejected on submit").
+  const rogue = {
+    token: "P-OLD-CLIENT",
+    ageRange: "25_29",
+    educationLevel: "undergrad_completed",
+    mainDomain: "finance_related",
+    aiUsageFrequency: "frequent",
+    hasUsedAiForFinance: true,
+    // ↓ legacy / dropped fields the projection must not let through
+    gender: "female",
+    gradeOrOccupation: "碩二",
+    financeWorkExperience: "internship",
+    investmentExperience: "basic",
+    financeFamiliarity: 4,
+    financeSubdomains: ["stocks"],
+    notes: "rogue",
+    knownName: "Alice",
+    llmExperience: "weekly",
+    financeBackgroundType: "student_finance_related",
+    fieldOrWorkDomain: "資管系",
+    isBusinessOrFinance: "yes",
+    hasTakenFinanceCourse: "yes",
+    financeLlmUsage: "weekly",
+  } as unknown as ParticipantProfile
+
+  const projected = buildPersistedProfile("P-SERVER-TOKEN", rogue)
+  const keys = Object.keys(projected).sort()
+  assert.deepEqual(
+    keys,
+    [
+      "ageRange",
+      "aiUsageFrequency",
+      "educationLevel",
+      "hasUsedAiForFinance",
+      "mainDomain",
+      "token",
+    ],
+    `projection must surface exactly the 6 current keys; got ${JSON.stringify(keys)}`,
+  )
+  assert.equal(projected.token, "P-SERVER-TOKEN", "projection uses the server-issued token, not the client's")
+  console.log("PASS: buildPersistedProfile strips 14 rogue keys and binds server token")
+}
+
+function testValidationRejectsMissingToken() {
+  console.log("\n=== validateParticipantProfile rejects missing / empty token ===")
+  // The type predicate narrowing to ParticipantProfile depends on token being a
+  // non-empty string — earlier the validator skipped this check and the predicate
+  // lied to the type system on token-less drafts.
+  const baseDraft: ParticipantProfileDraft = {
+    token: "P-OK",
+    ageRange: "20_24",
+    educationLevel: "undergrad_in_progress",
+    mainDomain: "other",
+    aiUsageFrequency: "never",
+    hasUsedAiForFinance: false,
+  }
+
+  for (const badToken of ["", "   "]) {
+    const issues = validateParticipantProfile({ ...baseDraft, token: badToken })
+    assert.ok(
+      issues.some((i) => i.includes("token")),
+      `token=${JSON.stringify(badToken)} must produce a token-mentioning issue; got ${JSON.stringify(issues)}`,
+    )
+  }
+
+  const noTokenDraft = { ...baseDraft } as Partial<ParticipantProfileDraft>
+  delete noTokenDraft.token
+  assert.ok(
+    validateParticipantProfile(noTokenDraft).some((i) => i.includes("token")),
+    "missing token must produce a token-mentioning issue",
+  )
+  assert.equal(
+    isCompleteParticipantProfile(noTokenDraft),
+    false,
+    "draft without token must NOT be considered complete",
+  )
+  console.log("PASS: empty / missing token rejected by validation across draft variants")
+}
+
+function testFormatProfileChoiceNeverLeaksRawEnum() {
+  console.log("\n=== formatProfileChoice falls back to '-' for unknown legacy literal ===")
+  // A row carrying a removed legacy enum literal (e.g. an admin replaying old data,
+  // or a future regression that re-introduces a stale value) must NOT surface the
+  // raw token string in the admin UI — that would expose internal enum names to
+  // researchers. Always coerce to "-".
+  // Cast through `never` because the legacy literal is not a member of MainDomain;
+  // we want to exercise the runtime fallback path exactly as a stale on-disk row would.
+  const rendered = formatProfileChoice(MAIN_DOMAIN_OPTIONS, "student_finance_related" as never)
+  assert.equal(
+    rendered,
+    "-",
+    `unknown enum literal must render as '-'; got ${JSON.stringify(rendered)}`,
+  )
+  assert.equal(
+    formatProfileChoice(MAIN_DOMAIN_OPTIONS, undefined),
+    "-",
+    "undefined must render as '-'",
+  )
+  // Sanity: a real current value still renders its label
+  assert.equal(
+    formatProfileChoice(MAIN_DOMAIN_OPTIONS, "finance_related"),
+    "財經類學系或工作（金融/財管/經濟/會計/保險）",
+    "current enum literal must still render its label",
+  )
+  console.log("PASS: formatProfileChoice coerces unknown values to '-' and renders current labels")
+}
+
+async function testAtomicUpsertClearsStalePending() {
+  console.log("\n=== upsertParticipantStatusAndClearPending atomically invalidates stale pending rows ===")
+  // Scenario CodeRabbit flagged on PR #8: participant submits profile A → answer
+  // generation creates a pending question carrying profile A as its snapshot →
+  // participant resubmits a different profile (B). Without atomic clear, the
+  // pending row still carries A, and saving an answer would persist a record under
+  // the stale profile, contaminating background-stratification analysis.
   await resetEvaluationData()
 
-  const token = "P-CSV-LEGACY"
-  // Construct a record whose participantProfile has the legacy shape AND is missing
-  // a couple of fields that the new schema expects (gender, hasUsedAiForFinance) —
-  // simulating an older record where those fields never existed.
-  const legacyRecord: EvaluationRecord = {
-    id: "q-csv-legacy",
+  const token = "P-RESUBMIT"
+  const profileA: ParticipantProfile = {
+    token,
+    ageRange: "20_24",
+    educationLevel: "undergrad_in_progress",
+    mainDomain: "other",
+    aiUsageFrequency: "never",
+    hasUsedAiForFinance: false,
+  }
+  await upsertParticipantStatus({
+    token,
+    profile: profileA,
+    completionStatus: "in_progress",
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const stalePending: PendingQuestion = {
+    id: "q-stale",
     participantToken: token,
-    participantProfile: {
-      token,
-      ageRange: "25_29",
-      fieldOrWorkDomain: "資管系",
-      isBusinessOrFinance: "yes",
-      gradeOrOccupation: "碩二",
-      hasTakenFinanceCourse: "yes",
-      financeWorkExperience: "internship",
-      investmentExperience: "basic",
-      financeFamiliarity: 4,
-      llmExperience: "weekly",
-      financeLlmUsage: "weekly",
-      financeSubdomains: ["stocks"],
-      notes: "",
-    } as unknown as ParticipantProfile,
+    participantProfile: profileA,
     questionIndex: 1,
     promptCategory: "finance-concept",
     promptCategoryId: "finance-concept",
@@ -431,115 +521,98 @@ async function testCsvLegacyRowEmitsEmptyForUndefined() {
     gatewayModelMapping: { A: "g-a", B: "g-b", C: "g-c" },
     timestamp: new Date().toISOString(),
     responseLatencyMs: 100,
-    selectedBest: "A",
-    selectedWorst: "C",
-    bestReason: "best",
-    worstReason: "worst",
-    completionStatus: "answered",
   }
-  await saveEvaluationRecord(legacyRecord)
+  await savePendingQuestion(stalePending)
+  assert.equal(
+    (await getPendingQuestionsByParticipant(token)).length,
+    1,
+    "fixture should seed exactly one pending row before the resubmit",
+  )
 
-  const csv = await buildExportCsv()
-  const lines = csv.split("\n")
-  assert.ok(lines.length >= 2, "CSV must have header + at least one row")
-  const header = lines[0].split(",")
-  const row = lines[1].split(",")
-  const cells = new Map<string, string>()
-  header.forEach((name, idx) => cells.set(name, row[idx] ?? ""))
-
-  // Active-profile columns missing on legacy snapshot must emit empty string, not
-  // the literal word "undefined". This is the defense-in-depth check that pins down
-  // `csvEscape`'s `String(value ?? "")` coercion behavior.
-  for (const col of ["gender", "education_level", "finance_background_type", "has_used_ai_for_finance"]) {
-    const value = cells.get(col)
-    assert.equal(value, "", `column '${col}' must be empty string for legacy row, got ${JSON.stringify(value)}`)
+  const profileB: ParticipantProfile = {
+    ...profileA,
+    mainDomain: "finance_related",
+    aiUsageFrequency: "daily",
+    hasUsedAiForFinance: true,
   }
-  // Columns the legacy snapshot DID populate must surface their values.
-  assert.equal(cells.get("finance_familiarity"), "4", "legacy financeFamiliarity preserved")
-  assert.equal(cells.get("llm_experience"), "weekly", "legacy llmExperience preserved")
-  // Legacy_* trailing columns hold the original answers.
-  assert.equal(cells.get("legacy_field_or_work_domain"), "資管系", "legacy_field_or_work_domain populated")
-  assert.equal(cells.get("legacy_is_business_or_finance"), "yes", "legacy_is_business_or_finance populated")
-  console.log("PASS: legacy CSV row has empty active cells (not 'undefined') + populated legacy_* columns")
+  await upsertParticipantStatusAndClearPending({
+    token,
+    profile: profileB,
+    completionStatus: "in_progress",
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const pendingAfter = await getPendingQuestionsByParticipant(token)
+  assert.equal(
+    pendingAfter.length,
+    0,
+    `pending must be empty after atomic upsert+clear; got ${pendingAfter.length}`,
+  )
+
+  const status = await getParticipantStatus(token)
+  assert.equal(status?.profile?.mainDomain, "finance_related", "new profile must be persisted")
+  assert.equal(status?.profile?.aiUsageFrequency, "daily", "new profile fields persisted")
+  console.log("PASS: atomic helper drops stale pending rows in the same mutex window as profile upsert")
 }
 
-function testEducationOptionsExcludeHighSchool() {
-  console.log("\n=== EDUCATION_LEVEL_OPTIONS excludes high_school_or_below ===")
-  // The recruited age range starts at 20, so the high-school bucket is unreachable
-  // and was removed as part of refine-survey-copy-and-facets.
-  const hs = (EDUCATION_LEVEL_OPTIONS as ReadonlyArray<{ value: string; label: string }>).find(
-    (option) => option.value === "high_school_or_below",
-  )
-  assert.equal(hs, undefined, "high_school_or_below must NOT appear in EDUCATION_LEVEL_OPTIONS")
+async function testJsonExportDoesNotLeakActiveSettings() {
+  console.log("\n=== buildExportJson projects settings to PlatformSettingsSnapshot fields only ===")
+  // CodeRabbit caught the admin export route handing the full ActivePlatformSettings
+  // object (which extends PlatformSettingsSnapshot with `path` / `envelope` /
+  // `provider` / `providerStatus`) into buildExportJson. TypeScript's structural
+  // typing widens silently; runtime JSON.stringify serializes whatever is there.
+  // This test passes the full object as `unknown` and asserts only the 5 snapshot
+  // fields survive into the exported JSON.
+  await resetEvaluationData()
 
-  // Validation must also reject a stored profile that still carries the removed value.
-  const completeDraft: ParticipantProfileDraft = {
-    token: "P-EDU",
-    ageRange: "20_24",
-    gender: "female",
-    educationLevel: "undergrad_in_progress",
-    financeBackgroundType: "student_finance_related",
-    financeWorkExperience: "none",
-    investmentExperience: "none",
-    financeFamiliarity: 3,
-    llmExperience: "weekly",
-    hasUsedAiForFinance: false,
-    financeSubdomains: ["stocks"],
-    notes: "",
+  const leakyFullSettings = {
+    source: "runtime",
+    settingsVersion: 3,
+    settingsSnapshotHash: "abc123",
+    updatedAt: new Date().toISOString(),
+    updatedBy: "admin",
+    // ↓ extra fields from ActivePlatformSettings that must NOT leak
+    path: "/src/.data/platform-settings.json",
+    envelope: { someInternal: "stuff" },
+    config: { neverEmit: true },
+    provider: { apiKeyEnvVar: "OPENAI_COMPAT_API_KEY", systemPrompt: "secret" },
+    providerStatus: { apiKeyConfigured: true },
+  } as unknown as Parameters<typeof buildExportJson>[0]
+
+  const json = await buildExportJson(leakyFullSettings)
+  const parsed = JSON.parse(json) as { settings?: Record<string, unknown> }
+
+  assert.ok(parsed.settings, "settings block must be emitted")
+  const settingsKeys = Object.keys(parsed.settings).sort()
+  assert.deepEqual(
+    settingsKeys,
+    ["settingsSnapshotHash", "settingsVersion", "source", "updatedAt", "updatedBy"],
+    `exported settings must contain only the 5 PlatformSettingsSnapshot fields; got ${JSON.stringify(settingsKeys)}`,
+  )
+  for (const leakedKey of ["path", "envelope", "config", "provider", "providerStatus"]) {
+    assert.ok(
+      !(leakedKey in parsed.settings),
+      `exported settings must NOT contain '${leakedKey}' (server-side detail)`,
+    )
   }
-  const withRemovedValue = {
-    ...completeDraft,
-    educationLevel: "high_school_or_below" as unknown as ParticipantProfileDraft["educationLevel"],
-  }
-  const issues = validateParticipantProfile(withRemovedValue)
-  assert.ok(
-    issues.some((i) => i.includes("學歷")),
-    `stored profile with removed high_school_or_below must fail validation with 學歷 issue; got ${JSON.stringify(issues)}`,
-  )
-  console.log("PASS: high_school_or_below removed from options and rejected by validation")
-}
-
-function testFacetsExcludeReasoning() {
-  console.log("\n=== reasoning facet removed across config / platform-settings / CSV ===")
-  // (a) JSON config evaluationFacets must not contain the reasoning entry.
-  const reasoningEntry = (studyConfig.evaluationFacets as Array<{ id: string }>).find(
-    (facet) => facet.id === "reasoning",
-  )
-  assert.equal(reasoningEntry, undefined, "config.evaluationFacets must not contain id='reasoning'")
-
-  // (b) platform-settings' validation whitelist must not include reasoning.
-  assert.ok(
-    !(EVALUATION_FACET_IDS as readonly string[]).includes("reasoning"),
-    `EVALUATION_FACET_IDS must not include 'reasoning'; got ${JSON.stringify(EVALUATION_FACET_IDS)}`,
-  )
-
-  // (c) CSV export header must not declare any best_by_reasoning_* column.
-  // We sniff the header line directly to avoid coupling to internal row shape.
-  // Build a minimal CSV scope by exporting from an empty store — we still get the header.
-  // Call out: this assertion fires synchronously off the header string, not record rows.
-  return (async () => {
-    await resetEvaluationData()
-    const csv = await buildExportCsv()
-    const header = csv.split(/\r?\n/)[0] ?? ""
-    for (const col of ["best_by_reasoning_label", "best_by_reasoning_model", "best_by_reasoning_gateway_model"]) {
-      assert.ok(!header.includes(col), `CSV header must NOT contain '${col}'; header was: ${header}`)
-    }
-    console.log("PASS: reasoning gone from config, platform-settings, and CSV export header")
-  })()
+  console.log("PASS: buildExportJson strips ActivePlatformSettings extras down to 5 snapshot fields")
 }
 
 async function main() {
-  testMigrateLegacyProfile()
-  testValidate()
-  testDraftSeedsNullForRequiredEnums()
-  testExtractLegacyHandlesNonString()
-  testEducationOptionsExcludeHighSchool()
-  await testFacetsExcludeReasoning()
-  await testStorageBackwardCompatRead()
-  await testClearPendingOnLegacyResubmit()
-  await testJsonExportMigratesAndAttachesLegacy()
-  await testCombinedUpsertClearsPending()
-  await testCsvLegacyRowEmitsEmptyForUndefined()
+  testProfileShapeStrict()
+  testDraftSeedsNullForFiveRequiredFields()
+  testNewEnumValuesOnly()
+  testRejectsOldEnumLiterals()
+  testCompleteDraftPassesValidation()
+  testValidationRejectsMissingToken()
+  testBuildPersistedProfileDropsRogueKeys()
+  testFormatProfileChoiceNeverLeaksRawEnum()
+  await testCsvHeaderHasOnlyFiveActiveFields()
+  await testJsonExportHasNoLegacyBlock()
+  await testJsonExportDoesNotLeakActiveSettings()
+  await testStorageRoundtripPreservesFiveFieldShape()
+  await testAtomicUpsertClearsStalePending()
   console.log("\nOK")
 }
 

@@ -5,7 +5,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
 import { EVALUATION_FACETS, MODEL_IDS, WORST_ANSWER_FLAGS } from "@/lib/evaluation/config"
-import { extractLegacyProfileSnapshot, migrateLegacyProfile } from "@/lib/evaluation/profile"
 import type {
   AdminAttentionItems,
   AdminFunnelStages,
@@ -16,7 +15,6 @@ import type {
   EvaluationStore,
   ModelComparisonCounts,
   ModelId,
-  ParticipantProfile,
   ParticipantStatus,
   PendingQuestion,
   PlatformSettingsSnapshot,
@@ -208,29 +206,13 @@ export async function touchSession(sessionId: string): Promise<void> {
   })
 }
 
-// On read we strip legacy profile fields so consumers only see the current schema.
-// migrateLegacyProfile returns Partial<ParticipantProfile>; we cast back to ParticipantProfile
-// to match the established convention (storage type is permissive — UIs already handle
-// undefined optional fields via `?? "-"`). The "missing new required fields" condition
-// is what the legacy-shape→form-prefill scenario keys off of (see spec).
-function migrateParticipantProfile(profile: ParticipantStatus["profile"]): ParticipantStatus["profile"] {
-  if (!profile) return profile
-  const migrated = migrateLegacyProfile(profile)
-  return migrated as ParticipantProfile
-}
-
-function migrateParticipantStatus(status: ParticipantStatus): ParticipantStatus {
-  return { ...status, profile: migrateParticipantProfile(status.profile) }
-}
-
 export async function getParticipantStatuses(): Promise<ParticipantStatus[]> {
-  return (await readStore()).participants.map(migrateParticipantStatus)
+  return (await readStore()).participants
 }
 
 export async function getParticipantStatus(token: string): Promise<ParticipantStatus | undefined> {
   const normalizedToken = normalizeToken(token)
-  const match = (await readStore()).participants.find((participant) => participant.token === normalizedToken)
-  return match ? migrateParticipantStatus(match) : undefined
+  return (await readStore()).participants.find((participant) => participant.token === normalizedToken)
 }
 
 export async function clearPendingQuestionsForParticipant(token: string): Promise<void> {
@@ -250,11 +232,32 @@ export async function clearPendingQuestionsForParticipant(token: string): Promis
   })
 }
 
-// Atomic combination of upsert + pending-clear used by the session route on the
-// legacy → new-shape profile transition. Calling the two helpers separately would
-// leave a window where a concurrent answer-generation POST could re-insert a pending
-// question between the upsert mutex release and the clear mutex acquisition — that
-// new pending would then be nuked by the late clear, recreating the F2 deadlock.
+export async function upsertParticipantStatus(status: ParticipantStatus): Promise<ParticipantStatus> {
+  const normalizedStatus: ParticipantStatus = {
+    ...status,
+    token: normalizeToken(status.token),
+    profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
+  }
+  await withStoreMutex(async () => {
+    const store = await readStore()
+    const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
+    await writeStore({
+      ...store,
+      participants: [...existing, normalizedStatus],
+    })
+  })
+  return normalizedStatus
+}
+
+// Atomic combination of upsert + pending-clear. Used by the session route when a
+// participant resubmits their profile mid-session — pending questions carry the
+// OLD participantProfile snapshot, so a subsequent answer save would persist a
+// record under the stale profile (background-stratification analysis would be
+// wrong). Running upsert and clear in a single mutex window prevents a concurrent
+// answer-generation POST from inserting a fresh pending row between the two
+// writes that the late clear would then nuke. (Originally introduced for the
+// legacy → new-shape schema transition; retained as a general-purpose primitive
+// because the same staleness applies to any profile mutation.)
 export async function upsertParticipantStatusAndClearPending(
   status: ParticipantStatus,
 ): Promise<ParticipantStatus> {
@@ -273,23 +276,6 @@ export async function upsertParticipantStatusAndClearPending(
       pendingQuestions: store.pendingQuestions.filter(
         (question) => normalizeToken(question.participantToken) !== normalizedToken,
       ),
-    })
-  })
-  return normalizedStatus
-}
-
-export async function upsertParticipantStatus(status: ParticipantStatus): Promise<ParticipantStatus> {
-  const normalizedStatus: ParticipantStatus = {
-    ...status,
-    token: normalizeToken(status.token),
-    profile: status.profile ? { ...status.profile, token: normalizeToken(status.profile.token) } : undefined,
-  }
-  await withStoreMutex(async () => {
-    const store = await readStore()
-    const existing = store.participants.filter((participant) => participant.token !== normalizedStatus.token)
-    await writeStore({
-      ...store,
-      participants: [...existing, normalizedStatus],
     })
   })
   return normalizedStatus
@@ -565,42 +551,35 @@ function computeAttentionItems(
 
 export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnapshot> {
   const store = await readStore()
-  // Migrate participant profiles at the snapshot boundary so UI consumers only see the
-  // current schema; raw legacy fields stay in store.records for export use (D9).
-  const participants = store.participants.map(migrateParticipantStatus)
+  const participants = store.participants
   const worstFlagCounts = countWorstFlags(store.records, config)
   const latencyP95 = computeLatencyP95(store.records)
 
-  // financeBackgroundType drives the four mutually-exclusive KPI buckets. Legacy
-  // records that lack the field fall into unknownBackgroundCount. The switch's never
-  // fallthrough is a compile-time exhaustiveness check: adding a new arm to the
-  // FinanceBackgroundType union without updating this switch becomes a type error.
-  let financeBackgroundCount = 0
-  let nonFinanceBackgroundCount = 0
-  let refusalBackgroundCount = 0
-  let unknownBackgroundCount = 0
+  // mainDomain drives the three mutually-exclusive KPI buckets. There is no
+  // `unknown` bucket because validation rejects null mainDomain at submit time
+  // and no legacy compatibility layer can produce profile-without-mainDomain
+  // rows (see design D6). The switch's never-fallthrough is a compile-time
+  // exhaustiveness check: adding a new arm to the MainDomain union without
+  // updating this switch becomes a type error.
+  let financeRelatedCount = 0
+  let businessNonFinanceCount = 0
+  let otherCount = 0
   for (const participant of participants) {
-    const bg = participant.profile?.financeBackgroundType
-    if (!bg) {
-      unknownBackgroundCount += 1
-      continue
-    }
-    switch (bg) {
-      case "student_finance_related":
-      case "working_finance_related":
-        financeBackgroundCount += 1
+    const domain = participant.profile?.mainDomain
+    if (!domain) continue
+    switch (domain) {
+      case "finance_related":
+        financeRelatedCount += 1
         break
-      case "student_other":
-      case "working_other":
-        nonFinanceBackgroundCount += 1
+      case "business_non_finance":
+        businessNonFinanceCount += 1
         break
-      case "prefer_not_to_say":
-        refusalBackgroundCount += 1
+      case "other":
+        otherCount += 1
         break
       default: {
-        const exhaustive: never = bg
+        const exhaustive: never = domain
         void exhaustive
-        unknownBackgroundCount += 1
       }
     }
   }
@@ -612,10 +591,9 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     comparativeCounts: countComparativeSelections(store.records, config),
     worstFlagCounts,
     completedCount: participants.filter((participant) => participant.completionStatus === "completed").length,
-    financeBackgroundCount,
-    nonFinanceBackgroundCount,
-    refusalBackgroundCount,
-    unknownBackgroundCount,
+    financeRelatedCount,
+    businessNonFinanceCount,
+    otherCount,
     funnelStages: computeFunnelStages(participants, store.records),
     attentionItems: computeAttentionItems(participants, store.records, worstFlagCounts, latencyP95, config),
   }
@@ -623,33 +601,29 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
 
 export async function buildExportJson(settings?: PlatformSettingsSnapshot): Promise<string> {
   const store = await readStore()
-  // For every record / participant we:
-  //   1. Extract the legacy field snapshot from the ORIGINAL stored profile (must
-  //      happen before migration, since migrate drops the legacy keys).
-  //   2. Migrate the active profile so its serialized form matches the new schema
-  //      (legacy keys stripped) — satisfies design D6 "server consumers see only the
-  //      new shape".
-  //   3. Attach the legacyProfile block only when the snapshot is non-empty.
-  // Together this ensures the JSON export shows a clean active profile plus a nested
-  // legacyProfile pocket for legacy-cohort identification — see design D9.
-  const records = store.records.map((record) => {
-    const legacyProfile = extractLegacyProfileSnapshot(record.participantProfile)
-    const migrated = migrateLegacyProfile(record.participantProfile) as ParticipantProfile
-    return legacyProfile
-      ? { ...record, participantProfile: migrated, legacyProfile }
-      : { ...record, participantProfile: migrated }
-  })
-  const participants = store.participants.map((participant) => {
-    const legacyProfile = extractLegacyProfileSnapshot(participant.profile)
-    const migrated = participant.profile ? (migrateLegacyProfile(participant.profile) as ParticipantProfile) : undefined
-    return legacyProfile
-      ? { ...participant, profile: migrated, legacyProfile }
-      : { ...participant, profile: migrated }
-  })
+  // The 5-field profile is the only shape on disk (the legacy compat layer is
+  // gone). Records and participants are serialized verbatim.
+  const records = store.records.map((record) => ({ ...record }))
+  const participants = store.participants.map((participant) => ({ ...participant }))
+  // Explicitly project to the 5 PlatformSettingsSnapshot fields so a caller that
+  // hands us the full ActivePlatformSettings (admin export route does) doesn't
+  // leak `path` / `envelope` / `provider` / `providerStatus` (server-side details
+  // including the API-key env var name and chat-completions URL) into the
+  // downloaded JSON. TypeScript structural-typing happily widens but JSON.stringify
+  // serializes the actual runtime shape, so we have to project at runtime.
+  const settingsSnapshot: PlatformSettingsSnapshot | undefined = settings
+    ? {
+        source: settings.source,
+        settingsVersion: settings.settingsVersion,
+        settingsSnapshotHash: settings.settingsSnapshotHash,
+        updatedAt: settings.updatedAt,
+        updatedBy: settings.updatedBy,
+      }
+    : undefined
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      settings,
+      settings: settingsSnapshot,
       participants,
       records,
     },
@@ -658,32 +632,73 @@ export async function buildExportJson(settings?: PlatformSettingsSnapshot): Prom
   )
 }
 
+// Canonical CSV header order. Used both for empty-store header generation and to
+// drive Object.keys when at least one row exists. Centralizing here prevents the
+// header from silently shrinking to 3 columns when records.length === 0.
+const CSV_HEADERS = [
+  "participant_token",
+  "settings_version",
+  "settings_snapshot_hash",
+  "token",
+  "age_range",
+  "education_level",
+  "main_domain",
+  "ai_usage_frequency",
+  "has_used_ai_for_finance",
+  "question_index",
+  "prompt_category",
+  "user_question",
+  "answer_a",
+  "answer_b",
+  "answer_c",
+  "hidden_mapping_a",
+  "hidden_mapping_b",
+  "hidden_mapping_c",
+  "gateway_mapping_a",
+  "gateway_mapping_b",
+  "gateway_mapping_c",
+  "selected_best",
+  "selected_best_model",
+  "selected_best_gateway_model",
+  "selected_worst",
+  "selected_worst_model",
+  "selected_worst_gateway_model",
+  "best_by_correctness_label",
+  "best_by_correctness_model",
+  "best_by_correctness_gateway_model",
+  "best_by_completeness_label",
+  "best_by_completeness_model",
+  "best_by_completeness_gateway_model",
+  "best_by_readability_label",
+  "best_by_readability_model",
+  "best_by_readability_gateway_model",
+  "best_reason",
+  "worst_reason",
+  "worst_answer_flags",
+  "quality_flags",
+  "rating_correctness",
+  "rating_completeness",
+  "rating_professionalism",
+  "rating_readability",
+  "timestamp",
+  "response_latency_ms",
+  "completion_status",
+] as const
+
 export async function buildExportCsv(): Promise<string> {
   const records = await getEvaluationRecords()
   const rows = records.map((record) => {
-    // record.participantProfile is the original immutable snapshot saved when the
-    // participant submitted judgment — getEvaluationRecords() does NOT migrate it.
-    // We extract the legacy fields directly from the snapshot (only legacy records
-    // have non-empty extraction). The active-profile columns below read the same
-    // snapshot under its typed view; legacy records will surface undefined for the
-    // new fields (CSV emits `""`) and that's the signal of "legacy cohort row".
-    const legacy = extractLegacyProfileSnapshot(record.participantProfile)
     const profile = record.participantProfile
     return {
     participant_token: record.participantToken,
     settings_version: record.settingsVersion ?? "",
     settings_snapshot_hash: record.settingsSnapshotHash ?? "",
-    age_range: profile.ageRange ?? "",
-    gender: profile.gender ?? "",
-    education_level: profile.educationLevel ?? "",
-    finance_background_type: profile.financeBackgroundType ?? "",
-    grade_or_occupation: profile.gradeOrOccupation ?? "",
-    finance_work_experience: profile.financeWorkExperience ?? "",
-    investment_experience: profile.investmentExperience ?? "",
-    finance_familiarity: profile.financeFamiliarity,
-    llm_experience: profile.llmExperience,
+    token: profile.token,
+    age_range: profile.ageRange,
+    education_level: profile.educationLevel,
+    main_domain: profile.mainDomain,
+    ai_usage_frequency: profile.aiUsageFrequency,
     has_used_ai_for_finance: profile.hasUsedAiForFinance === true ? "Y" : profile.hasUsedAiForFinance === false ? "N" : "",
-    finance_subdomains: (profile.financeSubdomains ?? []).join("|"),
     question_index: record.questionIndex,
     prompt_category: record.promptCategory,
     user_question: record.userQuestion,
@@ -722,26 +737,13 @@ export async function buildExportCsv(): Promise<string> {
     timestamp: record.timestamp,
     response_latency_ms: record.responseLatencyMs,
     completion_status: record.completionStatus,
-    // legacy_* trailing columns: always emitted (header schema is deterministic).
-    // New-shape records produce empty cells here; legacy-shape records emit their
-    // original values verbatim. See design D9.
-    legacy_field_or_work_domain: legacy?.fieldOrWorkDomain ?? "",
-    legacy_is_business_or_finance: legacy?.isBusinessOrFinance ?? "",
-    legacy_has_taken_finance_course: legacy?.hasTakenFinanceCourse ?? "",
-    legacy_finance_llm_usage: legacy?.financeLlmUsage ?? "",
     }
   })
 
-  const headers = Object.keys(
-    rows[0] ?? {
-      participant_token: "",
-      prompt_category: "",
-      user_question: "",
-    },
-  )
-
+  // Use the centralized CSV_HEADERS so the header is stable regardless of row
+  // count (empty store still emits the full header).
   return [
-    headers.join(","),
-    ...rows.map((row) => headers.map((header) => csvEscape(row[header as keyof typeof row])).join(",")),
+    CSV_HEADERS.join(","),
+    ...rows.map((row) => CSV_HEADERS.map((header) => csvEscape(row[header as keyof typeof row])).join(",")),
   ].join("\n")
 }

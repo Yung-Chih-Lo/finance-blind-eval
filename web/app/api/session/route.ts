@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 
-import { SEEDED_PARTICIPANTS } from "@/lib/evaluation/config"
-import { isCompleteParticipantProfile, validateParticipantProfile } from "@/lib/evaluation/profile"
+import {
+  buildPersistedProfile,
+  isCompleteParticipantProfile,
+  validateParticipantProfile,
+} from "@/lib/evaluation/profile"
 import type { ParticipantProfile, ParticipantProfileDraft, ParticipantStatus } from "@/lib/evaluation/types"
 import {
   getEvaluationRecordsByParticipant,
@@ -18,44 +21,20 @@ interface SessionRequest {
   profile?: ParticipantProfileDraft
 }
 
-function buildPersistedProfile(
-  token: string,
-  raw: ParticipantProfile,
-  existingKnownName?: string,
-): ParticipantProfile {
-  // Explicitly project to the new schema so any rogue legacy keys (fieldOrWorkDomain,
-  // isBusinessOrFinance, hasTakenFinanceCourse, financeLlmUsage) that an old client
-  // might still send are silently dropped before persist (spec scenario 5.4).
-  const grade = raw.gradeOrOccupation?.trim()
-  return {
-    token,
-    knownName: raw.knownName || existingKnownName || SEEDED_PARTICIPANTS[token]?.name,
-    ageRange: raw.ageRange,
-    gender: raw.gender,
-    educationLevel: raw.educationLevel,
-    financeBackgroundType: raw.financeBackgroundType,
-    gradeOrOccupation: grade ? grade : undefined,
-    financeWorkExperience: raw.financeWorkExperience,
-    investmentExperience: raw.investmentExperience,
-    financeFamiliarity: raw.financeFamiliarity,
-    llmExperience: raw.llmExperience,
-    hasUsedAiForFinance: raw.hasUsedAiForFinance,
-    financeSubdomains: raw.financeSubdomains,
-    notes: raw.notes?.trim() ?? "",
-  }
-}
-
-// A pre-write profile counts as "legacy shape" when it lacks any of the new required
-// fields — typically because migrateLegacyProfile stripped legacy keys and could not
-// infer the new ones. We trigger pending-clear only on this legacy → new transition
-// (design D6) so a routine re-submit of the same new-shape profile is a no-op.
-function isLegacyShape(profile: ParticipantStatus["profile"]): boolean {
-  if (!profile) return false
+// Compare the 5 stratification fields + token of two persisted profiles. A pure
+// re-submit of an unchanged profile is an idempotent no-op (the route still calls
+// upsertParticipantStatus to refresh updatedAt); only a real change triggers the
+// pending-clear path. Cheap explicit comparison beats JSON.stringify (would also
+// flag key-order differences) and beats deep-equal libs (one more dep).
+function profilesEqual(a: ParticipantProfile | undefined, b: ParticipantProfile | undefined): boolean {
+  if (!a || !b) return a === b
   return (
-    !profile.gender ||
-    !profile.educationLevel ||
-    !profile.financeBackgroundType ||
-    typeof profile.hasUsedAiForFinance !== "boolean"
+    a.token === b.token &&
+    a.ageRange === b.ageRange &&
+    a.educationLevel === b.educationLevel &&
+    a.mainDomain === b.mainDomain &&
+    a.aiUsageFrequency === b.aiUsageFrequency &&
+    a.hasUsedAiForFinance === b.hasUsedAiForFinance
   )
 }
 
@@ -97,29 +76,28 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString()
   const existing = await getParticipantStatus(token)
-  const wasLegacy = isLegacyShape(existing?.profile)
-  const profile = validatedProfile
-    ? buildPersistedProfile(token, validatedProfile, existing?.profile?.knownName)
-    : existing?.profile
+  const nextProfile = validatedProfile ? buildPersistedProfile(token, validatedProfile) : existing?.profile
 
   const status: ParticipantStatus = {
     token,
-    profile,
-    completionStatus: profile ? existing?.completionStatus === "completed" ? "completed" : "in_progress" : "profile_started",
+    profile: nextProfile,
+    completionStatus: nextProfile ? existing?.completionStatus === "completed" ? "completed" : "in_progress" : "profile_started",
     startedAt: existing?.startedAt || now,
     updatedAt: now,
     completedAt: existing?.completedAt,
   }
 
-  // Legacy → new-shape transition: pending questions carry a legacy participantProfile
-  // snapshot and would otherwise leak into the saved evaluation record, or block
-  // regeneration via 409. We run upsert + clear in a SINGLE mutex window (combined
-  // helper) so a concurrent answer-generation POST can't insert a fresh pending row
-  // between the two writes that the late clear would then nuke.
-  const participant =
-    validatedProfile && wasLegacy
-      ? await upsertParticipantStatusAndClearPending(status)
-      : await upsertParticipantStatus(status)
+  // If the participant's profile is being mutated (vs. an idempotent re-submit of
+  // the same shape), any pending question already in the store was generated under
+  // the OLD participantProfile snapshot — saving an answer for it would persist a
+  // record with stale background-stratification fields. Use the atomic upsert+clear
+  // helper to invalidate those pending rows in the same mutex window.
+  const profileChanged =
+    validatedProfile != null &&
+    (!existing?.profile || !profilesEqual(existing.profile, nextProfile))
+  const participant = profileChanged
+    ? await upsertParticipantStatusAndClearPending(status)
+    : await upsertParticipantStatus(status)
 
   const answeredCount = (await getEvaluationRecordsByParticipant(participant.token)).length
   const [pendingQuestion] = await getPendingQuestionsByParticipant(participant.token)

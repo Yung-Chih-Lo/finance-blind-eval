@@ -11,48 +11,46 @@ The system SHALL provide a participant evaluation entry route at `/` (root) that
 - **THEN** the entry page shows the study title, expected duration, question count, blind model-comparison task, privacy/sensitive-data warning, and non-investment-advice boundary before or alongside the invite-code form
 
 ### Requirement: Participant background form
-The system SHALL require participants to submit non-identifying background data before answering guided evaluation questions, including gender, age range, education level, finance background type, finance work or internship experience, investment experience, finance familiarity, general LLM usage, whether they have used AI for finance tasks, and finance subdomain familiarity. The system SHALL accept an optional grade or occupation free-text field. The system SHALL NOT collect the legacy `fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, or finance-LLM-usage 5-level enum fields.
+The system SHALL require participants to submit non-identifying background data before answering guided evaluation questions, consisting of exactly five fields: age range, education level, current main domain, AI usage frequency, and whether they have used AI for finance tasks. All five fields SHALL be required and SHALL NOT offer a `prefer_not_to_say` option. The system SHALL NOT collect gender, finance familiarity scale, investment experience, finance work or internship experience, finance subdomain selections, optional grade or occupation free-text, participant-side notes, or any legacy field (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, finance-LLM-usage 5-level enum, or `knownName`).
 
 #### Scenario: Required background data missing
-- **WHEN** a participant submits the background form without a required profile field
-- **THEN** the system prevents progression and displays a validation message
+- **WHEN** a participant submits the background form without selecting one of the five required fields (age range, education level, current main domain, AI usage frequency, or whether they have used AI for finance tasks)
+- **THEN** the system prevents progression and displays a validation message identifying the missing field
 
 #### Scenario: Background data completed
-- **WHEN** a participant submits gender, age range, education level, finance background type, finance work or internship experience, investment experience, finance familiarity, general LLM usage, whether they have used AI for finance tasks, and at least one finance subdomain selection
+- **WHEN** a participant submits a profile that includes a value for age range, education level, current main domain, AI usage frequency, and a yes/no answer for whether they have used AI for finance tasks
 - **THEN** the system stores the profile through a server API boundary and advances to question 1
-
-#### Scenario: Optional grade or occupation provided
-- **WHEN** a participant submits the background form with a non-empty grade or occupation free-text value
-- **THEN** the system stores that value with the profile
-
-#### Scenario: Optional grade or occupation omitted
-- **WHEN** a participant submits the background form leaving the grade or occupation free-text field empty
-- **THEN** the system stores the profile and advances without raising a validation error for that field
-
-#### Scenario: Gender prefer-not-to-say accepted
-- **WHEN** a participant selects `不願透露` for the gender field
-- **THEN** the system stores the profile and treats the value as a valid sample-description response
-
-#### Scenario: Age range under-20 bucket removed
-- **WHEN** the participant background form renders
-- **THEN** the age-range options do NOT include an `under_20` bucket
-- **AND** the available age-range options are `20-24`, `25-29`, `30-39`, `40 歲以上`, and `不願透露`
-
-#### Scenario: Existing session has legacy profile shape
-- **WHEN** a participant has a saved profile that lacks any of the new required fields (gender, education level, finance background type, or whether they have used AI for finance tasks), or that still contains any of the removed legacy fields (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, finance-LLM-usage 5-level value)
-- **THEN** the participant returns to the profile form with compatible existing fields prefilled (age range, finance familiarity, general LLM usage, finance work or internship experience, investment experience, finance subdomain selections, and optional grade or occupation)
-- **AND** the form does NOT advance to the question flow until the participant submits the new required fields
+- **AND** the persisted profile object contains exactly the keys `token`, `ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, and `hasUsedAiForFinance`
 
 #### Scenario: Has-used-AI-for-finance Y/N requires explicit selection
 - **WHEN** a participant attempts to submit the background form without explicitly choosing yes or no for whether they have used AI for finance tasks
 - **THEN** the system rejects the submission with a validation message indicating the field is required
 - **AND** the system does NOT default the value to `false` or to any other choice
 
-#### Scenario: Legacy session has pending question
-- **WHEN** a participant with a legacy profile shape (missing any new required field, or carrying any removed legacy field) successfully resubmits a profile in the current shape, and that participant already owned one or more pending question entries generated under the legacy profile
-- **THEN** the system removes all pending question entries owned by that participant token
-- **AND** a subsequent answer-generation request for any question index for that participant succeeds without a 409 conflict
-- **AND** the next saved evaluation record for that participant carries the new-shape profile snapshot, not the legacy snapshot
+#### Scenario: Age range options are the four standard buckets
+- **WHEN** the participant background form renders
+- **THEN** the age-range options are exactly `20-24 歲`, `25-29 歲`, `30-39 歲`, and `40 歲以上`
+- **AND** the age-range options do NOT include `under_20` or any `prefer_not_to_say` value
+
+#### Scenario: Education level options are the three standard buckets
+- **WHEN** the participant background form renders
+- **THEN** the education-level options are exactly `大學在學`, `大學畢業`, and `研究所在學或以上`
+- **AND** the education-level options do NOT include `high_school_or_below` or any `prefer_not_to_say` value
+
+#### Scenario: Main domain options are the three standard buckets
+- **WHEN** the participant background form renders
+- **THEN** the main-domain options are exactly the values mapped to `finance_related`, `business_non_finance`, and `other`
+- **AND** the main-domain options do NOT include any student/working split, any `prefer_not_to_say` value, or the legacy four-way `financeBackgroundType` enum values
+
+#### Scenario: AI usage frequency options are the four standard buckets
+- **WHEN** the participant background form renders
+- **THEN** the AI-usage-frequency options are exactly the values mapped to `never`, `occasional`, `frequent`, and `daily`
+- **AND** the AI-usage-frequency options do NOT include the legacy five-level `llmExperience` `rare` / `monthly` / `weekly` enum literals
+
+#### Scenario: Removed legacy fields are rejected on submit
+- **WHEN** a client submits a profile body that includes any of `gender`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName`, `llmExperience`, `financeBackgroundType`, or any legacy key (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`)
+- **THEN** the server SHALL strip those keys from the persisted profile object
+- **AND** the persisted profile object SHALL contain only the six current keys (`token`, `ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`)
 
 ### Requirement: Guided flexible prompt flow
 The system SHALL present exactly five guided prompt categories for participant-authored finance questions.
@@ -169,50 +167,45 @@ The system SHALL require participants to submit explicit comparative judgments w
 - **THEN** the system rejects the save and displays a validation message
 
 ### Requirement: Evaluation record storage
-The system SHALL store each answered question with participant token, participant profile including expanded non-identifying background fields, question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status. The system SHALL NOT require a `reasoning` facet-best label on newly stored records.
+The system SHALL store each answered question with participant token, participant profile composed of the five current background fields (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status. The system SHALL NOT require a `reasoning` facet-best label on newly stored records.
 
 #### Scenario: Question judgment saved
-- **WHEN** the participant saves a valid comparative judgment after completing the expanded profile
-- **THEN** the system persists a complete evaluation record through a server API route including the participant profile snapshot
-- **AND** the persisted record's `facetSelections` keys are exactly `correctness`, `completeness`, and `readability` (any historical `reasoning` key on pre-existing records is preserved verbatim but no new record SHALL emit one)
+- **WHEN** the participant saves a valid comparative judgment after completing the five-field profile
+- **THEN** the system persists a complete evaluation record through a server API route including a participant profile snapshot whose keys are exactly `token`, `ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, and `hasUsedAiForFinance`
+- **AND** the persisted record's `facetSelections` keys are exactly `correctness`, `completeness`, and `readability`
+- **AND** the persisted record's participant profile snapshot SHALL NOT contain any of `gender`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName`, `llmExperience`, `financeBackgroundType`, or any legacy key
 
 ### Requirement: Admin evaluation dashboard
-The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, and a finance-background breakdown derived from finance background type. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.
+The system SHALL provide an admin page at `/admin` organized as a Tabbed Single Page research console with seven tabs — `總覽 / 受測者 / 模型結果 / 邀請碼 / Provider 設定 / 問卷文案 / 原始資料` — and a persistent KPI bar at the top showing participant count, completion count, question record count, completion percentage, and a three-bucket main-domain breakdown derived from `mainDomain`. Each tab SHALL be navigable via the `tab` URL search parameter so admins can deep-link.
 
 #### Scenario: Admin reviews participant status table
 - **WHEN** the `受測者` tab is active
-- **THEN** the page lists each participant with token, finance background type label, age range, gender, education level, finance familiarity, whether they have used AI for finance tasks (Y/N), completion status, and answered-count over question limit
-- **AND** the page does NOT render the removed legacy columns (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, finance-LLM-usage 5-level enum)
+- **THEN** the page lists each participant with the following columns in order: token, age range, education level, main domain (label), AI usage frequency (label), whether they have used AI for finance tasks (Y/N), completion status, and answered-count over question limit
+- **AND** the page does NOT render any column for gender, finance familiarity, investment experience, finance work or internship experience, finance subdomain selections, grade or occupation, participant-side notes, or any legacy field (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, finance-LLM-usage 5-level enum)
 
-#### Scenario: KPI bar reports finance-background breakdown
+#### Scenario: KPI bar reports main-domain breakdown
 - **WHEN** the admin opens any admin tab
-- **THEN** the KPI bar derives the finance-background breakdown by counting participants whose finance background type is `student_finance_related` or `working_finance_related` as the finance-relevant group, participants whose finance background type is `student_other` or `working_other` as the non-finance group, and participants whose finance background type is `prefer_not_to_say` as a separate refusal bucket
-- **AND** legacy records that lack `financeBackgroundType` SHALL be counted under an `unknown` bucket without erroring
+- **THEN** the KPI bar derives the main-domain breakdown by counting participants whose `mainDomain` is `finance_related` as the finance-related group, participants whose `mainDomain` is `business_non_finance` as the business-non-finance group, and participants whose `mainDomain` is `other` as the other-domain group
+- **AND** the KPI bar SHALL NOT render an `unknown` bucket, a `refusal` bucket, or any bucket derived from the removed `financeBackgroundType` 5-value enum
 
 #### Scenario: Admin inspects a record detail
 - **WHEN** the admin clicks a row in the question records list
-- **THEN** the page opens a side drawer showing the full user question text, participant profile snapshot (including the new gender, education level, finance background type, and `hasUsedAiForFinance` fields when present), all facet selections, worst-answer flags, hidden model mapping, and any reason text for that record
-- **AND** for legacy records the drawer renders any legacy fields that were stored with the original profile snapshot, prefixed with a `legacy` label
+- **THEN** the page opens a side drawer showing the full user question text, the five-field participant profile snapshot (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), all facet selections, worst-answer flags, hidden model mapping, and any reason text for that record
+- **AND** the drawer SHALL NOT render any legacy section, any `legacy` field prefix, or any field outside the five-field profile snapshot
 
 ### Requirement: Data export
-The system SHALL allow admin users to export evaluation data as JSON and CSV, including comparative facet selections, resolved model IDs, and the current expanded participant profile fields.
+The system SHALL allow admin users to export evaluation data as JSON and CSV, including comparative facet selections, resolved model IDs, and the current five-field participant profile.
 
 #### Scenario: CSV export requested
 - **WHEN** an admin requests CSV export
-- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and active-profile columns covering token, gender, age range, education level, optional grade or occupation, finance background type, finance work or internship experience, investment experience, finance familiarity, general LLM usage, `hasUsedAiForFinance`, and finance subdomain selections
-- **AND** the CSV header always includes four legacy-cohort columns appended after the active-profile columns: `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, `legacy_finance_llm_usage`
-- **AND** new-shape records emit empty values in the four `legacy_*` columns
+- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and exactly six active-profile columns covering `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, and `has_used_ai_for_finance`
+- **AND** the CSV header SHALL NOT contain any column named `gender`, `grade_or_occupation`, `finance_work_experience`, `investment_experience`, `finance_familiarity`, `finance_subdomains`, `notes`, `known_name`, `llm_experience`, `finance_background_type`, `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, or `legacy_finance_llm_usage`
 
-#### Scenario: Legacy record exported
-- **WHEN** an admin requests CSV export and one or more stored records were saved before this change with the legacy profile shape
-- **THEN** legacy records appear in the export with empty cells for the new active-profile columns (gender, education level, finance background type, `hasUsedAiForFinance`)
-- **AND** legacy records emit their original legacy field values verbatim in the four `legacy_*` columns
-- **AND** the export does NOT fail or omit those records
-
-#### Scenario: JSON export preserves legacy profile
-- **WHEN** an admin requests JSON export and at least one stored record uses the legacy profile shape
-- **THEN** each legacy record's JSON object includes a nested `legacyProfile` block containing the four legacy fields (`fieldOrWorkDomain`, `isBusinessOrFinance`, `hasTakenFinanceCourse`, `financeLlmUsage`)
-- **AND** new-shape records do NOT include the `legacyProfile` block
+#### Scenario: JSON export uses single profile shape
+- **WHEN** an admin requests JSON export
+- **THEN** each record's `participantProfile` object SHALL contain exactly the keys `token`, `ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, and `hasUsedAiForFinance`
+- **AND** each record SHALL NOT contain a `legacyProfile` nested block, a `legacy` key prefix, or any field outside the five-field profile snapshot
+- **AND** each participant entry's `profile` object SHALL also contain exactly those same six keys (when the participant has submitted a profile) and SHALL NOT contain a `legacyProfile` block
 
 ### Requirement: Configurable study content
 The system SHALL load study copy, signature metadata, prompt categories, examples, evaluation facets, flags, and question limits from runtime platform settings when available, with the repository configuration file used as the default template and fallback.

@@ -11,13 +11,9 @@ import {
 } from "@/components/ui/sheet"
 import {
   AGE_RANGE_OPTIONS,
+  AI_USAGE_FREQUENCY_OPTIONS,
   EDUCATION_LEVEL_OPTIONS,
-  FINANCE_BACKGROUND_TYPE_OPTIONS,
-  FINANCE_SUBDOMAIN_OPTIONS,
-  FINANCE_WORK_EXPERIENCE_OPTIONS,
-  GENDER_OPTIONS,
-  INVESTMENT_EXPERIENCE_OPTIONS,
-  extractLegacyProfileSnapshot,
+  MAIN_DOMAIN_OPTIONS,
   formatProfileChoice,
 } from "@/lib/evaluation/profile"
 
@@ -60,35 +56,23 @@ export function RecordDrawer({ record, config, onClose }: RecordDrawerProps) {
               <Section title="Participant profile">
                 <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Gender</dt>
-                    <dd>{formatProfileChoice(GENDER_OPTIONS, record.participantProfile.gender)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--admin-muted)]">Age</dt>
+                    <dt className="text-[var(--admin-muted)]">年齡</dt>
                     <dd>{formatProfileChoice(AGE_RANGE_OPTIONS, record.participantProfile.ageRange)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Education</dt>
+                    <dt className="text-[var(--admin-muted)]">學歷</dt>
                     <dd>{formatProfileChoice(EDUCATION_LEVEL_OPTIONS, record.participantProfile.educationLevel)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Finance background</dt>
-                    <dd>{formatProfileChoice(FINANCE_BACKGROUND_TYPE_OPTIONS, record.participantProfile.financeBackgroundType)}</dd>
+                    <dt className="text-[var(--admin-muted)]">目前主要領域</dt>
+                    <dd>{formatProfileChoice(MAIN_DOMAIN_OPTIONS, record.participantProfile.mainDomain)}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Grade / occupation</dt>
-                    <dd>{record.participantProfile.gradeOrOccupation?.trim() || "—"}</dd>
+                    <dt className="text-[var(--admin-muted)]">AI 使用頻率</dt>
+                    <dd>{formatProfileChoice(AI_USAGE_FREQUENCY_OPTIONS, record.participantProfile.aiUsageFrequency)}</dd>
                   </div>
-                  <div>
-                    <dt className="text-[var(--admin-muted)]">Finance work</dt>
-                    <dd>{formatProfileChoice(FINANCE_WORK_EXPERIENCE_OPTIONS, record.participantProfile.financeWorkExperience)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--admin-muted)]">Investment</dt>
-                    <dd>{formatProfileChoice(INVESTMENT_EXPERIENCE_OPTIONS, record.participantProfile.investmentExperience)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--admin-muted)]">Has used AI for finance</dt>
+                  <div className="sm:col-span-2">
+                    <dt className="text-[var(--admin-muted)]">曾用 AI 處理金融?</dt>
                     <dd>
                       {record.participantProfile.hasUsedAiForFinance === true
                         ? "Y"
@@ -97,51 +81,8 @@ export function RecordDrawer({ record, config, onClose }: RecordDrawerProps) {
                           : "—"}
                     </dd>
                   </div>
-                  <div className="sm:col-span-2">
-                    <dt className="text-[var(--admin-muted)]">Subdomains</dt>
-                    <dd>
-                      {(record.participantProfile.financeSubdomains ?? [])
-                        .map((item) => formatProfileChoice(FINANCE_SUBDOMAIN_OPTIONS, item))
-                        .join(", ") || "—"}
-                    </dd>
-                  </div>
                 </dl>
               </Section>
-
-              {(() => {
-                const legacy = extractLegacyProfileSnapshot(record.participantProfile)
-                if (!legacy) return null
-                return (
-                  <Section title="舊版欄位 (legacy)">
-                    <dl className="grid grid-cols-1 gap-1 sm:grid-cols-2 text-xs">
-                      {legacy.fieldOrWorkDomain ? (
-                        <div>
-                          <dt className="text-[var(--admin-muted)]">legacy.fieldOrWorkDomain</dt>
-                          <dd>{legacy.fieldOrWorkDomain}</dd>
-                        </div>
-                      ) : null}
-                      {legacy.isBusinessOrFinance ? (
-                        <div>
-                          <dt className="text-[var(--admin-muted)]">legacy.isBusinessOrFinance</dt>
-                          <dd>{legacy.isBusinessOrFinance}</dd>
-                        </div>
-                      ) : null}
-                      {legacy.hasTakenFinanceCourse ? (
-                        <div>
-                          <dt className="text-[var(--admin-muted)]">legacy.hasTakenFinanceCourse</dt>
-                          <dd>{legacy.hasTakenFinanceCourse}</dd>
-                        </div>
-                      ) : null}
-                      {legacy.financeLlmUsage ? (
-                        <div>
-                          <dt className="text-[var(--admin-muted)]">legacy.financeLlmUsage</dt>
-                          <dd>{legacy.financeLlmUsage}</dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                  </Section>
-                )
-              })()}
 
               <Section title="User question">
                 <p className="whitespace-pre-wrap leading-relaxed">{record.userQuestion}</p>
