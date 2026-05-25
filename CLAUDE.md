@@ -8,11 +8,18 @@
 - **Service ID**: `6a06c9fdeb6e67d8262aba62`
 - **Service name**: `finance-blind-eval`
 - **Region**: `Yung_others` (server-697c471c0f19f38d75bddcba, Tencent)
-- **Deploy source**: direct deploy from `web/` (respects `web/.gitignore`)
+- **Deploy source**: `web/` subdir (respects `web/.gitignore`)
 - **Public URL**: https://finance-blind-eval.zeabur.app
 - **Internal DNS**: `finance-blind-eval.zeabur.internal:8080` (HTTP)
+- **Deploy trigger**: **auto** — Zeabur watches the GitHub repo's `main` branch
+  via its GitHub integration (configured on the Zeabur dashboard, **not** in
+  this repo — there is no `.github/workflows/` or `zeabur.json`). Normal release
+  flow: PR merge → push to `main` → Zeabur picks up the new commit and
+  rebuilds via zbpack (Next.js auto-detected). No CLI invocation needed.
 
-To redeploy after code changes (must pass `--service-id` to update in place, not create a duplicate):
+Manual redeploy fallback — only when the GitHub integration didn't trigger
+(rare) or you need to force-rebuild without pushing a new commit. Must pass
+`--service-id` to update in place, not create a duplicate:
 
 ```bash
 cd web
