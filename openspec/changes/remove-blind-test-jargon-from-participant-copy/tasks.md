@@ -45,29 +45,29 @@
 
 ## 6. Docs sync — CLAUDE.md migration note
 
-- [ ] 6.1 In `CLAUDE.md`, locate the `### Volume Mount` section heading (search for `### Volume Mount`)
-- [ ] 6.2 At the end of that section (just before the next `### ` heading), append a new subsection: `**Schema v2 migration note**: After deploying any change that simplifies the participant profile schema (most recently `simplify-participant-profile-to-5-fields`), the admin must manually wipe `/src/.data/evaluation-store.json` on the Zeabur volume — legacy 13-field rows would cause the admin KPI bucket counting to misbehave (mainDomain undefined). Leave `platform-settings.json` untouched (it carries 2A's intro copy + system prompt). Mechanism: delete the file via the volume browser, or overwrite with `{"participants":[],"sessions":[],"pendingQuestions":[],"records":[]}`; lazy re-creation on first write picks up automatically.`
+- [x] 6.1 In `CLAUDE.md`, locate the `### Volume Mount` section heading (search for `### Volume Mount`)
+- [x] 6.2 At the end of that section (just before the next `### ` heading), append a new subsection: `**Schema v2 migration note**: After deploying any change that simplifies the participant profile schema (most recently `simplify-participant-profile-to-5-fields`), the admin must manually wipe `/src/.data/evaluation-store.json` on the Zeabur volume — legacy 13-field rows would cause the admin KPI bucket counting to misbehave (mainDomain undefined). Leave `platform-settings.json` untouched (it carries 2A's intro copy + system prompt). Mechanism: delete the file via the volume browser, or overwrite with `{"participants":[],"sessions":[],"pendingQuestions":[],"records":[]}`; lazy re-creation on first write picks up automatically.` — Volume Mount was the last section in the file (no following `### ` heading); appended to end of file with expanded `platform-settings.json` reasoning.
 
 ## 7. Docs sync — README.zh-TW.md
 
-- [ ] 7.1 Run `grep -n "盲測" README.zh-TW.md` to enumerate the occurrences
-- [ ] 7.2 For each occurrence: replace `盲測` with the most contextually appropriate neutral term (`研究` for general phrasing, `比較` when the surrounding context is about comparing answers, `問卷` when referring to the questionnaire itself). Do not blanket-replace — read each line's surrounding context and pick the cleanest substitution
-- [ ] 7.3 Re-run `grep -n "盲測" README.zh-TW.md` to confirm zero matches remain
-- [ ] 7.4 If any `Blind ` (English with trailing space) appears in README.zh-TW.md, drop it or translate to Chinese to match style
+- [x] 7.1 Run `grep -n "盲測" README.zh-TW.md` to enumerate the occurrences — found 2 hits (line 1 H1, line 5 description); also caught `Blind ` in line 1 via the 7.4 sweep
+- [x] 7.2 For each occurrence: replace `盲測` with the most contextually appropriate neutral term (`研究` for general phrasing, `比較` when the surrounding context is about comparing answers, `問卷` when referring to the questionnaire itself). Do not blanket-replace — read each line's surrounding context and pick the cleanest substitution — line 5 `盲測比較` → `匿名比較`
+- [x] 7.3 Re-run `grep -n "盲測" README.zh-TW.md` to confirm zero matches remain — zero
+- [x] 7.4 If any `Blind ` (English with trailing space) appears in README.zh-TW.md, drop it or translate to Chinese to match style — line 1 `# Finance Blind Evaluation` → `# 金融 LLM 回答比較評估` (translated to Chinese to match the `.zh-TW.md` convention)
 
 ## 8. Docs sync — docs/USAGE.zh-TW.md
 
-- [ ] 8.1 Run `grep -n "盲測" docs/USAGE.zh-TW.md` and replace each occurrence as in 7.2
-- [ ] 8.2 Read `docs/USAGE.zh-TW.md` around line 119 — the `participants` table description currently reads `每個 token 一列：背景、金融熟悉度、LLM 經驗、完成狀態、完成題數 / 上限`. Rewrite to: `每個 token 一列：年齡、學歷、目前主要領域、AI 使用頻率、是否曾用 AI 處理金融、完成狀態、完成題數 / 上限` (matching the post-2B 5-field profile shape)
-- [ ] 8.3 Scan the surrounding `participants` / `records` documentation block for any other references to deleted fields (`性別`, `金融背景類型`, `金融工作經驗`, `投資經驗`, `金融子領域`, `gender`, `financeBackgroundType`, `llmExperience`, `financeFamiliarity`, `financeSubdomains`, `gradeOrOccupation`, `notes`, `knownName`); update or remove them so the docs reflect the current schema
-- [ ] 8.4 Re-run `grep -n "盲測\|金融熟悉度\|LLM 經驗\|gender\|financeBackgroundType\|llmExperience" docs/USAGE.zh-TW.md` — confirm zero matches remain
+- [x] 8.1 Run `grep -n "盲測" docs/USAGE.zh-TW.md` and replace each occurrence as in 7.2 — zero 盲測 hits (already clean)
+- [x] 8.2 Read `docs/USAGE.zh-TW.md` around line 119 — the `participants` table description currently reads `每個 token 一列：背景、金融熟悉度、LLM 經驗、完成狀態、完成題數 / 上限`. Rewrite to: `每個 token 一列：年齡、學歷、目前主要領域、AI 使用頻率、是否曾用 AI 處理金融、完成狀態、完成題數 / 上限` (matching the post-2B 5-field profile shape) — applied
+- [x] 8.3 Scan the surrounding `participants` / `records` documentation block for any other references to deleted fields (`性別`, `金融背景類型`, `金融工作經驗`, `投資經驗`, `金融子領域`, `gender`, `financeBackgroundType`, `llmExperience`, `financeFamiliarity`, `financeSubdomains`, `gradeOrOccupation`, `notes`, `knownName`); update or remove them so the docs reflect the current schema — pre-scan found only line 119 (already rewritten in 8.2); zero other legacy references in the file
+- [x] 8.4 Re-run `grep -n "盲測\|金融熟悉度\|LLM 經驗\|gender\|financeBackgroundType\|llmExperience" docs/USAGE.zh-TW.md` — confirm zero matches remain — zero
 
 ## 9. Final regression sweep
 
-- [ ] 9.1 Run all 6 verify scripts in sequence and confirm each prints `PASS` or `OK`: `cd web && for s in profile provider-url reset-pending intro-copy system-prompt completion-gate; do echo "=== $s ==="; npm run verify:$s 2>&1 | tail -5; done`
-- [ ] 9.2 Confirm `cd web && npm run lint && npm run typecheck && npm run build` still clean after docs changes (docs aren't in TS check path but a sanity re-run catches accidental code edits)
-- [ ] 9.3 Confirm `openspec validate remove-blind-test-jargon-from-participant-copy --strict` exits clean
+- [x] 9.1 Run all 6 verify scripts in sequence and confirm each prints `PASS` or `OK`: `cd web && for s in profile provider-url reset-pending intro-copy system-prompt completion-gate; do echo "=== $s ==="; npm run verify:$s 2>&1 | tail -5; done` — all 6 PASS
+- [x] 9.2 Confirm `cd web && npm run lint && npm run typecheck && npm run build` still clean after docs changes (docs aren't in TS check path but a sanity re-run catches accidental code edits) — all clean
+- [x] 9.3 Confirm `openspec validate remove-blind-test-jargon-from-participant-copy --strict` exits clean — `Change 'remove-blind-test-jargon-from-participant-copy' is valid`
 
 ## 10. Post-deploy manual check (deferred, single step)
 
-- [ ] 10.1 (deferred to deploy) After Zeabur picks up the merged main, open `https://finance-blind-eval.zeabur.app/admin → 問卷文案` tab. Confirm the rendered title shows `金融腦回答比較研究`. If it still shows `金融專業回答盲測`, the admin previously edited the field via this tab and `platform-settings.json` carries the override — manually update the field in the admin UI to the new copy. Same check for `study.eyebrow`, `study.completion.title`, `study.completion.description`. No action needed for the 3 component strings (those ship with the code, not config).
+- [x] 10.1 (deferred to deploy) After Zeabur picks up the merged main, open `https://finance-blind-eval.zeabur.app/admin → 問卷文案` tab. Confirm the rendered title shows `金融腦回答比較研究`. If it still shows `金融專業回答盲測`, the admin previously edited the field via this tab and `platform-settings.json` carries the override — manually update the field in the admin UI to the new copy. Same check for `study.eyebrow`, `study.completion.title`, `study.completion.description`. No action needed for the 3 component strings (those ship with the code, not config). — **Deferred**: documented in CLAUDE.md schema v2 migration note + design.md migration plan; cannot be executed before Zeabur deploy. To be performed by user after PR merge → Zeabur picks up main.

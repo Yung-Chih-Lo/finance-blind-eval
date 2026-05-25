@@ -57,3 +57,14 @@ been pre-created inside the container so the volume can attach immediately.
 
 Configure via Zeabur dashboard — Service → Settings (or Volumes section) → Add
 Volume with **Mount Path `/src/.data`**.
+
+**Schema v2 migration note**: After deploying any change that simplifies the
+participant profile schema (most recently `simplify-participant-profile-to-5-fields`),
+the admin must manually wipe `/src/.data/evaluation-store.json` on the Zeabur
+volume — legacy 13-field rows would cause the admin KPI bucket counting to
+misbehave (`mainDomain` undefined for old rows). Leave `platform-settings.json`
+untouched (it carries 2A's intro copy + system prompt — clearing it would also
+wipe any admin-side runtime overrides of the study title / intro paragraphs).
+Mechanism: delete the file via the volume browser, or overwrite with
+`{"participants":[],"sessions":[],"pendingQuestions":[],"records":[]}`; lazy
+re-creation on first write picks up automatically.

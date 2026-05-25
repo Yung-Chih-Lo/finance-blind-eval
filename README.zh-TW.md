@@ -1,8 +1,8 @@
-# Finance Blind Evaluation
+# 金融 LLM 回答比較評估
 
 > English: [README.md](./README.md)
 
-針對 **三個金融領域 LLM 答案的盲測比較** 研究問卷 app。受測者看到 A / B / C 三份匿名答案 — 真實模型身分不會出現在瀏覽器 — 然後選整體最佳 / 最差，以及每個評估面向上最強的那一份。為碩士論文（金融領域 LLM 持續預訓練 + PEFT）打造。
+針對 **三個金融領域 LLM 答案的匿名比較** 研究問卷 app。受測者看到 A / B / C 三份匿名答案 — 真實模型身分不會出現在瀏覽器 — 然後選整體最佳 / 最差，以及每個評估面向上最強的那一份。為碩士論文（金融領域 LLM 持續預訓練 + PEFT）打造。
 
 技術棧：**Next.js 16 (App Router) + React 19 + Tailwind 4 + shadcn (radix-nova)**。檔案型 JSON 儲存（無資料庫）。LLM 走 OpenAI 相容 gateway。
 

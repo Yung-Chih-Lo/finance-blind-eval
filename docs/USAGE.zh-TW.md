@@ -116,7 +116,7 @@ Server 用 constant-time 比對 `ADMIN_LINK_TOKEN_SHA256`，設 `admin_session` 
 | Tab id | 用途 |
 |---|---|
 | `overview` | 受測流程漏斗（Invited → Redeemed → Profile → Answered → Completed）、worst-answer-flag top 3、延遲離群（> p95）、停滯受測者、模型 leaderboard（按 net = best − worst 排序） |
-| `participants` | 每個 token 一列：背景、金融熟悉度、LLM 經驗、完成狀態、完成題數 / 上限 |
+| `participants` | 每個 token 一列：年齡、學歷、目前主要領域、AI 使用頻率、是否曾用 AI 處理金融、完成狀態、完成題數 / 上限 |
 | `models` | Leaderboard + 各 facet 的 best/worst/net 比較表 + worst-flag 統計 |
 | `invites` | 邀請碼用量摘要 + 新增邀請碼 |
 | `provider` | 可編輯：API base URL、可選 models endpoint override、從預設 `${base}/models`（可由 `OPENAI_COMPAT_MODELS_ENDPOINT` 覆寫）挑模型、system prompt、user prompt template、temperature、max tokens；附「測試呼叫」**不會** 寫紀錄 |
