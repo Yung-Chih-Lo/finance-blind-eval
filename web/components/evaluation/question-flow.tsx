@@ -318,10 +318,10 @@ export function QuestionFlow({
         </form>
 
         {answerResponse ? (
-          <section className="comparison-panel" aria-label="盲測回答比較">
+          <section className="comparison-panel" aria-label="匿名回答比較">
             <div className="comparison-head">
               <div>
-                <p className="panel-kicker">Blind Comparison</p>
+                <p className="panel-kicker">回答比較</p>
                 <h2>比較 A / B / C 回答</h2>
               </div>
             </div>
