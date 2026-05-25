@@ -5,9 +5,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ToastNotificationsProvider } from "@/components/ui/toast-provider"
 
 export const metadata: Metadata = {
-  title: "Finance Blind Evaluation",
-  description:
-    "Research survey-style blind evaluation for finance model answers.",
+  title: "金融腦回答比較研究",
+  description: "匿名比較金融領域語言模型回答的研究問卷。",
 }
 
 export default function RootLayout({

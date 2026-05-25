@@ -30,5 +30,10 @@ The participant-facing study intro, signature copy, page header, completion scre
 
 #### Scenario: Participant-facing component strings avoid technical jargon
 - **WHEN** the participant flow renders any string that is hard-coded into the participant-facing React components (`web/components/evaluation/token-entry.tsx`, `web/components/evaluation/profile-form.tsx`, or `web/components/evaluation/question-flow.tsx`) — including visible text, button labels, accessibility labels, and placeholders
-- **THEN** none of those component sources SHALL contain the string `盲測` or the standalone English word `Blind`
+- **THEN** none of those component sources SHALL contain the string `盲測` or the standalone English word `Blind` (case-insensitive)
 - **AND** this constraint SHALL be enforced by a regression test that reads the three component files via the filesystem and asserts neither forbidden term appears in their source
+
+#### Scenario: Page metadata avoids technical jargon
+- **WHEN** any participant-visible page is rendered by the Next.js App Router (the root layout at `web/app/layout.tsx` is the source of the HTML `<title>` element and the `<meta name="description">` tag for every route in the participant flow)
+- **THEN** neither the `metadata.title` nor the `metadata.description` exported from `web/app/layout.tsx` SHALL contain the string `盲測` or the standalone English word `Blind` (case-insensitive — both `Blind` and `blind` are forbidden, since the leak surfaces in the browser tab, bookmark titles, OG / link-preview cards, and search-engine indexing)
+- **AND** this constraint SHALL be enforced by the same source-file regression test that scans the participant components, with `web/app/layout.tsx` added to its file list

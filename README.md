@@ -1,8 +1,8 @@
-# Finance Blind Evaluation
+# Finance Answer Comparison Eval
 
 > 繁體中文版：[README.zh-TW.md](./README.zh-TW.md)
 
-A research survey app for **blind comparison of three finance-domain LLM answers**. Participants see three anonymized answers labeled A / B / C — the real model identity is never revealed in the browser — and pick the best, the worst, and the strongest model on each evaluation facet. Built for a Master's thesis on finance-domain LLM continual pre-training & PEFT.
+A research survey app for **anonymous comparison of three finance-domain LLM answers**. Participants see three anonymized answers labeled A / B / C — the real model identity is never revealed in the browser — and pick the best, the worst, and the strongest model on each evaluation facet. Built for a Master's thesis on finance-domain LLM continual pre-training & PEFT.
 
 Stack: **Next.js 16 (App Router) + React 19 + Tailwind 4 + shadcn (radix-nova)**. File-backed JSON store (no DB). OpenAI-compatible gateway for the LLMs.
 

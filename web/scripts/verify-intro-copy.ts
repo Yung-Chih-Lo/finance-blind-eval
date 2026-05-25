@@ -14,7 +14,13 @@ import studyConfig from "@/config/evaluation.config.json"
 // Strings that the advisor explicitly forbade from participant-visible copy
 // (transcript: "受測者不需要了解 H1-base、H2-base、盲測、APT 等技術名詞" +
 // "不要去, 第一個, 大語言模型...你要跟人家講金龍腦").
-const FORBIDDEN_KEYWORDS = [
+//
+// Naming: `_CONFIG_KEYWORDS` is the list scanned against `visibleText` —
+// the join of all participant-visible strings sourced from
+// `web/config/evaluation.config.json` (study.title / rootTitle / eyebrow /
+// intro / completion). For source-file scanning (.tsx) see
+// `FORBIDDEN_SOURCE_TOKENS` below.
+const FORBIDDEN_CONFIG_KEYWORDS = [
   "大型語言模型",
   "APT",
   "H1",
@@ -29,7 +35,9 @@ const FORBIDDEN_KEYWORDS = [
   "預先指定",
   // Trailing space avoids false positives on Blinded / Blinder; pins the
   // English caption variant of 盲測 (e.g. legacy `Blind Model Evaluation`).
+  // Both casings checked — pages can use either as a freestanding word.
   "Blind ",
+  "blind ",
 ]
 
 // At least one of these must appear so the participant frames the system as
@@ -39,18 +47,28 @@ const REQUIRED_FRAMING_KEYWORDS = ["金融語言模型", "金融腦"]
 // Thesis title must not leak the APT acronym or its expansion.
 const FORBIDDEN_THESIS_TOKENS = ["Augmentative", "Residual", "Adapter", "APT"]
 
-// Participant-facing React components whose .tsx source is scanned for
-// hard-coded jargon (JSX literals + aria-labels). Config-only checks cannot
-// reach these — see remove-blind-test-jargon-from-participant-copy design D3.
-// Maintenance note: a future participant component must be added here
-// manually.
-const PARTICIPANT_COMPONENT_FILES = [
+// Participant-facing source files whose .tsx text is scanned for hard-coded
+// jargon (JSX literals + aria-labels + Next.js metadata exports). Config-only
+// checks cannot reach these — see remove-blind-test-jargon-from-participant-copy
+// design D3 + the "Page metadata avoids technical jargon" spec scenario.
+//
+// MAINTENANCE NOTE: when adding a new participant-facing source file
+// (component, page, layout, or any file whose strings render to the
+// participant), add its path here. Admin-only files (e.g. `app/admin/*`)
+// must NOT be added — researcher-facing strings such as `盲測資料後台` are
+// intentionally exempt per design D6 / proposal Impact "Admin path
+// unaffected".
+const PARTICIPANT_SOURCE_FILES = [
   "components/evaluation/token-entry.tsx",
   "components/evaluation/profile-form.tsx",
   "components/evaluation/question-flow.tsx",
+  // HTML metadata (browser tab title + meta description) — leaks at the
+  // root layout, visible on every route in the participant flow.
+  "app/layout.tsx",
 ]
-// Trailing space on "Blind " avoids false positives on Blinded / Blinder.
-const FORBIDDEN_COMPONENT_TOKENS = ["盲測", "Blind "]
+// Trailing space avoids false positives on Blinded / Blinder; both casings
+// checked since metadata.description-style sentences may lowercase the word.
+const FORBIDDEN_SOURCE_TOKENS = ["盲測", "Blind ", "blind "]
 
 const failures: string[] = []
 
@@ -63,13 +81,13 @@ function check(condition: boolean, message: string) {
   }
 }
 
-function testComponentStringsAvoidJargon() {
+function testSourceFilesAvoidJargon() {
   // npm scripts run from web/ (package.json directory), so resolving from
-  // process.cwd() lands on the participant component sources.
-  for (const relPath of PARTICIPANT_COMPONENT_FILES) {
+  // process.cwd() lands on the participant source files.
+  for (const relPath of PARTICIPANT_SOURCE_FILES) {
     const fullPath = path.resolve(process.cwd(), relPath)
     const contents = fs.readFileSync(fullPath, "utf8")
-    for (const token of FORBIDDEN_COMPONENT_TOKENS) {
+    for (const token of FORBIDDEN_SOURCE_TOKENS) {
       check(
         !contents.includes(token),
         `${relPath} must not contain forbidden token "${token}"`,
@@ -112,7 +130,7 @@ function main() {
     completion.description,
     ...completion.notes,
   ].join("\n")
-  for (const forbidden of FORBIDDEN_KEYWORDS) {
+  for (const forbidden of FORBIDDEN_CONFIG_KEYWORDS) {
     check(
       !visibleText.includes(forbidden),
       `participant intro must not contain forbidden term "${forbidden}"`,
@@ -138,9 +156,9 @@ function main() {
     )
   }
 
-  // Component-source scan: catches participant-facing JSX strings that
-  // the config-level checks above cannot see.
-  testComponentStringsAvoidJargon()
+  // Source-file scan: catches participant-facing JSX strings + Next.js
+  // metadata exports that the config-level checks above cannot see.
+  testSourceFilesAvoidJargon()
 
   if (failures.length > 0) {
     console.error(`\n${failures.length} assertion(s) failed.`)
