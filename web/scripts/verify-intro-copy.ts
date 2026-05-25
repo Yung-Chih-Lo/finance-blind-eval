@@ -6,6 +6,9 @@
 // (align-advisor-feedback-copy-and-prompt). Does NOT touch .data — pure
 // static-content check on the repository default StudyConfig.
 
+import fs from "node:fs"
+import path from "node:path"
+
 import studyConfig from "@/config/evaluation.config.json"
 
 // Strings that the advisor explicitly forbade from participant-visible copy
@@ -24,6 +27,9 @@ const FORBIDDEN_KEYWORDS = [
   "H2-base",
   "主要分層變項",
   "預先指定",
+  // Trailing space avoids false positives on Blinded / Blinder; pins the
+  // English caption variant of 盲測 (e.g. legacy `Blind Model Evaluation`).
+  "Blind ",
 ]
 
 // At least one of these must appear so the participant frames the system as
@@ -33,6 +39,19 @@ const REQUIRED_FRAMING_KEYWORDS = ["金融語言模型", "金融腦"]
 // Thesis title must not leak the APT acronym or its expansion.
 const FORBIDDEN_THESIS_TOKENS = ["Augmentative", "Residual", "Adapter", "APT"]
 
+// Participant-facing React components whose .tsx source is scanned for
+// hard-coded jargon (JSX literals + aria-labels). Config-only checks cannot
+// reach these — see remove-blind-test-jargon-from-participant-copy design D3.
+// Maintenance note: a future participant component must be added here
+// manually.
+const PARTICIPANT_COMPONENT_FILES = [
+  "components/evaluation/token-entry.tsx",
+  "components/evaluation/profile-form.tsx",
+  "components/evaluation/question-flow.tsx",
+]
+// Trailing space on "Blind " avoids false positives on Blinded / Blinder.
+const FORBIDDEN_COMPONENT_TOKENS = ["盲測", "Blind "]
+
 const failures: string[] = []
 
 function check(condition: boolean, message: string) {
@@ -41,6 +60,21 @@ function check(condition: boolean, message: string) {
     console.error(`[FAIL] ${message}`)
   } else {
     console.log(`[OK] ${message}`)
+  }
+}
+
+function testComponentStringsAvoidJargon() {
+  // npm scripts run from web/ (package.json directory), so resolving from
+  // process.cwd() lands on the participant component sources.
+  for (const relPath of PARTICIPANT_COMPONENT_FILES) {
+    const fullPath = path.resolve(process.cwd(), relPath)
+    const contents = fs.readFileSync(fullPath, "utf8")
+    for (const token of FORBIDDEN_COMPONENT_TOKENS) {
+      check(
+        !contents.includes(token),
+        `${relPath} must not contain forbidden token "${token}"`,
+      )
+    }
   }
 }
 
@@ -59,9 +93,25 @@ function main() {
     `study.intro.tasks must have exactly 3 entries (got ${intro.tasks?.length ?? "n/a"})`,
   )
 
-  // Forbidden-keyword scan across the concatenated paragraphs + tasks (tasks
-  // are also participant-visible, so they share the same prohibition).
-  const visibleText = [intro.greeting, ...intro.paragraphs, ...intro.tasks].join("\n")
+  // Forbidden-keyword scan across the concatenated participant-visible text:
+  // intro greeting + paragraphs + tasks + page header (title / rootTitle /
+  // eyebrow) + completion screen (title / description / notes).
+  const completion = studyConfig.study.completion as {
+    title: string
+    description: string
+    notes: string[]
+  }
+  const visibleText = [
+    intro.greeting,
+    ...intro.paragraphs,
+    ...intro.tasks,
+    studyConfig.study.title,
+    studyConfig.study.rootTitle,
+    studyConfig.study.eyebrow,
+    completion.title,
+    completion.description,
+    ...completion.notes,
+  ].join("\n")
   for (const forbidden of FORBIDDEN_KEYWORDS) {
     check(
       !visibleText.includes(forbidden),
@@ -87,6 +137,10 @@ function main() {
       `study.signature.thesisTitle must not contain "${token}"`,
     )
   }
+
+  // Component-source scan: catches participant-facing JSX strings that
+  // the config-level checks above cannot see.
+  testComponentStringsAvoidJargon()
 
   if (failures.length > 0) {
     console.error(`\n${failures.length} assertion(s) failed.`)
