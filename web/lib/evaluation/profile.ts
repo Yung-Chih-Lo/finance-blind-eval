@@ -33,9 +33,9 @@ export const MAIN_DOMAIN_OPTIONS: Array<{ value: MainDomain; label: string }> = 
 
 export const AI_USAGE_FREQUENCY_OPTIONS: Array<{ value: AiUsageFrequency; label: string }> = [
   { value: "never", label: "從未" },
-  { value: "occasional", label: "偶爾（每月幾次以下）" },
-  { value: "frequent", label: "經常（每週幾次）" },
-  { value: "daily", label: "每天" },
+  { value: "occasional", label: "每週 1~2 天" },
+  { value: "frequent", label: "每週 3~5 天" },
+  { value: "daily", label: "每天使用" },
 ]
 
 const AGE_RANGE_VALUES = new Set(AGE_RANGE_OPTIONS.map((option) => option.value))
