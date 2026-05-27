@@ -333,8 +333,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <SidebarMetric label="題目紀錄" value={recordCount} />
       <SidebarMetric label="完成率" value={completionRate} />
       <SidebarMetric
-        label="財經類 / 商學非財經 / 其他"
-        value={`${snapshot.financeRelatedCount} / ${snapshot.businessNonFinanceCount} / ${snapshot.otherCount}`}
+        label="財經類 / 商學非財經"
+        value={`${snapshot.financeRelatedCount} / ${snapshot.businessNonFinanceCount}`}
       />
     </div>
   )

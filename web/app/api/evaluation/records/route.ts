@@ -19,6 +19,7 @@ interface RecordRequest {
   bestReason?: string
   worstReason?: string
   worstAnswerFlags?: string[]
+  worstOtherText?: string
   qualityFlags?: string[]
   qualityRatings?: QualityRatings
 }
@@ -82,6 +83,15 @@ export async function POST(request: Request) {
   if (!bestReason && !worstReason) {
     return NextResponse.json({ error: "At least one reason is required." }, { status: 400 })
   }
+  // Mirror the client-side gate in question-flow.saveJudgment: if the participant
+  // ticks the "其他" worst-answer flag, the free-text supplement must be present.
+  // The client also enforces this, but a hand-crafted request would otherwise
+  // bypass the requirement and leave an empty "其他" row in the export.
+  const worstAnswerFlags = Array.isArray(body.worstAnswerFlags) ? body.worstAnswerFlags : []
+  const worstOtherText = typeof body.worstOtherText === "string" ? body.worstOtherText.trim() : ""
+  if (worstAnswerFlags.includes("other") && !worstOtherText) {
+    return NextResponse.json({ error: "worstOtherText is required when 'other' flag is selected." }, { status: 400 })
+  }
 
   const pending = await getPendingQuestion(questionId)
   if (!pending) {
@@ -98,7 +108,11 @@ export async function POST(request: Request) {
     facetSelections,
     bestReason,
     worstReason,
-    worstAnswerFlags: Array.isArray(body.worstAnswerFlags) ? body.worstAnswerFlags : [],
+    worstAnswerFlags,
+    // Persist worstOtherText only when "其他" is actually selected — even though
+    // the type allows the field to be optional, storing empty strings under flags
+    // that don't include "other" would pollute downstream analysis.
+    worstOtherText: worstAnswerFlags.includes("other") ? worstOtherText : undefined,
     qualityFlags: Array.isArray(body.qualityFlags) ? body.qualityFlags : undefined,
     qualityRatings: body.qualityRatings,
     completionStatus: "answered",

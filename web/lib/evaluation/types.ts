@@ -132,7 +132,7 @@ export interface PlatformSettingsValidationResult {
 // `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName` were dropped entirely.
 export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus"
 export type EducationLevel = "undergrad_in_progress" | "undergrad_completed" | "grad_or_above"
-export type MainDomain = "finance_related" | "business_non_finance" | "other"
+export type MainDomain = "finance_related" | "business_non_finance"
 export type AiUsageFrequency = "never" | "occasional" | "frequent" | "daily"
 
 export interface ParticipantProfile {
@@ -230,6 +230,10 @@ export interface EvaluationRecord extends PendingQuestion {
   bestReason: string
   worstReason: string
   worstAnswerFlags?: string[]
+  // Free-text supplement when the participant selects the "其他" worst-flag option.
+  // Required at the UI layer (gated by question-flow's saveJudgment) but persisted
+  // as optional so historical records pre-dating the "其他" option remain valid.
+  worstOtherText?: string
   qualityFlags?: string[]
   qualityRatings?: QualityRatings
   completionStatus: "answered"
@@ -282,13 +286,13 @@ export interface AdminSnapshot {
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
-  // Three mutually-exclusive buckets derived from mainDomain (see spec scenario
+  // Two mutually-exclusive buckets derived from mainDomain (see spec scenario
   // "KPI bar reports main-domain breakdown"). No unknown bucket: validation rejects
   // null mainDomain at submit time, and the legacy compatibility layer that could
-  // produce profile-without-mainDomain rows has been removed.
+  // produce profile-without-mainDomain rows has been removed. The legacy "other"
+  // bucket was removed when the TA was narrowed to business-school students.
   financeRelatedCount: number
   businessNonFinanceCount: number
-  otherCount: number
   funnelStages: AdminFunnelStages
   attentionItems: AdminAttentionItems
 }

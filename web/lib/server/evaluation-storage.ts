@@ -555,15 +555,15 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
   const worstFlagCounts = countWorstFlags(store.records, config)
   const latencyP95 = computeLatencyP95(store.records)
 
-  // mainDomain drives the three mutually-exclusive KPI buckets. There is no
+  // mainDomain drives the two mutually-exclusive KPI buckets. There is no
   // `unknown` bucket because validation rejects null mainDomain at submit time
   // and no legacy compatibility layer can produce profile-without-mainDomain
   // rows (see design D6). The switch's never-fallthrough is a compile-time
   // exhaustiveness check: adding a new arm to the MainDomain union without
-  // updating this switch becomes a type error.
+  // updating this switch becomes a type error. The legacy "other" bucket was
+  // removed when the TA was narrowed to business-school students.
   let financeRelatedCount = 0
   let businessNonFinanceCount = 0
-  let otherCount = 0
   for (const participant of participants) {
     const domain = participant.profile?.mainDomain
     if (!domain) continue
@@ -573,9 +573,6 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
         break
       case "business_non_finance":
         businessNonFinanceCount += 1
-        break
-      case "other":
-        otherCount += 1
         break
       default: {
         const exhaustive: never = domain
@@ -593,7 +590,6 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     completedCount: participants.filter((participant) => participant.completionStatus === "completed").length,
     financeRelatedCount,
     businessNonFinanceCount,
-    otherCount,
     funnelStages: computeFunnelStages(participants, store.records),
     attentionItems: computeAttentionItems(participants, store.records, worstFlagCounts, latencyP95, config),
   }
@@ -675,6 +671,7 @@ const CSV_HEADERS = [
   "best_reason",
   "worst_reason",
   "worst_answer_flags",
+  "worst_other_text",
   "quality_flags",
   "rating_correctness",
   "rating_completeness",
@@ -729,6 +726,7 @@ export async function buildExportCsv(): Promise<string> {
     best_reason: record.bestReason,
     worst_reason: record.worstReason,
     worst_answer_flags: (record.worstAnswerFlags ?? []).join("|"),
+    worst_other_text: record.worstOtherText ?? "",
     quality_flags: (record.qualityFlags ?? []).join("|"),
     rating_correctness: record.qualityRatings?.correctness ?? "",
     rating_completeness: record.qualityRatings?.completeness ?? "",

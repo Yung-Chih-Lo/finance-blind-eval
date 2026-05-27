@@ -77,15 +77,15 @@ export function TokenEntry({
           <dl className="brief-facts" aria-label="問卷摘要">
             <div>
               <dt>時間</dt>
-              <dd>約 8-12 分鐘</dd>
+              <dd>約 20-30 分鐘</dd>
             </div>
             <div>
               <dt>題數</dt>
-              <dd>{config.limits.maxQuestionsPerParticipant} 題開放問題</dd>
+              <dd>{config.limits.maxQuestionsPerParticipant} 題自擬問題</dd>
             </div>
             <div>
               <dt>比較方式</dt>
-              <dd>A / B / C 匿名回答比較</dd>
+              <dd>A / B / C 模型回答比較</dd>
             </div>
             <div>
               <dt>資料用途</dt>

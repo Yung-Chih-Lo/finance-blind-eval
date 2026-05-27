@@ -123,8 +123,8 @@ function testNewEnumValuesOnly() {
   const domainValues = MAIN_DOMAIN_OPTIONS.map((option) => option.value)
   assert.deepEqual(
     domainValues,
-    ["finance_related", "business_non_finance", "other"],
-    `MAIN_DOMAIN_OPTIONS must expose exactly 3 values; got ${JSON.stringify(domainValues)}`,
+    ["finance_related", "business_non_finance"],
+    `MAIN_DOMAIN_OPTIONS must expose exactly 2 values; got ${JSON.stringify(domainValues)}`,
   )
 
   const freqValues = AI_USAGE_FREQUENCY_OPTIONS.map((option) => option.value)
@@ -427,7 +427,7 @@ function testValidationRejectsMissingToken() {
     token: "P-OK",
     ageRange: "20_24",
     educationLevel: "undergrad_in_progress",
-    mainDomain: "other",
+    mainDomain: "business_non_finance",
     aiUsageFrequency: "never",
     hasUsedAiForFinance: false,
   }
@@ -496,7 +496,7 @@ async function testAtomicUpsertClearsStalePending() {
     token,
     ageRange: "20_24",
     educationLevel: "undergrad_in_progress",
-    mainDomain: "other",
+    mainDomain: "business_non_finance",
     aiUsageFrequency: "never",
     hasUsedAiForFinance: false,
   }
