@@ -57,7 +57,11 @@ export function TokenEntry({
     <main className="page-shell centered-page">
       <section className="entry-panel start-panel intro-panel">
         <div className="start-heading">
-          <p className="eyebrow">{config.study.eyebrow}</p>
+          {/* study.eyebrow intentionally hidden on the landing card per advisor
+              feedback (2026-05-27). The string is still kept in config (and
+              required non-empty by platform-settings validation) so the admin
+              study-copy form keeps its existing slot — re-mount this <p> if
+              the eyebrow is ever wanted back on screen. */}
           <h1>{config.study.title}</h1>
           <p className="lede">{config.study.rootDescription}</p>
         </div>
