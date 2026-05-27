@@ -49,8 +49,12 @@ const FORBIDDEN_CONFIG_PATTERNS = [
 // finance-domain rather than as a generic chatbot.
 const REQUIRED_FRAMING_KEYWORDS = ["金融語言模型", "金融腦"]
 
-// Thesis title must not leak the APT acronym or its expansion.
-const FORBIDDEN_THESIS_TOKENS = ["Augmentative", "Residual", "Adapter", "APT"]
+// Thesis title token-banning was lifted on 2026-05-27 — the advisor approved
+// surfacing the real thesis title ("The Augmentative Residual Adapter Approach
+// to Pre-training") in the participant-facing signature block. The guard is
+// kept as an empty array so reintroducing a forbidden token in the future is
+// a one-line change rather than reviving the whole assertion scaffold.
+const FORBIDDEN_THESIS_TOKENS: string[] = []
 
 // Participant-facing source files whose .tsx text is scanned for hard-coded
 // jargon (JSX literals + aria-labels + Next.js metadata exports). Config-only
@@ -109,9 +113,13 @@ function main() {
   const signature = studyConfig.study.signature as { thesisTitle: string }
 
   // Paragraph / task structure.
+  // 2 entries after the advisor trimmed the briefing card to "研究目的" +
+  // "作答前請注意" (privacy/scope statement). The intermediate flow-summary
+  // and time-estimate paragraphs were removed; the brief-facts <dl> in
+  // token-entry.tsx now carries that information instead.
   check(
-    Array.isArray(intro.paragraphs) && intro.paragraphs.length === 4,
-    `study.intro.paragraphs must have exactly 4 entries (got ${intro.paragraphs?.length ?? "n/a"})`,
+    Array.isArray(intro.paragraphs) && intro.paragraphs.length === 2,
+    `study.intro.paragraphs must have exactly 2 entries (got ${intro.paragraphs?.length ?? "n/a"})`,
   )
   check(
     Array.isArray(intro.tasks) && intro.tasks.length === 3,
