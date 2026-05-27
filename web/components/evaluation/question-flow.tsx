@@ -76,6 +76,7 @@ export function QuestionFlow({
     () => createEmptyFacetSelections(config)
   )
   const [worstAnswerFlags, setWorstAnswerFlags] = useState<string[]>([])
+  const [worstOtherText, setWorstOtherText] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const category = promptCategories[questionIndex]
@@ -141,6 +142,7 @@ export function QuestionFlow({
     setWorstReason("")
     setFacetSelections(createEmptyFacetSelections(config))
     setWorstAnswerFlags([])
+    setWorstOtherText("")
   }
 
   async function resetForQuestion() {
@@ -190,6 +192,10 @@ export function QuestionFlow({
       toast.info("請至少填寫一欄簡短原因；若可以，請同時說明最好與最差的判斷。")
       return
     }
+    if (worstAnswerFlags.includes("other") && !worstOtherText.trim()) {
+      toast.info("勾選「其他」時請填寫說明。")
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -204,6 +210,7 @@ export function QuestionFlow({
           bestReason,
           worstReason,
           worstAnswerFlags,
+          worstOtherText: worstAnswerFlags.includes("other") ? worstOtherText.trim() : "",
         }),
       })
       const data = (await response.json()) as RecordResponse
@@ -318,7 +325,7 @@ export function QuestionFlow({
         </form>
 
         {answerResponse ? (
-          <section className="comparison-panel" aria-label="匿名回答比較">
+          <section className="comparison-panel" aria-label="模型回答比較">
             <div className="comparison-head">
               <div>
                 <p className="panel-kicker">回答比較</p>
@@ -398,6 +405,8 @@ export function QuestionFlow({
               worstAnswerFlagOptions={config.worstAnswerFlags}
               worstAnswerFlags={worstAnswerFlags}
               setWorstAnswerFlags={setWorstAnswerFlags}
+              worstOtherText={worstOtherText}
+              setWorstOtherText={setWorstOtherText}
             />
 
             <div className="form-actions">

@@ -12,7 +12,11 @@ interface QualityControlsProps {
   worstAnswerFlagOptions: StudyConfig["worstAnswerFlags"]
   worstAnswerFlags: string[]
   setWorstAnswerFlags: (flags: string[]) => void
+  worstOtherText: string
+  setWorstOtherText: (value: string) => void
 }
+
+const OTHER_FLAG_ID = "other"
 
 export function QualityControls({
   answerLabels,
@@ -22,7 +26,10 @@ export function QualityControls({
   worstAnswerFlagOptions,
   worstAnswerFlags,
   setWorstAnswerFlags,
+  worstOtherText,
+  setWorstOtherText,
 }: QualityControlsProps) {
+  const isOtherSelected = worstAnswerFlags.includes(OTHER_FLAG_ID)
   return (
     <section className="quality-panel">
       <div className="section-heading compact-heading">
@@ -66,17 +73,35 @@ export function QualityControls({
                 checked={worstAnswerFlags.includes(flag.id)}
                 type="checkbox"
                 onChange={(event) => {
+                  const nextChecked = event.target.checked
                   setWorstAnswerFlags(
-                    event.target.checked
+                    nextChecked
                       ? [...worstAnswerFlags, flag.id]
                       : worstAnswerFlags.filter((item) => item !== flag.id),
                   )
+                  // Clearing the free-text supplement when "其他" is unchecked
+                  // keeps the persisted record consistent — otherwise an unrelated
+                  // checkbox flip could leave orphaned worstOtherText behind.
+                  if (flag.id === OTHER_FLAG_ID && !nextChecked) {
+                    setWorstOtherText("")
+                  }
                 }}
               />
               {flag.label}
             </label>
           ))}
         </div>
+        {isOtherSelected ? (
+          <label className="worst-other-input">
+            <span>請說明其他標記原因 *</span>
+            <textarea
+              value={worstOtherText}
+              rows={3}
+              placeholder="請簡述為什麼勾選「其他」"
+              onChange={(event) => setWorstOtherText(event.target.value)}
+            />
+          </label>
+        ) : null}
       </div>
     </section>
   )

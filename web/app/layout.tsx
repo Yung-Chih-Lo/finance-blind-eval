@@ -6,7 +6,7 @@ import { ToastNotificationsProvider } from "@/components/ui/toast-provider"
 
 export const metadata: Metadata = {
   title: "金融腦回答比較研究",
-  description: "匿名比較金融領域語言模型回答的研究問卷。",
+  description: "比較金融領域語言模型回答的研究問卷。",
 }
 
 export default function RootLayout({

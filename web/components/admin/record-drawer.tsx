@@ -131,6 +131,12 @@ export function RecordDrawer({ record, config, onClose }: RecordDrawerProps) {
                     ))}
                   </ul>
                 )}
+                {record.worstOtherText ? (
+                  <p className="mt-2">
+                    <span className="text-[var(--admin-muted)]">Other note: </span>
+                    <span className="whitespace-pre-wrap">{record.worstOtherText}</span>
+                  </p>
+                ) : null}
               </Section>
 
               <Section title="Hidden mapping">
