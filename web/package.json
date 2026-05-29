@@ -15,7 +15,8 @@
     "verify:profile": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-profile-validation.js",
     "verify:intro-copy": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-intro-copy.js",
     "verify:system-prompt": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-system-prompt-defaults.js",
-    "verify:completion-gate": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-completion-gate.js"
+    "verify:completion-gate": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-completion-gate.js",
+    "verify:answer-display": "tsc -p scripts/verify-tsconfig.json && node --experimental-loader=./scripts/.verify-loader.mjs scripts/.verify-out/scripts/verify-answer-display.js"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
