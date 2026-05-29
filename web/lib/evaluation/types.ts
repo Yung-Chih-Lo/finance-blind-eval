@@ -132,7 +132,7 @@ export interface PlatformSettingsValidationResult {
 // `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName` were dropped entirely.
 export type AgeRange = "20_24" | "25_29" | "30_39" | "40_plus"
 export type EducationLevel = "undergrad_in_progress" | "undergrad_completed" | "grad_or_above"
-export type MainDomain = "finance_related" | "business_non_finance"
+export type MainDomain = "finance_related" | "business_non_finance" | "other"
 export type AiUsageFrequency = "never" | "occasional" | "frequent" | "daily"
 
 export interface ParticipantProfile {
@@ -286,13 +286,14 @@ export interface AdminSnapshot {
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
-  // Two mutually-exclusive buckets derived from mainDomain (see spec scenario
+  // Three mutually-exclusive buckets derived from mainDomain (see spec scenario
   // "KPI bar reports main-domain breakdown"). No unknown bucket: validation rejects
   // null mainDomain at submit time, and the legacy compatibility layer that could
-  // produce profile-without-mainDomain rows has been removed. The legacy "other"
-  // bucket was removed when the TA was narrowed to business-school students.
+  // produce profile-without-mainDomain rows has been removed. The "other" bucket
+  // covers participants outside the finance / business-management domains.
   financeRelatedCount: number
   businessNonFinanceCount: number
+  otherCount: number
   funnelStages: AdminFunnelStages
   attentionItems: AdminAttentionItems
 }

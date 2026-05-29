@@ -296,7 +296,7 @@ export function QuestionFlow({
                 ref={questionInputRef}
                 value={question}
                 rows={1}
-                placeholder="請輸入金融相關問題；避免個人持股、內部資料、即時股價或直接買賣建議"
+                placeholder="請輸入金融知識或概念問題；避免即時股價／匯率與個人持股、內部資料或買賣建議"
                 disabled={Boolean(answerResponse) || isLoading}
                 onChange={(event) => setQuestion(event.target.value)}
                 onKeyDown={(event) => {
