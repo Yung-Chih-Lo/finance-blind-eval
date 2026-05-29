@@ -5,7 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ToastNotificationsProvider } from "@/components/ui/toast-provider"
 
 export const metadata: Metadata = {
-  title: "金融腦回答比較研究",
+  title: "金融腦研究",
   description: "比較金融領域語言模型回答的研究問卷。",
 }
 

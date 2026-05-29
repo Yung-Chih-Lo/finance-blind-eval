@@ -29,6 +29,10 @@ export const MAIN_DOMAIN_OPTIONS: Array<{ value: MainDomain; label: string }> = 
     value: "business_non_finance",
     label: "商學或管理類但非財經（企管/資管/行銷/統計/國貿）",
   },
+  {
+    value: "other",
+    label: "其他（以上皆非）",
+  },
 ]
 
 export const AI_USAGE_FREQUENCY_OPTIONS: Array<{ value: AiUsageFrequency; label: string }> = [
