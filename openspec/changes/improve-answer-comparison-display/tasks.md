@@ -23,10 +23,10 @@
 
 ## 3. Render answers as uniform markdown
 
-- [ ] 3.1 In `web/components/evaluation/question-flow.tsx`, import `ReactMarkdown`, `remarkGfm`, `remarkBreaks`, and `normalizeAnswerText`.
-- [ ] 3.2 Replace `<p>{answerResponse.answers[label]}</p>` (line ~340) with a `<div className="answer-body">` wrapping `<ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{normalizeAnswerText(answerResponse.answers[label])}</ReactMarkdown>` — identical for every label.
-- [ ] 3.3 In `web/app/globals.css`, update `.answer-card`: add `align-content: start;` (fix short-card gap). Replace the `.answer-card p` block with `.answer-body` markdown styles (paragraph spacing, `ul/ol` list indent, `line-height: 1.75`, keep `color: #1e293b`); ensure list markers render.
-- [ ] 3.4 Verify build: `cd web && npm run typecheck && npm run lint && npm run build` → all pass.
+- [x] 3.1 In `web/components/evaluation/question-flow.tsx`, import `ReactMarkdown`, `remarkGfm`, `remarkBreaks`, and `normalizeAnswerText`.
+- [x] 3.2 Replace `<p>{answerResponse.answers[label]}</p>` (line ~340) with a `<div className="answer-body">` wrapping `<ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{normalizeAnswerText(answerResponse.answers[label])}</ReactMarkdown>` — identical for every label.
+- [x] 3.3 In `web/app/globals.css`, update `.answer-card`: add `align-content: start;` (fix short-card gap). Replace the `.answer-card p` block with `.answer-body` markdown styles (paragraph spacing, `ul/ol` list indent, `line-height: 1.75`, keep `color: #1e293b`); ensure list markers render.
+- [x] 3.4 Verify build: `cd web && npm run typecheck && npm run lint && npm run build` → all pass.
 
 ## 4. Loading feedback during generation (Option 1)
 

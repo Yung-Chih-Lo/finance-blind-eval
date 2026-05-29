@@ -2,6 +2,9 @@
 
 import { useRef, useState } from "react"
 import { ArrowUp } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkBreaks from "remark-breaks"
+import remarkGfm from "remark-gfm"
 
 import {
   QualityControls,
@@ -9,6 +12,7 @@ import {
 } from "@/components/evaluation/quality-controls"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
+import { normalizeAnswerText } from "@/lib/evaluation/answer-display"
 import type {
   AnswerLabel,
   ParticipantProfile,
@@ -337,7 +341,11 @@ export function QuestionFlow({
               {answerLabels.map((label) => (
                 <article className="answer-card" key={label}>
                   <div className="answer-label">回答 {label}</div>
-                  <p>{answerResponse.answers[label]}</p>
+                  <div className="answer-body">
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                      {normalizeAnswerText(answerResponse.answers[label])}
+                    </ReactMarkdown>
+                  </div>
                 </article>
               ))}
             </div>
