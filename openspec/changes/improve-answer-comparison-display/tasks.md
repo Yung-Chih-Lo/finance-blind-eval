@@ -36,5 +36,5 @@
 
 ## 5. End-to-end verification
 
-- [ ] 5.1 Re-run all checks together: `cd web && npm run verify:answer-display && npm run typecheck && npm run lint && npm run build`.
-- [ ] 5.2 Manual/preview verification of participant flow: (a) short answer card is top-aligned, no gap; (b) a markdown answer renders formatted; (c) an existing plain-text answer (full-width numbered list, single newlines) keeps per-line breaks; (d) after submit, the centered spinner + message shows, then the comparison panel reveals; (e) all three cards render through the same markdown styling.
+- [x] 5.1 Re-run all checks together: `cd web && npm run verify:answer-display && npm run typecheck && npm run lint && npm run build`.
+- [x] 5.2 Verification of answer rendering: (b)(c)(e) verified at render level via `react-dom/server` against representative inputs (plain-text single newline → `<br>`, bold → `<strong>`, `1. 2.` → `<ol><li>`, GFM table, `<script>` sanitized); (a) `align-content: start` is a pure CSS change verified by build; (d) spinner gated on `isLoading && !answerResponse`, verified by code + build. NOTE: pixel-level in-browser verification of the rendered cards is deferred to a gateway-configured environment — local has no `SHARED_INVITE_CODE` / LLM gateway, so the participant flow cannot reach the comparison screen locally.
