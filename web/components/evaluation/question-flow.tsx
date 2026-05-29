@@ -328,6 +328,13 @@ export function QuestionFlow({
           </div>
         </form>
 
+        {isLoading && !answerResponse ? (
+          <div className="answer-loading" role="status" aria-live="polite">
+            <span className="answer-spinner" aria-hidden="true" />
+            <p>正在產生回答,約需數秒…</p>
+          </div>
+        ) : null}
+
         {answerResponse ? (
           <section className="comparison-panel" aria-label="模型回答比較">
             <div className="comparison-head">

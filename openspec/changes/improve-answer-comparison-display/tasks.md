@@ -30,9 +30,9 @@
 
 ## 4. Loading feedback during generation (Option 1)
 
-- [ ] 4.1 In `question-flow.tsx`, add a conditional block after the prompt form: when `isLoading && !answerResponse`, render `<div className="answer-loading">` with a CSS spinner + text `正在產生回答,約需數秒…`.
-- [ ] 4.2 In `globals.css`, add `.answer-loading` (centered flex column, gap) and a CSS `@keyframes spin` spinner (`.answer-spinner`).
-- [ ] 4.3 Verify build: `cd web && npm run typecheck && npm run lint && npm run build` → all pass.
+- [x] 4.1 In `question-flow.tsx`, add a conditional block after the prompt form: when `isLoading && !answerResponse`, render `<div className="answer-loading">` with a CSS spinner + text `正在產生回答,約需數秒…`.
+- [x] 4.2 In `globals.css`, add `.answer-loading` (centered flex column, gap) and a CSS `@keyframes spin` spinner (`.answer-spinner`).
+- [x] 4.3 Verify build: `cd web && npm run typecheck && npm run lint && npm run build` → all pass.
 
 ## 5. End-to-end verification
 
