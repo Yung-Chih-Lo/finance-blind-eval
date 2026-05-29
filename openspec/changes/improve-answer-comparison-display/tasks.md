@@ -18,8 +18,8 @@
 
 ## 2. Add markdown dependencies
 
-- [ ] 2.1 `cd web && npm install react-markdown remark-gfm remark-breaks` (pins versions into `package.json` + lockfile).
-- [ ] 2.2 Verify install: `cd web && npm run typecheck` → no resolution errors for the new packages.
+- [x] 2.1 `cd web && npm install react-markdown remark-gfm remark-breaks` (pins versions into `package.json` + lockfile).
+- [x] 2.2 Verify install: `cd web && npm run typecheck` → no resolution errors for the new packages.
 
 ## 3. Render answers as uniform markdown
 
