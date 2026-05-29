@@ -45,6 +45,17 @@ function main() {
     "3 newlines collapse to one blank line",
   )
 
+  // CRLF / lone-CR line endings are normalized to LF before collapsing, so a
+  // CRLF blank-line run does not survive uncollapsed (S1 from review).
+  check(
+    normalizeAnswerText("a\r\n\r\n\r\n\r\nb") === "a\n\nb",
+    "CRLF run normalized + collapsed to one blank line",
+  )
+  check(
+    normalizeAnswerText("a\r\r\r\rb") === "a\n\nb",
+    "lone CR run normalized + collapsed to one blank line",
+  )
+
   // Preserves a single newline (plain-text numbered-list line breaks).
   check(
     normalizeAnswerText("1. 分散風險\n2. 紀律投資") === "1. 分散風險\n2. 紀律投資",

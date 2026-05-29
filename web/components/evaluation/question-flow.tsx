@@ -19,6 +19,10 @@ import type {
   StudyConfig,
 } from "@/lib/evaluation/types"
 
+// Stable reference so the three A/B/C <ReactMarkdown> cards don't re-allocate
+// the plugins array on every render.
+const ANSWER_REMARK_PLUGINS = [remarkGfm, remarkBreaks]
+
 interface AnswerResponse {
   questionId: string
   answers: Record<AnswerLabel, string>
@@ -331,7 +335,7 @@ export function QuestionFlow({
         {isLoading && !answerResponse ? (
           <div className="answer-loading" role="status" aria-live="polite">
             <span className="answer-spinner" aria-hidden="true" />
-            <p>正在產生回答,約需數秒…</p>
+            <p>正在產生回答，約需數秒…</p>
           </div>
         ) : null}
 
@@ -349,7 +353,7 @@ export function QuestionFlow({
                 <article className="answer-card" key={label}>
                   <div className="answer-label">回答 {label}</div>
                   <div className="answer-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                    <ReactMarkdown remarkPlugins={ANSWER_REMARK_PLUGINS}>
                       {normalizeAnswerText(answerResponse.answers[label])}
                     </ReactMarkdown>
                   </div>

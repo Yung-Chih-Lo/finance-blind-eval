@@ -967,6 +967,15 @@
   .answer-body {
     color: #1e293b;
     line-height: 1.75;
+    overflow-wrap: anywhere;
+  }
+
+  /* Constrain rendered media so a model-emitted image or long unbroken token
+     cannot blow out a card's width and leak a presentation cue into the blind
+     comparison. */
+  .answer-body img {
+    height: auto;
+    max-width: 100%;
   }
 
   .answer-body > :first-child {

@@ -38,3 +38,12 @@
 
 - [x] 5.1 Re-run all checks together: `cd web && npm run verify:answer-display && npm run typecheck && npm run lint && npm run build`.
 - [x] 5.2 Verification of answer rendering: (b)(c)(e) verified at render level via `react-dom/server` against representative inputs (plain-text single newline → `<br>`, bold → `<strong>`, `1. 2.` → `<ol><li>`, GFM table, `<script>` sanitized); (a) `align-content: start` is a pure CSS change verified by build; (d) spinner gated on `isLoading && !answerResponse`, verified by code + build. NOTE: pixel-level in-browser verification of the rendered cards is deferred to a gateway-configured environment — local has no `SHARED_INVITE_CODE` / LLM gateway, so the participant flow cannot reach the comparison screen locally.
+
+## 6. Post-review fixes (from /opsxp-verify multi-perspective review)
+
+- [x] 6.1 W2 (copy): in `web/components/evaluation/question-flow.tsx` change the loading message half-width comma `正在產生回答,約需數秒…` → full-width `正在產生回答，約需數秒…` (match every other Chinese string in the file). Update the matching scenario text in `specs/blind-evaluation-app/spec.md` and the mention in `design.md` to the full-width form for consistency.
+- [x] 6.2 S1 RED: add CRLF assertions to `web/scripts/verify-answer-display.ts` — `normalizeAnswerText("a\r\n\r\n\r\n\r\nb") === "a\n\nb"` and a lone-`\r` run case; run `cd web && npm run verify:answer-display` → FAILS (CRLF run survives uncollapsed).
+- [x] 6.3 S1 GREEN: in `web/lib/evaluation/answer-display.ts` normalize line endings before collapsing — `text.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim()`; run `cd web && npm run verify:answer-display` → ALL PASS.
+- [x] 6.4 W1 (blind-eval integrity): in `web/app/globals.css` add `.answer-body { overflow-wrap: anywhere; }` and `.answer-body img { max-width: 100%; height: auto; }` so a model-emitted image or long unbroken token cannot blow a card's width and leak a presentation cue. Add a scenario "Rendered media does not blow out a card" to the `Answer comparison presentation` requirement in `specs/blind-evaluation-app/spec.md`.
+- [x] 6.5 S2 (refactor): hoist `const ANSWER_REMARK_PLUGINS = [remarkGfm, remarkBreaks]` to module scope in `question-flow.tsx` and reference it in the three-card `<ReactMarkdown>` to avoid re-allocating the array on every render.
+- [x] 6.6 Verify: `cd web && npm run verify:answer-display && npm run typecheck && npm run lint && npm run build` all pass; re-run `openspec validate "improve-answer-comparison-display" --type change --strict`.
