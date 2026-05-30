@@ -2,6 +2,9 @@
 
 import { useRef, useState } from "react"
 import { ArrowUp } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import remarkBreaks from "remark-breaks"
+import remarkGfm from "remark-gfm"
 
 import {
   QualityControls,
@@ -9,11 +12,16 @@ import {
 } from "@/components/evaluation/quality-controls"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
+import { normalizeAnswerText } from "@/lib/evaluation/answer-display"
 import type {
   AnswerLabel,
   ParticipantProfile,
   StudyConfig,
 } from "@/lib/evaluation/types"
+
+// Stable reference so the three A/B/C <ReactMarkdown> cards don't re-allocate
+// the plugins array on every render.
+const ANSWER_REMARK_PLUGINS = [remarkGfm, remarkBreaks]
 
 interface AnswerResponse {
   questionId: string
@@ -324,6 +332,13 @@ export function QuestionFlow({
           </div>
         </form>
 
+        {isLoading && !answerResponse ? (
+          <div className="answer-loading" role="status" aria-live="polite">
+            <span className="answer-spinner" aria-hidden="true" />
+            <p>正在產生回答，約需數秒…</p>
+          </div>
+        ) : null}
+
         {answerResponse ? (
           <section className="comparison-panel" aria-label="模型回答比較">
             <div className="comparison-head">
@@ -337,7 +352,11 @@ export function QuestionFlow({
               {answerLabels.map((label) => (
                 <article className="answer-card" key={label}>
                   <div className="answer-label">回答 {label}</div>
-                  <p>{answerResponse.answers[label]}</p>
+                  <div className="answer-body">
+                    <ReactMarkdown remarkPlugins={ANSWER_REMARK_PLUGINS}>
+                      {normalizeAnswerText(answerResponse.answers[label] ?? "")}
+                    </ReactMarkdown>
+                  </div>
                 </article>
               ))}
             </div>
