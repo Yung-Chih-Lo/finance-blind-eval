@@ -944,6 +944,11 @@
     border-radius: 8px;
     display: grid;
     gap: 14px;
+    /* Explicit flexible column. Without this the implicit `auto` column is
+       content-sized and a wide child (markdown table) expands it past the card
+       width, clipping text. An fr track is sized by free space only, never by
+       content max-content, so it stays pinned to the card width. */
+    grid-template-columns: minmax(0, 1fr);
     min-height: 280px;
     padding: 18px;
   }
@@ -967,6 +972,11 @@
   .answer-body {
     color: #1e293b;
     line-height: 1.75;
+    /* Grid item must be allowed to shrink below its content's intrinsic width,
+       otherwise a wide child (e.g. a markdown table) forces the whole body
+       wider than the card and the text gets clipped at the card edge instead
+       of wrapping. The table then scrolls via its own overflow-x. */
+    min-width: 0;
     overflow-wrap: anywhere;
   }
 

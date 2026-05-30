@@ -26,9 +26,9 @@ The system SHALL present the generated A/B/C answers to the participant through 
 - **THEN** that card's text SHALL begin directly below its label with no large empty gap injected between the label and the text
 
 #### Scenario: Rendered media does not blow out a card
-- **WHEN** a model answer contains an image or a long unbroken token (e.g. a long URL)
-- **THEN** the image SHALL be constrained to at most the card's width and the long token SHALL wrap
-- **AND** the card's width SHALL NOT expand beyond its grid column relative to the other answers
+- **WHEN** a model answer contains an image, a long unbroken token (e.g. a long URL), or wide content such as a table
+- **THEN** the image SHALL be constrained to at most the card's width, the long token SHALL wrap, and a wide table SHALL scroll within the card
+- **AND** the card content SHALL NOT expand the card beyond its grid column relative to the other answers
 
 ### Requirement: Answer generation loading feedback
 
