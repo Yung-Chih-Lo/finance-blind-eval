@@ -27,7 +27,7 @@ No existing dependency renders markdown, so a library is justified. `react-markd
 Alternatives considered: (a) keep plain text — rejected, user wants formatted output; (b) hand-rolled regex markdown — rejected, fragile and unsafe; (c) `react-markdown` without `remark-breaks` — rejected, would silently reflow every existing plain-text answer.
 
 ### Text normalization before render
-Normalize with `text.replace(/\n{3,}/g, "\n\n").trim()` at render time (client-side). Done at render rather than in the gateway so it also covers any already-stored pending answers and is a pure display concern. Server-side trim stays as-is.
+Normalize with `text.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").trim()` at render time (client-side): normalize CRLF / lone-CR to LF first, then collapse 3+ consecutive newlines to a single blank line, then trim. Done at render rather than in the gateway so it also covers any already-stored pending answers and is a pure display concern. Server-side trim stays as-is.
 
 ### Loading UX: wait-then-reveal + centered spinner (Option 1)
 Keep the existing control flow (`isLoading` gates the comparison panel on `answerResponse`). Add a conditional block: when `isLoading` and no `answerResponse`, render a centered spinner + "正在產生回答，約需數秒…". The send button already disables and shows "..."; the new block gives a prominent, legible wait state. CSS-only spinner (no animation library).

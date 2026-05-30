@@ -7,7 +7,7 @@ The A/B/C answer comparison cards have three participant-facing display problems
 - Fix the empty-gap layout bug on answer cards so content is top-aligned regardless of answer length (the short-answer card no longer pushes its text down).
 - Render all three answers (A/B/C) through a markdown renderer **uniformly** — every answer goes through the same pipeline so no model gains a presentation advantage in the blind comparison. Existing plain-text answers (full-width numbered lists, single-newline line breaks) must keep their line breaks.
 - Normalize answer text before display (collapse 3+ consecutive blank lines, trim) as a defensive measure against model-emitted whitespace runs.
-- Show an in-flight loading state after the participant submits a question: keep the current "wait until all three answers are ready, then reveal the comparison panel" behavior, but display a centered spinner plus a "正在產生回答,約需數秒…" message during generation so the wait is legible. (No streaming; the answers API still returns all three at once.)
+- Show an in-flight loading state after the participant submits a question: keep the current "wait until all three answers are ready, then reveal the comparison panel" behavior, but display a centered spinner plus a "正在產生回答，約需數秒…" message during generation so the wait is legible. (No streaming; the answers API still returns all three at once.)
 
 ## Capabilities
 

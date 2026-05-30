@@ -354,7 +354,7 @@ export function QuestionFlow({
                   <div className="answer-label">回答 {label}</div>
                   <div className="answer-body">
                     <ReactMarkdown remarkPlugins={ANSWER_REMARK_PLUGINS}>
-                      {normalizeAnswerText(answerResponse.answers[label])}
+                      {normalizeAnswerText(answerResponse.answers[label] ?? "")}
                     </ReactMarkdown>
                   </div>
                 </article>
