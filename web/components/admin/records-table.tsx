@@ -20,6 +20,38 @@ interface RecordsTableProps {
   config: StudyConfig
 }
 
+function summarizeScores(record: EvaluationRecord): string {
+  const scores = record.answerScores
+  if (!scores) {
+    return "-"
+  }
+  const values = configScoreValues(record)
+  if (values.length === 0) {
+    return "-"
+  }
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length
+  return average.toFixed(2)
+}
+
+function configScoreValues(record: EvaluationRecord): number[] {
+  const scores = record.answerScores
+  if (!scores) {
+    return []
+  }
+  const values: number[] = []
+  const labels = ["A", "B", "C"] as const
+  const facets = ["correctness", "completeness", "readability"] as const
+  labels.forEach((label) => {
+    facets.forEach((facet) => {
+      const value = scores[label]?.[facet]
+      if (Number.isFinite(value)) {
+        values.push(value)
+      }
+    })
+  })
+  return values
+}
+
 export function RecordsTable({ records, config }: RecordsTableProps) {
   const [selected, setSelected] = useState<EvaluationRecord | null>(null)
   const triggerRef = useRef<HTMLTableRowElement | null>(null)
@@ -44,13 +76,14 @@ export function RecordsTable({ records, config }: RecordsTableProps) {
             <TableHead>題型</TableHead>
             <TableHead>Best</TableHead>
             <TableHead>Worst</TableHead>
+            <TableHead className="text-right">Score avg</TableHead>
             <TableHead className="text-right">Latency</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {records.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-[var(--admin-muted)]">
+              <TableCell colSpan={7} className="text-center text-[var(--admin-muted)]">
                 尚無題目紀錄。
               </TableCell>
             </TableRow>
@@ -85,6 +118,7 @@ export function RecordsTable({ records, config }: RecordsTableProps) {
                     {record.hiddenModelMapping[record.selectedWorst]}
                   </span>
                 </TableCell>
+                <TableCell className="text-right tabular-nums">{summarizeScores(record)}</TableCell>
                 <TableCell className="text-right tabular-nums">{record.responseLatencyMs} ms</TableCell>
               </TableRow>
             ))

@@ -143,7 +143,7 @@ The system SHALL keep the mapping between A/B/C labels and real model IDs server
 - **THEN** the system can show the hidden mapping for research analysis
 
 ### Requirement: Required blind comparison judgments
-The system SHALL require participants to submit explicit comparative judgments whose target is an answer label, including overall best, overall worst, best by correctness, best by completeness, best by readability, and at least one free-text reason before saving a question judgment. The system SHALL NOT require or accept a `best by financial reasoning` selection.
+The system SHALL require participants to submit explicit overall comparative judgments whose target is an answer label, including overall best and overall worst, plus a full answer-score matrix for correctness, completeness, and readability before saving a question judgment. Each answer score SHALL be an integer from 1 to 5 for every displayed answer label. The system SHALL NOT require or accept facet-best label selections for correctness, completeness, or readability on newly saved records.
 
 #### Scenario: Best or worst selection missing
 - **WHEN** the participant attempts to save a judgment without selecting both overall best and overall worst answers
@@ -153,26 +153,26 @@ The system SHALL require participants to submit explicit comparative judgments w
 - **WHEN** the participant attempts to save a judgment with the same answer selected as overall best and overall worst
 - **THEN** the system rejects the save and displays a validation message
 
-#### Scenario: Facet selection missing
-- **WHEN** the participant attempts to save a judgment without selecting an answer for correctness, completeness, or readability
+#### Scenario: Answer score missing
+- **WHEN** the participant attempts to save a judgment without scoring correctness, completeness, and readability for every displayed answer
 - **THEN** the system rejects the save and displays a validation message
 
-#### Scenario: Reasoning facet not collected
+#### Scenario: Facet-best selections not collected
 - **WHEN** the question judgment screen renders
-- **THEN** the facet comparison list contains exactly three entries — correctness, completeness, and readability
-- **AND** no `reasoning` facet input is rendered
+- **THEN** the system renders score controls for correctness, completeness, and readability under each answer label
+- **AND** no facet-best A/B/C selector is rendered
 
 #### Scenario: Reason missing
 - **WHEN** the participant attempts to save a judgment with no best reason and no worst reason
 - **THEN** the system rejects the save and displays a validation message
 
 ### Requirement: Evaluation record storage
-The system SHALL store each answered question with participant token, participant profile composed of the five current background fields (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), question metadata, blinded answers, hidden mapping, overall best and worst labels, facet-best labels for correctness, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status. The system SHALL NOT require a `reasoning` facet-best label on newly stored records.
+The system SHALL store each answered question with participant token, participant profile composed of the five current background fields (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), question metadata, blinded answers, hidden mapping, overall best and worst labels, answer scores for correctness, completeness, and readability, reasons, worst-answer quality flags, timestamp, response latency, and completion status. The system SHALL NOT store new facet-best labels or quality-rating legacy fields on newly stored records.
 
 #### Scenario: Question judgment saved
 - **WHEN** the participant saves a valid comparative judgment after completing the five-field profile
 - **THEN** the system persists a complete evaluation record through a server API route including a participant profile snapshot whose keys are exactly `token`, `ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, and `hasUsedAiForFinance`
-- **AND** the persisted record's `facetSelections` keys are exactly `correctness`, `completeness`, and `readability`
+- **AND** the persisted record's `answerScores` object contains A, B, and C, each with `correctness`, `completeness`, and `readability` integer scores from 1 to 5
 - **AND** the persisted record's participant profile snapshot SHALL NOT contain any of `gender`, `gradeOrOccupation`, `financeWorkExperience`, `investmentExperience`, `financeFamiliarity`, `financeSubdomains`, `notes`, `knownName`, `llmExperience`, `financeBackgroundType`, or any legacy key
 
 ### Requirement: Admin evaluation dashboard
@@ -188,18 +188,24 @@ The system SHALL provide an admin page at `/admin` organized as a Tabbed Single 
 - **THEN** the KPI bar derives the main-domain breakdown by counting participants whose `mainDomain` is `finance_related` as the finance-related group, participants whose `mainDomain` is `business_non_finance` as the business-non-finance group, and participants whose `mainDomain` is `other` as the other-domain group
 - **AND** the KPI bar SHALL NOT render an `unknown` bucket, a `refusal` bucket, or any bucket derived from the removed `financeBackgroundType` 5-value enum
 
+#### Scenario: Admin reviews model score results
+- **WHEN** the `模型結果` tab is active
+- **THEN** the page shows overall best, overall worst, and net counts for each model
+- **AND** the page shows average correctness, average completeness, average readability, overall average score, and score sample count for each model
+
 #### Scenario: Admin inspects a record detail
 - **WHEN** the admin clicks a row in the question records list
-- **THEN** the page opens a side drawer showing the full user question text, the five-field participant profile snapshot (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), all facet selections, worst-answer flags, hidden model mapping, and any reason text for that record
+- **THEN** the page opens a side drawer showing the full user question text, the five-field participant profile snapshot (`ageRange`, `educationLevel`, `mainDomain`, `aiUsageFrequency`, `hasUsedAiForFinance`), all answer scores, worst-answer flags, hidden model mapping, and any reason text for that record
 - **AND** the drawer SHALL NOT render any legacy section, any `legacy` field prefix, or any field outside the five-field profile snapshot
 
 ### Requirement: Data export
-The system SHALL allow admin users to export evaluation data as JSON and CSV, including comparative facet selections, resolved model IDs, and the current five-field participant profile.
+The system SHALL allow admin users to export evaluation data as JSON and CSV, including overall best/worst selections, answer scores, resolved model IDs, and the current five-field participant profile.
 
 #### Scenario: CSV export requested
 - **WHEN** an admin requests CSV export
-- **THEN** the system returns one row per answered question with selected labels, facet labels, resolved model IDs, reasons, worst-answer flags, and exactly six active-profile columns covering `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, and `has_used_ai_for_finance`
+- **THEN** the system returns one row per answered question with selected labels, A/B/C answer scores, resolved model score columns, resolved model IDs, reasons, worst-answer flags, and exactly six active-profile columns covering `token`, `age_range`, `education_level`, `main_domain`, `ai_usage_frequency`, and `has_used_ai_for_finance`
 - **AND** the CSV header SHALL NOT contain any column named `gender`, `grade_or_occupation`, `finance_work_experience`, `investment_experience`, `finance_familiarity`, `finance_subdomains`, `notes`, `known_name`, `llm_experience`, `finance_background_type`, `legacy_field_or_work_domain`, `legacy_is_business_or_finance`, `legacy_has_taken_finance_course`, or `legacy_finance_llm_usage`
+- **AND** the CSV header SHALL NOT contain any `best_by_*` facet-selection columns
 
 #### Scenario: JSON export uses single profile shape
 - **WHEN** an admin requests JSON export
@@ -634,4 +640,3 @@ The system SHALL display a visible loading indicator to the participant while th
 - **WHEN** the answers request fails
 - **THEN** the spinner and loading message SHALL be removed
 - **AND** the participant SHALL remain able to retry from the question input
-

@@ -96,28 +96,40 @@ export function RecordDrawer({ record, config, onClose }: RecordDrawerProps) {
                 </p>
               </Section>
 
-              <Section title="Facet selections">
-                {config.evaluationFacets.length === 0 ? (
-                  <p className="text-[var(--admin-muted)]">尚無 facet。</p>
+              <Section title="Answer scores">
+                {record.answerScores ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[420px] text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--admin-border)] text-xs uppercase text-[var(--admin-muted)]">
+                          <th className="py-1 pr-2 font-medium">Answer</th>
+                          <th className="py-1 pr-2 font-medium">Model</th>
+                          {config.evaluationFacets.map((facet) => (
+                            <th key={facet.id} className="py-1 pr-2 text-right font-medium">
+                              {facet.label}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {config.answerLabels.map((label) => (
+                          <tr key={label} className="border-b border-[var(--admin-border)] last:border-0">
+                            <td className="py-1.5 pr-2 font-semibold">{label}</td>
+                            <td className="py-1.5 pr-2 text-xs text-[var(--admin-muted)]">
+                              {record.hiddenModelMapping[label]}
+                            </td>
+                            {config.evaluationFacets.map((facet) => (
+                              <td key={facet.id} className="py-1.5 pr-2 text-right tabular-nums">
+                                {record.answerScores?.[label]?.[facet.id] ?? "—"}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <ul className="space-y-1">
-                    {config.evaluationFacets.map((facet) => {
-                      const label = record.facetSelections?.[facet.id]
-                      const resolved = label ? record.hiddenModelMapping[label] : null
-                      return (
-                        <li key={facet.id}>
-                          <span className="text-[var(--admin-muted)]">{facet.label}: </span>
-                          {label ? (
-                            <span>
-                              {label} <span className="text-[var(--admin-muted)]">/ {resolved}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[var(--admin-muted)]">—</span>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  <p className="text-[var(--admin-muted)]">此紀錄沒有新版分數欄位。</p>
                 )}
               </Section>
 

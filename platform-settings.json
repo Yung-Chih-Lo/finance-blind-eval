@@ -1,0 +1,185 @@
+{
+  "settingsVersion": 7,
+  "updatedAt": "2026-05-18T02:35:58.400Z",
+  "updatedBy": "admin",
+  "settingsSnapshotHash": "1a87592ad9b50f77c02e72e2c5033abf47e27e0f84be661335f85c4561e6362f",
+  "config": {
+    "study": {
+      "eyebrow": "Blind LLM Model Evaluation",
+      "title": "大型語言模型回答盲測",
+      "rootTitle": "大型語言模型回答盲測",
+      "rootDescription": "研究問卷式 blind evaluation，受測者輸入邀請碼後進入正式問卷流程。",
+      "intro": {
+        "greeting": "親愛的受試者您好：",
+        "paragraphs": [
+          "感謝您參與本研究之金融專業回答盲測。本研究旨在經過 \"Augmentative Pre-training\" 之大型語言模型在人類問答情境中的回答品質，並透過受試者盲測評估回答的正確性、完整性與可讀性。",
+          "本問卷將請您輸入任何相關問題，系統會針對每一題顯示三個匿名回答 A / B / C。",
+          "您的回饋將協助本研究分析模型回答品質，以及受試者在問答評估時的判斷依據。本問卷包含選擇題與開放式文字回覆，歡迎您依照自身經驗與專業判斷提供真實意見。",
+          "您的回答將會保密處理，並僅用於本學術研究之量化比較與質性分析。感謝您撥冗參與本研究並提供寶貴意見。"
+        ],
+        "tasks": [
+          "比較三個回答中整體最好與整體最差的回答。",
+          "依模型回答正確性、完整性與可讀性選出各面向較佳的回答。",
+          "簡短說明您的選擇理由與觀察。"
+        ]
+      },
+      "signature": {
+        "closing": "Sincerely,",
+        "studentName": "學生：駱泳誌",
+        "affiliation": "國立政治大學 資訊管理系 碩士生",
+        "advisor": "指導教授：蔡瑞煌博士",
+        "thesisTitle": "The Augmentative Residual Adapter Approach to Pre-training"
+      },
+      "completion": {
+        "eyebrow": "完成",
+        "title": "感謝完成本次盲測",
+        "description": "你的回答已記錄。為了維持研究盲測設計，本頁不顯示模型身份、模型排名與比較結果。",
+        "notes": [
+          "接下來研究團隊會彙整整體比較結果與文字理由。",
+          "若你剛才遇到模型無法回覆、畫面異常或題目送出失敗，請直接告知研究人員。",
+          "謝謝你協助完成本次論文研究問卷。"
+        ]
+      }
+    },
+    "limits": {
+      "minQuestionLength": 8,
+      "maxQuestionLength": 1000,
+      "maxQuestionsPerParticipant": 5,
+      "rateLimit": {
+        "inviteRedeemPerIpPerHour": 10,
+        "answerRequestsPerIpPerMinute": 20,
+        "answerRequestsPerSessionPerMinute": 3
+      }
+    },
+    "answerLabels": [
+      "A",
+      "B",
+      "C"
+    ],
+    "modelIds": [
+      "H1-best",
+      "H2-best",
+      "TAIDE-baseline"
+    ],
+    "promptCategories": [
+      {
+        "id": "finance-concept",
+        "title": "開放問答",
+        "instruction": "請直接輸入您想詢問模型的問題，或是參考範例問答：",
+        "examples": [
+          "請用白話解釋殖利率曲線倒掛，並說明它和景氣衰退的關係。",
+          "股票本益比偏高時，可能代表哪些不同情況？",
+          "久期是什麼？為什麼利率上升時長天期債券價格通常會下跌？",
+          "ETF 的折溢價代表什麼？投資人需要注意哪些風險？",
+          "為什麼通膨下降不一定代表物價水準正在下降？"
+        ]
+      },
+      {
+        "id": "investment-judgment",
+        "title": "開放問答",
+        "instruction": "請直接輸入您想詢問模型的問題，或是參考範例問答：",
+        "examples": [
+          "升息循環中，長天期債券 ETF 和定存的風險差異是什麼？",
+          "如果投資人風險承受度低，股債配置應該注意哪些取捨？",
+          "定期定額買高波動 ETF 的優缺點有哪些？",
+          "高股息 ETF 的殖利率看起來很高時，應該檢查哪些因素？",
+          "市場大跌時，如何判斷該停損、加碼或維持原策略？"
+        ]
+      },
+      {
+        "id": "company-financials",
+        "title": "開放問答",
+        "instruction": "請直接輸入您想詢問模型的問題，或是參考範例問答：",
+        "examples": [
+          "自由現金流為正但淨利下降，可能代表哪些營運狀況？",
+          "營收成長但毛利率下滑，可能有哪些原因？",
+          "應收帳款周轉天數變長，對公司財務風險有什麼意義？",
+          "EBITDA 和淨利在評估公司時各自有什麼限制？",
+          "公司現金很多但仍然大量舉債，可能有哪些合理原因？"
+        ]
+      },
+      {
+        "id": "macro-market",
+        "title": "開放問答",
+        "instruction": "請直接輸入您想詢問模型的問題，或是參考範例問答：",
+        "examples": [
+          "美元升值通常會如何影響新興市場債券和出口企業？",
+          "央行升息如何影響銀行、房地產和成長股？",
+          "油價上升可能如何影響通膨、企業成本與股市評價？",
+          "匯率貶值一定有利出口嗎？有哪些例外？",
+          "美國非農就業數據強勁時，市場利率可能如何反應？"
+        ]
+      },
+      {
+        "id": "expertise-probe",
+        "title": "開放問答",
+        "instruction": "請直接輸入您想詢問模型的問題，或是參考範例問答：",
+        "examples": [
+          "如果一家公司 ROE 很高但負債快速上升，應該追問哪些財務細節？",
+          "請比較 DCF 估值與相對估值的適用情境與盲點。",
+          "同一家公司 EPS 成長但自由現金流轉差，可能有哪些解釋？",
+          "請設計一個問題來判斷模型是否懂利率、債券價格與久期的關係。",
+          "當模型給出明確買賣建議時，你會如何檢查它是否過度自信？"
+        ]
+      }
+    ],
+    "evaluationFacets": [
+      {
+        "id": "correctness",
+        "label": "金融正確性最好",
+        "helper": "金融概念、數字判斷或事實最可靠"
+      },
+      {
+        "id": "reasoning",
+        "label": "金融推理最清楚",
+        "helper": "能說明機制、條件與判斷脈絡"
+      },
+      {
+        "id": "completeness",
+        "label": "回答完整性最高",
+        "helper": "涵蓋必要面向、限制與補充資訊"
+      },
+      {
+        "id": "readability",
+        "label": "可讀性最好",
+        "helper": "最容易閱讀、比較與理解"
+      }
+    ],
+    "worstAnswerFlags": [
+      {
+        "id": "hallucination",
+        "label": "疑似幻覺"
+      },
+      {
+        "id": "off-topic",
+        "label": "答非所問"
+      },
+      {
+        "id": "missing-risk",
+        "label": "缺少風險提醒"
+      },
+      {
+        "id": "overconfident",
+        "label": "過度自信"
+      },
+      {
+        "id": "too-vague",
+        "label": "過於籠統"
+      }
+    ]
+  },
+  "provider": {
+    "apiBaseUrl": "https://owui-llm.vixight.com/v1",
+    "modelsEndpointOverride": "",
+    "apiKeyEnvVar": "OPENAI_COMPAT_API_KEY",
+    "modelMapping": {
+      "H1-best": "yung-apt",
+      "H2-best": "baseline-gemma-3-taide-12b",
+      "TAIDE-baseline": "baseline-llama-3.1-taide-8b"
+    },
+    "systemPrompt": "你是金融問答模型。請用繁體中文回答受測者問題，保持專業、清楚、可比較。不要提到模型名稱、盲測、A/B/C 或你正在被評估。",
+    "userPromptTemplate": "題型：{{categoryTitle}}\n參考方向：{{categoryInstruction}}\n受測者問題：{{question}}",
+    "temperature": 0.2,
+    "maxTokens": 1200
+  }
+}

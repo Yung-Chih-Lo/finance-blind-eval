@@ -188,22 +188,21 @@ export interface ModelAnswer {
   text: string
 }
 
-export interface QualityRatings {
-  correctness: number
-  completeness: number
-  professionalism: number
-  readability: number
-}
-
-export type FacetSelections = Record<EvaluationFacetId, AnswerLabel>
+export type AnswerScoreSet = Record<EvaluationFacetId, number>
+export type AnswerScores = Record<AnswerLabel, AnswerScoreSet>
 
 export interface ModelComparisonCounts {
   overallBest: number
   overallWorst: number
   net: number
+}
+
+export interface ModelScoreAverages {
   correctness: number
   completeness: number
   readability: number
+  overall: number
+  n: number
 }
 
 export interface PendingQuestion {
@@ -226,7 +225,10 @@ export interface PendingQuestion {
 export interface EvaluationRecord extends PendingQuestion {
   selectedBest: AnswerLabel
   selectedWorst: AnswerLabel
-  facetSelections?: Partial<FacetSelections>
+  // Schema v3 (2026-06-23): new records require a full A/B/C x facet 1-5 score
+  // matrix. Optional only so old rows can be displayed before the deployment
+  // data wipe; score analytics intentionally ignore rows without this field.
+  answerScores?: AnswerScores
   bestReason: string
   worstReason: string
   worstAnswerFlags?: string[]
@@ -234,8 +236,6 @@ export interface EvaluationRecord extends PendingQuestion {
   // Required at the UI layer (gated by question-flow's saveJudgment) but persisted
   // as optional so historical records pre-dating the "其他" option remain valid.
   worstOtherText?: string
-  qualityFlags?: string[]
-  qualityRatings?: QualityRatings
   completionStatus: "answered"
 }
 
@@ -284,6 +284,7 @@ export interface AdminSnapshot {
   records: EvaluationRecord[]
   modelCounts: Record<ModelId, { best: number; worst: number }>
   comparativeCounts: Record<ModelId, ModelComparisonCounts>
+  scoreAverages: Record<ModelId, ModelScoreAverages>
   worstFlagCounts: Record<ModelId, Record<string, number>>
   completedCount: number
   // Three mutually-exclusive buckets derived from mainDomain (see spec scenario

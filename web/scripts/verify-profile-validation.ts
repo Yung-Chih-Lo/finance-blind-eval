@@ -123,8 +123,8 @@ function testNewEnumValuesOnly() {
   const domainValues = MAIN_DOMAIN_OPTIONS.map((option) => option.value)
   assert.deepEqual(
     domainValues,
-    ["finance_related", "business_non_finance"],
-    `MAIN_DOMAIN_OPTIONS must expose exactly 2 values; got ${JSON.stringify(domainValues)}`,
+    ["finance_related", "business_non_finance", "other"],
+    `MAIN_DOMAIN_OPTIONS must expose exactly 3 values; got ${JSON.stringify(domainValues)}`,
   )
 
   const freqValues = AI_USAGE_FREQUENCY_OPTIONS.map((option) => option.value)
@@ -263,7 +263,11 @@ async function testJsonExportHasNoLegacyBlock() {
     responseLatencyMs: 100,
     selectedBest: "A",
     selectedWorst: "C",
-    facetSelections: { correctness: "A", completeness: "A", readability: "A" },
+    answerScores: {
+      A: { correctness: 5, completeness: 5, readability: 5 },
+      B: { correctness: 3, completeness: 3, readability: 3 },
+      C: { correctness: 1, completeness: 1, readability: 1 },
+    },
     bestReason: "best",
     worstReason: "worst",
     completionStatus: "answered",

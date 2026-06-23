@@ -24,13 +24,6 @@ export const WORST_ANSWER_FLAGS = STUDY_CONFIG.worstAnswerFlags
 
 export const QUALITY_FLAGS = WORST_ANSWER_FLAGS
 
-export const INITIAL_RATINGS = {
-  correctness: 3,
-  completeness: 3,
-  professionalism: 3,
-  readability: 3,
-}
-
 export const MIN_QUESTION_LENGTH = STUDY_CONFIG.limits.minQuestionLength
 
 export const MAX_QUESTION_LENGTH = STUDY_CONFIG.limits.maxQuestionLength

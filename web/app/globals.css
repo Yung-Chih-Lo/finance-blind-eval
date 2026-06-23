@@ -1188,6 +1188,50 @@
     margin-top: 4px;
   }
 
+  .score-matrix {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .score-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .score-card-head {
+    display: grid;
+    gap: 4px;
+  }
+
+  .score-card-head span {
+    color: #0f172a;
+    font-weight: 900;
+  }
+
+  .score-card-head p,
+  .score-facet p {
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .score-card-body {
+    display: grid;
+    gap: 14px;
+  }
+
+  .score-facet {
+    display: grid;
+    gap: 5px;
+  }
+
   .answer-choice-row {
     display: inline-grid;
     gap: 6px;
@@ -1538,6 +1582,7 @@
   .stats-grid,
   .model-counts,
   .facet-row,
+  .score-matrix,
   .rating-grid,
   .invite-grid,
   .invite-form,

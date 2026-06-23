@@ -27,7 +27,7 @@ import {
   MAIN_DOMAIN_OPTIONS,
   formatProfileChoice,
 } from "@/lib/evaluation/profile"
-import type { ModelComparisonCounts } from "@/lib/evaluation/types"
+import type { ModelScoreAverages } from "@/lib/evaluation/types"
 import { getAdminSnapshot } from "@/lib/server/evaluation-storage"
 import { getActivePlatformSettings, PlatformSettingsError } from "@/lib/server/platform-settings"
 
@@ -51,11 +51,16 @@ function pickTab(value: string | string[] | undefined): string {
   return value ?? "overview"
 }
 
-const FACET_COLUMNS: { key: keyof Pick<ModelComparisonCounts, "correctness" | "completeness" | "readability">; label: string }[] = [
-  { key: "correctness", label: "Correctness" },
-  { key: "completeness", label: "Complete" },
-  { key: "readability", label: "Readability" },
+const SCORE_COLUMNS: { key: keyof Pick<ModelScoreAverages, "correctness" | "completeness" | "readability" | "overall">; label: string }[] = [
+  { key: "correctness", label: "Correctness avg" },
+  { key: "completeness", label: "Completeness avg" },
+  { key: "readability", label: "Readability avg" },
+  { key: "overall", label: "Overall avg" },
 ]
+
+function formatScore(value: number) {
+  return value > 0 ? value.toFixed(2) : "-"
+}
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = (await searchParams) ?? {}
@@ -191,7 +196,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <Card className="border-[var(--admin-border)] bg-[var(--admin-surface)] shadow-none">
         <CardHeader className="px-5 pt-4 pb-2">
-          <CardTitle className="text-base">模型整體與面向比較</CardTitle>
+          <CardTitle className="text-base">模型整體偏好與面向分數</CardTitle>
         </CardHeader>
         <CardContent className="px-5 pb-4">
           <Table>
@@ -201,14 +206,16 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <TableHead className="text-right">Overall best</TableHead>
                 <TableHead className="text-right">Overall worst</TableHead>
                 <TableHead className="text-right">Net</TableHead>
-                {FACET_COLUMNS.map((facet) => (
+                {SCORE_COLUMNS.map((facet) => (
                   <TableHead key={facet.key} className="text-right">{facet.label}</TableHead>
                 ))}
+                <TableHead className="text-right">n</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {config.modelIds.map((modelId) => {
                 const counts = snapshot.comparativeCounts[modelId]
+                const scoreAverages = snapshot.scoreAverages[modelId]
                 return (
                   <TableRow key={modelId}>
                     <TableCell>{modelId}</TableCell>
@@ -221,11 +228,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <TableCell className="text-right">
                       <NetBadge value={counts.net} />
                     </TableCell>
-                    {FACET_COLUMNS.map((facet) => (
+                    {SCORE_COLUMNS.map((facet) => (
                       <TableCell key={facet.key} className="text-right tabular-nums">
-                        {counts[facet.key]} <span className="text-xs text-[var(--admin-muted)]">{formatPercent(counts[facet.key], recordCount)}</span>
+                        {formatScore(scoreAverages?.[facet.key] ?? 0)}
                       </TableCell>
                     ))}
+                    <TableCell className="text-right tabular-nums">{scoreAverages?.n ?? 0}</TableCell>
                   </TableRow>
                 )
               })}

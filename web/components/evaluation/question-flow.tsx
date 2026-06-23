@@ -8,10 +8,15 @@ import remarkGfm from "remark-gfm"
 
 import {
   QualityControls,
-  type FacetSelectionState,
 } from "@/components/evaluation/quality-controls"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/toast-provider"
+import {
+  createEmptyAnswerScoreDraft,
+  isCompleteAnswerScoreDraft,
+  normalizeAnswerScores,
+  type AnswerScoreDraft,
+} from "@/lib/evaluation/answer-scores"
 import { normalizeAnswerText } from "@/lib/evaluation/answer-display"
 import type {
   AnswerLabel,
@@ -47,12 +52,6 @@ interface QuestionFlowProps {
   onComplete: () => void
 }
 
-function createEmptyFacetSelections(config: StudyConfig): FacetSelectionState {
-  return Object.fromEntries(
-    config.evaluationFacets.map((facet) => [facet.id, ""])
-  ) as FacetSelectionState
-}
-
 export function QuestionFlow({
   config,
   token,
@@ -80,8 +79,8 @@ export function QuestionFlow({
   const [selectedWorst, setSelectedWorst] = useState<AnswerLabel | "">("")
   const [bestReason, setBestReason] = useState("")
   const [worstReason, setWorstReason] = useState("")
-  const [facetSelections, setFacetSelections] = useState<FacetSelectionState>(
-    () => createEmptyFacetSelections(config)
+  const [answerScores, setAnswerScores] = useState<AnswerScoreDraft>(() =>
+    createEmptyAnswerScoreDraft(config)
   )
   const [worstAnswerFlags, setWorstAnswerFlags] = useState<string[]>([])
   const [worstOtherText, setWorstOtherText] = useState("")
@@ -148,7 +147,7 @@ export function QuestionFlow({
     setSelectedWorst("")
     setBestReason("")
     setWorstReason("")
-    setFacetSelections(createEmptyFacetSelections(config))
+    setAnswerScores(createEmptyAnswerScoreDraft(config))
     setWorstAnswerFlags([])
     setWorstOtherText("")
   }
@@ -192,8 +191,8 @@ export function QuestionFlow({
       toast.info("最好與最差不能選同一個回答。")
       return
     }
-    if (Object.values(facetSelections).some((selection) => !selection)) {
-      toast.info("請完成所有面向的 A / B / C 比較。")
+    if (!isCompleteAnswerScoreDraft(answerScores, config)) {
+      toast.info("請完成 A / B / C 每個回答的正確性、完整性與可讀性評分。")
       return
     }
     if (!bestReason.trim() && !worstReason.trim()) {
@@ -214,7 +213,7 @@ export function QuestionFlow({
           questionId: answerResponse.questionId,
           selectedBest,
           selectedWorst,
-          facetSelections,
+          answerScores: normalizeAnswerScores(answerScores, config),
           bestReason,
           worstReason,
           worstAnswerFlags,
@@ -419,8 +418,8 @@ export function QuestionFlow({
             <QualityControls
               answerLabels={answerLabels}
               evaluationFacets={config.evaluationFacets}
-              facetSelections={facetSelections}
-              setFacetSelections={setFacetSelections}
+              answerScores={answerScores}
+              setAnswerScores={setAnswerScores}
               worstAnswerFlagOptions={config.worstAnswerFlags}
               worstAnswerFlags={worstAnswerFlags}
               setWorstAnswerFlags={setWorstAnswerFlags}

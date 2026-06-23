@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import type { AnswerLabel, EvaluationFacetId, EvaluationRecord, FacetSelections, QualityRatings, StudyConfig } from "@/lib/evaluation/types"
+import { normalizeAnswerScores } from "@/lib/evaluation/answer-scores"
+import type { AnswerLabel, AnswerScores, EvaluationRecord } from "@/lib/evaluation/types"
 import {
   getEvaluationRecordsByParticipant,
   getParticipantStatus,
@@ -15,32 +16,15 @@ interface RecordRequest {
   questionId?: string
   selectedBest?: AnswerLabel
   selectedWorst?: AnswerLabel
-  facetSelections?: Partial<Record<EvaluationFacetId, AnswerLabel>>
+  answerScores?: AnswerScores
   bestReason?: string
   worstReason?: string
   worstAnswerFlags?: string[]
   worstOtherText?: string
-  qualityFlags?: string[]
-  qualityRatings?: QualityRatings
 }
 
 function isAnswerLabel(value: unknown): value is AnswerLabel {
   return value === "A" || value === "B" || value === "C"
-}
-
-function getFacetSelections(
-  value: RecordRequest["facetSelections"],
-  config: Pick<StudyConfig, "evaluationFacets">,
-): FacetSelections | undefined {
-  const selections = {} as FacetSelections
-  for (const facet of config.evaluationFacets) {
-    const selected = value?.[facet.id]
-    if (!isAnswerLabel(selected)) {
-      return undefined
-    }
-    selections[facet.id] = selected
-  }
-  return selections
 }
 
 function settingsErrorResponse(error: unknown) {
@@ -66,7 +50,7 @@ export async function POST(request: Request) {
   const questionId = body?.questionId || ""
   const bestReason = body?.bestReason?.trim() || ""
   const worstReason = body?.worstReason?.trim() || ""
-  const facetSelections = getFacetSelections(body?.facetSelections, config)
+  const answerScores = normalizeAnswerScores(body?.answerScores, config)
 
   if (!questionId) {
     return NextResponse.json({ error: "Missing question id." }, { status: 400 })
@@ -77,8 +61,8 @@ export async function POST(request: Request) {
   if (body.selectedBest === body.selectedWorst) {
     return NextResponse.json({ error: "Best and worst selections must be different." }, { status: 400 })
   }
-  if (!facetSelections) {
-    return NextResponse.json({ error: "All comparative facet selections are required." }, { status: 400 })
+  if (!answerScores) {
+    return NextResponse.json({ error: "All answer scores are required and must be integers from 1 to 5." }, { status: 400 })
   }
   if (!bestReason && !worstReason) {
     return NextResponse.json({ error: "At least one reason is required." }, { status: 400 })
@@ -105,7 +89,7 @@ export async function POST(request: Request) {
     ...pending,
     selectedBest: body.selectedBest,
     selectedWorst: body.selectedWorst,
-    facetSelections,
+    answerScores,
     bestReason,
     worstReason,
     worstAnswerFlags,
@@ -113,8 +97,6 @@ export async function POST(request: Request) {
     // the type allows the field to be optional, storing empty strings under flags
     // that don't include "other" would pollute downstream analysis.
     worstOtherText: worstAnswerFlags.includes("other") ? worstOtherText : undefined,
-    qualityFlags: Array.isArray(body.qualityFlags) ? body.qualityFlags : undefined,
-    qualityRatings: body.qualityRatings,
     completionStatus: "answered",
   }
 

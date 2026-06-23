@@ -1,14 +1,14 @@
 "use client"
 
+import { ScaleInput } from "@/components/evaluation/scale-input"
+import type { AnswerScoreDraft } from "@/lib/evaluation/answer-scores"
 import type { AnswerLabel, EvaluationFacetId, StudyConfig } from "@/lib/evaluation/types"
-
-export type FacetSelectionState = Record<EvaluationFacetId, AnswerLabel | "">
 
 interface QualityControlsProps {
   answerLabels: StudyConfig["answerLabels"]
   evaluationFacets: StudyConfig["evaluationFacets"]
-  facetSelections: FacetSelectionState
-  setFacetSelections: (selections: FacetSelectionState) => void
+  answerScores: AnswerScoreDraft
+  setAnswerScores: (scores: AnswerScoreDraft) => void
   worstAnswerFlagOptions: StudyConfig["worstAnswerFlags"]
   worstAnswerFlags: string[]
   setWorstAnswerFlags: (flags: string[]) => void
@@ -21,8 +21,8 @@ const OTHER_FLAG_ID = "other"
 export function QualityControls({
   answerLabels,
   evaluationFacets,
-  facetSelections,
-  setFacetSelections,
+  answerScores,
+  setAnswerScores,
   worstAnswerFlagOptions,
   worstAnswerFlags,
   setWorstAnswerFlags,
@@ -30,37 +30,45 @@ export function QualityControls({
   setWorstOtherText,
 }: QualityControlsProps) {
   const isOtherSelected = worstAnswerFlags.includes(OTHER_FLAG_ID)
+  function updateScore(label: AnswerLabel, facetId: EvaluationFacetId, score: number) {
+    setAnswerScores({
+      ...answerScores,
+      [label]: {
+        ...answerScores[label],
+        [facetId]: score,
+      },
+    })
+  }
+
   return (
     <section className="quality-panel">
       <div className="section-heading compact-heading">
         <div>
-          <p className="panel-kicker">Facet Comparison</p>
-          <h3>面向式比較</h3>
+          <p className="panel-kicker">Facet Scores</p>
+          <h3>面向評分</h3>
         </div>
       </div>
 
-      <div className="facet-grid" aria-label="面向式比較">
-        {evaluationFacets.map((facet) => (
-          <div className="facet-row" key={facet.id}>
-            <div>
-              <span>{facet.label}</span>
-              <p>{facet.helper}</p>
+      <div className="score-matrix" aria-label="回答面向評分">
+        {answerLabels.map((label) => (
+          <article className="score-card" key={label}>
+            <div className="score-card-head">
+              <span>回答 {label}</span>
+              <p>請依 1 到 5 分評估每個面向。</p>
             </div>
-            <div className="answer-choice-row" role="radiogroup" aria-label={facet.label}>
-              {answerLabels.map((label) => (
-                <button
-                  aria-checked={facetSelections[facet.id] === label}
-                  className={facetSelections[facet.id] === label ? "answer-choice is-active" : "answer-choice"}
-                  key={label}
-                  role="radio"
-                  type="button"
-                  onClick={() => setFacetSelections({ ...facetSelections, [facet.id]: label })}
-                >
-                  {label}
-                </button>
+            <div className="score-card-body">
+              {evaluationFacets.map((facet) => (
+                <div className="score-facet" key={facet.id}>
+                  <ScaleInput
+                    label={facet.label}
+                    value={answerScores[label]?.[facet.id] ?? 0}
+                    onChange={(score) => updateScore(label, facet.id, score)}
+                  />
+                  <p>{facet.helper}</p>
+                </div>
               ))}
             </div>
-          </div>
+          </article>
         ))}
       </div>
 

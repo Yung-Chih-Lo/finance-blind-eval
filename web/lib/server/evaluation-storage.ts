@@ -4,17 +4,21 @@ import { createHash, randomBytes } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join } from "node:path"
 
-import { EVALUATION_FACETS, MODEL_IDS, WORST_ANSWER_FLAGS } from "@/lib/evaluation/config"
+import { normalizeAnswerScores } from "@/lib/evaluation/answer-scores"
+import { MODEL_IDS, STUDY_CONFIG, WORST_ANSWER_FLAGS } from "@/lib/evaluation/config"
 import type {
   AdminAttentionItems,
   AdminFunnelStages,
   AdminSnapshot,
   AnswerLabel,
+  AnswerScores,
   EvaluationRecord,
   EvaluationSession,
   EvaluationStore,
+  EvaluationFacetId,
   ModelComparisonCounts,
   ModelId,
+  ModelScoreAverages,
   ParticipantStatus,
   PendingQuestion,
   PlatformSettingsSnapshot,
@@ -353,10 +357,6 @@ function modelIdsFromConfig(config?: Pick<StudyConfig, "modelIds">) {
   return config?.modelIds ?? MODEL_IDS
 }
 
-function facetsFromConfig(config?: Pick<StudyConfig, "evaluationFacets">) {
-  return config?.evaluationFacets ?? EVALUATION_FACETS
-}
-
 function worstFlagsFromConfig(config?: Pick<StudyConfig, "worstAnswerFlags">) {
   return config?.worstAnswerFlags ?? WORST_ANSWER_FLAGS
 }
@@ -384,15 +384,12 @@ function emptyModelComparisonCounts(): ModelComparisonCounts {
     overallBest: 0,
     overallWorst: 0,
     net: 0,
-    correctness: 0,
-    completeness: 0,
-    readability: 0,
   }
 }
 
 export function countComparativeSelections(
   records: EvaluationRecord[],
-  config?: Pick<StudyConfig, "modelIds" | "evaluationFacets">,
+  config?: Pick<StudyConfig, "modelIds">,
 ): Record<ModelId, ModelComparisonCounts> {
   const counts = Object.fromEntries(
     modelIdsFromConfig(config).map((modelId) => [modelId, emptyModelComparisonCounts()]),
@@ -403,14 +400,6 @@ export function countComparativeSelections(
     counts[record.hiddenModelMapping[record.selectedWorst]] ??= emptyModelComparisonCounts()
     counts[record.hiddenModelMapping[record.selectedBest]].overallBest += 1
     counts[record.hiddenModelMapping[record.selectedWorst]].overallWorst += 1
-
-    facetsFromConfig(config).forEach((facet) => {
-      const selectedLabel = record.facetSelections?.[facet.id]
-      if (selectedLabel) {
-        counts[record.hiddenModelMapping[selectedLabel]] ??= emptyModelComparisonCounts()
-        counts[record.hiddenModelMapping[selectedLabel]][facet.id] += 1
-      }
-    })
   })
 
   const countedModelIds = Object.keys(counts) as ModelId[]
@@ -419,6 +408,85 @@ export function countComparativeSelections(
   })
 
   return counts
+}
+
+function emptyModelScoreAverages(): ModelScoreAverages {
+  return {
+    correctness: 0,
+    completeness: 0,
+    readability: 0,
+    overall: 0,
+    n: 0,
+  }
+}
+
+type ModelScoreAccumulator = Record<
+  ModelId,
+  {
+    correctness: number
+    completeness: number
+    readability: number
+    n: number
+  }
+>
+
+const SCORE_FACET_IDS = ["correctness", "completeness", "readability"] as const satisfies EvaluationFacetId[]
+
+function roundScore(value: number): number {
+  return Number(value.toFixed(2))
+}
+
+function toModelScoreAverages(accumulator: ModelScoreAccumulator): Record<ModelId, ModelScoreAverages> {
+  return Object.fromEntries(
+    Object.entries(accumulator).map(([modelId, totals]) => {
+      if (totals.n === 0) {
+        return [modelId, emptyModelScoreAverages()]
+      }
+      const correctness = roundScore(totals.correctness / totals.n)
+      const completeness = roundScore(totals.completeness / totals.n)
+      const readability = roundScore(totals.readability / totals.n)
+      return [
+        modelId,
+        {
+          correctness,
+          completeness,
+          readability,
+          overall: roundScore((correctness + completeness + readability) / 3),
+          n: totals.n,
+        },
+      ]
+    }),
+  ) as Record<ModelId, ModelScoreAverages>
+}
+
+export function calculateModelScoreAverages(
+  records: EvaluationRecord[],
+  config: Pick<StudyConfig, "answerLabels" | "evaluationFacets" | "modelIds"> = STUDY_CONFIG,
+): Record<ModelId, ModelScoreAverages> {
+  const accumulator = Object.fromEntries(
+    modelIdsFromConfig(config).map((modelId) => [
+      modelId,
+      { correctness: 0, completeness: 0, readability: 0, n: 0 },
+    ]),
+  ) as ModelScoreAccumulator
+
+  records.forEach((record) => {
+    const answerScores = normalizeAnswerScores(record.answerScores, config)
+    if (!answerScores) {
+      return
+    }
+
+    config.answerLabels.forEach((label) => {
+      const modelId = record.hiddenModelMapping[label]
+      accumulator[modelId] ??= { correctness: 0, completeness: 0, readability: 0, n: 0 }
+      SCORE_FACET_IDS.forEach((facetId) => {
+        accumulator[modelId][facetId] += answerScores[label][facetId]
+      })
+      accumulator[modelId].n += 1
+    })
+  })
+
+  return toModelScoreAverages(accumulator)
 }
 
 export function countWorstFlags(
@@ -446,12 +514,23 @@ export function labelsFromMapping(mapping: Record<AnswerLabel, ModelId>): string
   return `A=${mapping.A}, B=${mapping.B}, C=${mapping.C}`
 }
 
-function resolveModel(record: EvaluationRecord, label?: AnswerLabel): ModelId | "" {
-  return label ? record.hiddenModelMapping[label] : ""
+function scoreForLabel(
+  answerScores: AnswerScores | undefined,
+  label: AnswerLabel,
+  facetId: EvaluationFacetId,
+): number | "" {
+  return answerScores?.[label]?.[facetId] ?? ""
 }
 
-function resolveGatewayModel(record: EvaluationRecord, label?: AnswerLabel): string {
-  return label ? record.gatewayModelMapping[label] : ""
+function scoreForModel(
+  record: EvaluationRecord,
+  modelId: ModelId,
+  facetId: EvaluationFacetId,
+): number | "" {
+  const label = (Object.entries(record.hiddenModelMapping) as Array<[AnswerLabel, ModelId]>).find(
+    ([, mappedModelId]) => mappedModelId === modelId,
+  )?.[0]
+  return label ? scoreForLabel(record.answerScores, label, facetId) : ""
 }
 
 function computeFunnelStages(
@@ -590,6 +669,7 @@ export async function getAdminSnapshot(config?: StudyConfig): Promise<AdminSnaps
     records: store.records,
     modelCounts: countModelSelections(store.records, config),
     comparativeCounts: countComparativeSelections(store.records, config),
+    scoreAverages: calculateModelScoreAverages(store.records, config),
     worstFlagCounts,
     completedCount: participants.filter((participant) => participant.completionStatus === "completed").length,
     financeRelatedCount,
@@ -664,24 +744,28 @@ const CSV_HEADERS = [
   "selected_worst",
   "selected_worst_model",
   "selected_worst_gateway_model",
-  "best_by_correctness_label",
-  "best_by_correctness_model",
-  "best_by_correctness_gateway_model",
-  "best_by_completeness_label",
-  "best_by_completeness_model",
-  "best_by_completeness_gateway_model",
-  "best_by_readability_label",
-  "best_by_readability_model",
-  "best_by_readability_gateway_model",
+  "score_a_correctness",
+  "score_a_completeness",
+  "score_a_readability",
+  "score_b_correctness",
+  "score_b_completeness",
+  "score_b_readability",
+  "score_c_correctness",
+  "score_c_completeness",
+  "score_c_readability",
+  "score_model_h1_best_correctness",
+  "score_model_h1_best_completeness",
+  "score_model_h1_best_readability",
+  "score_model_h2_best_correctness",
+  "score_model_h2_best_completeness",
+  "score_model_h2_best_readability",
+  "score_model_taide_baseline_correctness",
+  "score_model_taide_baseline_completeness",
+  "score_model_taide_baseline_readability",
   "best_reason",
   "worst_reason",
   "worst_answer_flags",
   "worst_other_text",
-  "quality_flags",
-  "rating_correctness",
-  "rating_completeness",
-  "rating_professionalism",
-  "rating_readability",
   "timestamp",
   "response_latency_ms",
   "completion_status",
@@ -719,24 +803,28 @@ export async function buildExportCsv(): Promise<string> {
     selected_worst: record.selectedWorst,
     selected_worst_model: record.hiddenModelMapping[record.selectedWorst],
     selected_worst_gateway_model: record.gatewayModelMapping[record.selectedWorst],
-    best_by_correctness_label: record.facetSelections?.correctness ?? "",
-    best_by_correctness_model: resolveModel(record, record.facetSelections?.correctness),
-    best_by_correctness_gateway_model: resolveGatewayModel(record, record.facetSelections?.correctness),
-    best_by_completeness_label: record.facetSelections?.completeness ?? "",
-    best_by_completeness_model: resolveModel(record, record.facetSelections?.completeness),
-    best_by_completeness_gateway_model: resolveGatewayModel(record, record.facetSelections?.completeness),
-    best_by_readability_label: record.facetSelections?.readability ?? "",
-    best_by_readability_model: resolveModel(record, record.facetSelections?.readability),
-    best_by_readability_gateway_model: resolveGatewayModel(record, record.facetSelections?.readability),
+    score_a_correctness: scoreForLabel(record.answerScores, "A", "correctness"),
+    score_a_completeness: scoreForLabel(record.answerScores, "A", "completeness"),
+    score_a_readability: scoreForLabel(record.answerScores, "A", "readability"),
+    score_b_correctness: scoreForLabel(record.answerScores, "B", "correctness"),
+    score_b_completeness: scoreForLabel(record.answerScores, "B", "completeness"),
+    score_b_readability: scoreForLabel(record.answerScores, "B", "readability"),
+    score_c_correctness: scoreForLabel(record.answerScores, "C", "correctness"),
+    score_c_completeness: scoreForLabel(record.answerScores, "C", "completeness"),
+    score_c_readability: scoreForLabel(record.answerScores, "C", "readability"),
+    score_model_h1_best_correctness: scoreForModel(record, "H1-best", "correctness"),
+    score_model_h1_best_completeness: scoreForModel(record, "H1-best", "completeness"),
+    score_model_h1_best_readability: scoreForModel(record, "H1-best", "readability"),
+    score_model_h2_best_correctness: scoreForModel(record, "H2-best", "correctness"),
+    score_model_h2_best_completeness: scoreForModel(record, "H2-best", "completeness"),
+    score_model_h2_best_readability: scoreForModel(record, "H2-best", "readability"),
+    score_model_taide_baseline_correctness: scoreForModel(record, "TAIDE-baseline", "correctness"),
+    score_model_taide_baseline_completeness: scoreForModel(record, "TAIDE-baseline", "completeness"),
+    score_model_taide_baseline_readability: scoreForModel(record, "TAIDE-baseline", "readability"),
     best_reason: record.bestReason,
     worst_reason: record.worstReason,
     worst_answer_flags: (record.worstAnswerFlags ?? []).join("|"),
     worst_other_text: record.worstOtherText ?? "",
-    quality_flags: (record.qualityFlags ?? []).join("|"),
-    rating_correctness: record.qualityRatings?.correctness ?? "",
-    rating_completeness: record.qualityRatings?.completeness ?? "",
-    rating_professionalism: record.qualityRatings?.professionalism ?? "",
-    rating_readability: record.qualityRatings?.readability ?? "",
     timestamp: record.timestamp,
     response_latency_ms: record.responseLatencyMs,
     completion_status: record.completionStatus,
