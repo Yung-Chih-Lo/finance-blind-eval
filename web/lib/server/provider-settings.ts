@@ -14,11 +14,14 @@ const DEFAULT_SYSTEM_PROMPT = [
   "4. 回答中不要提及任何具體模型名稱、產品名稱、評估或比較流程。",
   "5. 一律以繁體中文回答，語氣專業、清楚、易讀。",
 ].join("\n")
-const DEFAULT_USER_PROMPT_TEMPLATE = [
-  "題型：{{categoryTitle}}",
-  "參考方向：{{categoryInstruction}}",
-  "受測者問題：{{question}}",
-].join("\n")
+const DEFAULT_USER_PROMPT_TEMPLATE = "{{question}}"
+
+type ProviderSettingsValidationOptions = {
+  requireComplete?: boolean
+  requireEndpoint?: boolean
+  requireApiKeyConfigured?: boolean
+  requireQuestionTemplate?: boolean
+}
 
 export class ProviderSettingsError extends Error {
   constructor(
@@ -100,7 +103,8 @@ export function normalizeProviderSettings(value: unknown, fallback = getDefaultP
     apiBaseUrl: typeof value.apiBaseUrl === "string" ? value.apiBaseUrl.trim() : "",
     modelsEndpointOverride:
       typeof value.modelsEndpointOverride === "string" ? value.modelsEndpointOverride.trim() : "",
-    apiKeyEnvVar: typeof value.apiKeyEnvVar === "string" ? value.apiKeyEnvVar.trim() : fallback.apiKeyEnvVar,
+    apiKeyEnvVar:
+      typeof value.apiKeyEnvVar === "string" ? value.apiKeyEnvVar.trim() : fallback.apiKeyEnvVar,
     modelMapping: normalizeModelMapping(value.modelMapping),
     systemPrompt: typeof value.systemPrompt === "string" ? value.systemPrompt : fallback.systemPrompt,
     userPromptTemplate:
@@ -112,11 +116,12 @@ export function normalizeProviderSettings(value: unknown, fallback = getDefaultP
 
 export function validateProviderSettings(
   value: unknown,
-  options: { requireComplete?: boolean; requireEndpoint?: boolean; requireApiKeyConfigured?: boolean } = {},
+  options: ProviderSettingsValidationOptions = {},
 ) {
   const settings = normalizeProviderSettings(value)
   const issues: string[] = []
   const requireComplete = options.requireComplete ?? false
+  const requireQuestionTemplate = requireComplete || options.requireQuestionTemplate
 
   validateOptionalUrl(settings.apiBaseUrl, "provider.apiBaseUrl", issues, {
     required: requireComplete || options.requireEndpoint,
@@ -140,7 +145,7 @@ export function validateProviderSettings(
   if (!settings.userPromptTemplate.trim()) {
     issues.push("provider.userPromptTemplate must be a non-empty string.")
   }
-  if (requireComplete && !settings.userPromptTemplate.includes("{{question}}")) {
+  if (requireQuestionTemplate && !settings.userPromptTemplate.includes("{{question}}")) {
     issues.push("provider.userPromptTemplate must include {{question}}.")
   }
   if (!Number.isFinite(settings.temperature) || settings.temperature < 0 || settings.temperature > 2) {
@@ -162,7 +167,7 @@ export function validateProviderSettings(
 
 export function assertValidProviderSettings(
   value: unknown,
-  options: { requireComplete?: boolean; requireEndpoint?: boolean; requireApiKeyConfigured?: boolean } = {},
+  options: ProviderSettingsValidationOptions = {},
 ): ProviderSettings {
   const validation = validateProviderSettings(value, options)
   if (!validation.ok) {

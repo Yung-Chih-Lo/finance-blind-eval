@@ -243,6 +243,7 @@ export async function generateBlindAnswers(params: {
   const providerSettings = assertValidProviderSettings(params.providerSettings ?? getDefaultProviderSettings(), {
     requireEndpoint: true,
     requireApiKeyConfigured: true,
+    requireQuestionTemplate: true,
   })
 
   const gatewayModelNames = await getGatewayModelNames(providerSettings, params.modelIds)
